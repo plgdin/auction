@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -6,6 +6,7 @@ import {
   Filter,
   Grid2X2,
   List,
+  X,
 } from "lucide-react";
 import { ShopCard } from "../components/ShopCard";
 import { SelectMenu } from "../components/Ui";
@@ -22,7 +23,8 @@ const shopCategories: Array<{ key: FilterKey; label: string }> = [
   ...CATEGORIES.map((name) => ({ key: name as FilterKey, label: name })),
 ];
 
-const conditionOptions: Array<{ value: Condition; label: string }> = [
+const conditionOptions: Array<{ value: Condition | "All"; label: string }> = [
+  { value: "All", label: "All conditions" },
   { value: "Like new", label: "Like New" },
   { value: "Good", label: "Gently Used" },
   { value: "Fair", label: "Well Used" },
@@ -69,6 +71,11 @@ export function ProductsPage() {
   const [maxPrice, setMaxPrice] = useState(100000);
   const [view, setView] = useState<View>("grid");
   const [page, setPage] = useState(1);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterTriggerRef = useRef<HTMLButtonElement>(null);
+  const filterDialogRef = useRef<HTMLElement>(null);
+  const filterCloseRef = useRef<HTMLButtonElement>(null);
+  const wasFiltersOpen = useRef(false);
 
   useEffect(() => {
     setCategory(keyForQuery(route.query.get("category")));
@@ -145,6 +152,54 @@ export function ProductsPage() {
 
   useEffect(() => setPage(1), [category, condition, maxPrice, query, selectedSizes, selectedGroups, sort]);
 
+  useEffect(() => {
+    if (!filtersOpen) {
+      if (wasFiltersOpen.current) {
+        wasFiltersOpen.current = false;
+        filterTriggerRef.current?.focus();
+      }
+      return;
+    }
+    wasFiltersOpen.current = true;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setFiltersOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+
+      const dialog = filterDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.getClientRects().length > 0);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) {
+        event.preventDefault();
+        dialog.focus();
+      } else if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    filterCloseRef.current?.focus();
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [filtersOpen]);
+
   const reset = () => {
     setCategory("all");
     setCondition("All");
@@ -165,6 +220,14 @@ export function ProductsPage() {
       previous.includes(group) ? previous.filter((item) => item !== group) : [...previous, group],
     );
 
+  const activeFilterCount =
+    (category !== "all" ? 1 : 0) +
+    (condition !== "All" ? 1 : 0) +
+    selectedGroups.length +
+    selectedSizes.length +
+    (maxPrice < highestPrice ? 1 : 0) +
+    (query.trim() ? 1 : 0);
+
   return (
     <main className="page-shell shop-page">
       <section className="shop-sheet" aria-labelledby="shop-title">
@@ -177,12 +240,38 @@ export function ProductsPage() {
           </defs>
         </svg>
         <div className="shop-layout">
-          <aside className="shop-filters" aria-label="Filters">
+          {filtersOpen && (
+            <button
+              type="button"
+              className="shop-filter-scrim"
+              aria-label="Close filters"
+              onClick={() => setFiltersOpen(false)}
+            />
+          )}
+          <aside
+            ref={filterDialogRef}
+            id="shop-filter-panel"
+            className={`shop-filters ${filtersOpen ? "is-open" : ""}`}
+            aria-label="Filters"
+            role={filtersOpen ? "dialog" : undefined}
+            aria-modal={filtersOpen || undefined}
+            aria-labelledby="shop-filter-title"
+            tabIndex={filtersOpen ? -1 : undefined}
+          >
             <div className="shop-filter-paper">
               <div className="shop-filter-content">
                 <div className="shop-filter-title">
-                  <h2>Filter</h2>
-                  <Filter size={16} strokeWidth={1.5} />
+                  <h2 id="shop-filter-title">Filter pieces</h2>
+                  <button
+                    ref={filterCloseRef}
+                    type="button"
+                    className="shop-filter-close"
+                    aria-label="Close filters"
+                    onClick={() => setFiltersOpen(false)}
+                  >
+                    <X size={18} />
+                  </button>
+                  <Filter className="shop-filter-icon" size={16} strokeWidth={1.5} />
                 </div>
 
                 <section className="shop-filter-group">
@@ -192,7 +281,8 @@ export function ProductsPage() {
                   {shopCategories.map((option) => (
                     <label key={option.key} className="shop-check">
                       <input
-                        type="checkbox"
+                        type="radio"
+                        name="shop-category"
                         checked={category === option.key}
                         onChange={() => setCategory(option.key)}
                       />
@@ -229,11 +319,10 @@ export function ProductsPage() {
                   {conditionOptions.map((option) => (
                     <label key={option.value} className="shop-check">
                       <input
-                        type="checkbox"
+                        type="radio"
+                        name="shop-condition"
                         checked={condition === option.value}
-                        onChange={() =>
-                          setCondition(condition === option.value ? "All" : option.value)
-                        }
+                        onChange={() => setCondition(option.value)}
                       />
                       <span>{option.label}</span>
                     </label>
@@ -302,8 +391,36 @@ export function ProductsPage() {
           </aside>
 
           <section className="shop-results">
+            {/* Compact filter + sort bar — phones only, sticky under the navbar */}
+            <div className="shop-mobile-bar">
+              <button
+                ref={filterTriggerRef}
+                type="button"
+                className={`shop-mobile-toggle ${filtersOpen ? "is-open" : ""}`}
+                aria-expanded={filtersOpen}
+                aria-controls="shop-filter-panel"
+                onClick={() => setFiltersOpen((open) => !open)}
+              >
+                <Filter size={15} strokeWidth={1.8} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && <em className="shop-mobile-count">{activeFilterCount}</em>}
+              </button>
+              <div className="shop-mobile-sort">
+                <SelectMenu
+                  value={sort}
+                  ariaLabel="Sort by"
+                  options={[
+                    { value: "newest", label: "Recently Listed" },
+                    { value: "price-asc", label: "Price: Low to High" },
+                    { value: "price-desc", label: "Price: High to Low" },
+                  ]}
+                  onChange={(value) => setSort(value as Sort)}
+                />
+              </div>
+            </div>
             <header className="shop-heading">
               <div>
+                <h1 id="shop-title" className="shop-title">Shop</h1>
                 <p className="shop-found">{visible.length} Items found</p>
               </div>
               <div className="shop-view">
@@ -331,8 +448,8 @@ export function ProductsPage() {
 
             {pageProducts.length ? (
               <div className={`shop-grid is-${view}`}>
-                {pageProducts.map((product) => (
-                  <ShopCard key={product.id} product={product} />
+                {pageProducts.map((product, index) => (
+                  <ShopCard key={product.id} product={product} priority={index === 0} />
                 ))}
               </div>
             ) : (

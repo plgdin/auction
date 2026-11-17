@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion } from "framer-motion";
+import { COARSE } from "@/src/lib/motion";
 
 interface GenieSearchModalProps {
   isOpen: boolean;
@@ -287,9 +288,62 @@ export function GenieSearchModal({
   children,
 }: GenieSearchModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const [animState, setAnimState] = useState<"idle" | "opening" | "settled" | "closing">("idle");
   const animRef = useRef<number | null>(null);
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const activeElement = document.activeElement;
+    returnFocusRef.current = activeElement instanceof HTMLElement ? activeElement : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const background = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        ".site-shell > header, .site-shell > .site-content, .site-shell > footer",
+      ),
+    ).map((element) => ({
+      element,
+      inert: element.inert,
+      ariaHidden: element.getAttribute("aria-hidden"),
+    }));
+    background.forEach(({ element }) => {
+      element.inert = true;
+      element.setAttribute("aria-hidden", "true");
+    });
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      background.forEach(({ element, inert, ariaHidden }) => {
+        element.inert = inert;
+        if (ariaHidden === null) element.removeAttribute("aria-hidden");
+        else element.setAttribute("aria-hidden", ariaHidden);
+      });
+      const previousTarget = returnFocusRef.current;
+      const visible = (element: HTMLElement | null): element is HTMLElement =>
+        Boolean(element?.isConnected && element.getClientRects().length);
+      const origin = document.querySelector<HTMLElement>(originSelector);
+      const fallback = document.querySelector<HTMLElement>(".lelam-account-btn");
+      const target = visible(previousTarget) ? previousTarget : visible(origin) ? origin : fallback;
+      target?.focus();
+      returnFocusRef.current = null;
+    };
+  }, [isOpen, originSelector]);
+
+  useEffect(() => {
+    if (!isOpen || animState !== "settled") return;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const initialTarget =
+      dialog.querySelector<HTMLElement>("[autofocus]") ??
+      dialog.querySelector<HTMLElement>(
+        'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled])',
+      );
+    initialTarget?.focus();
+  }, [isOpen, animState]);
 
   const prefersReducedMotion =
     typeof window !== "undefined" &&
@@ -345,7 +399,7 @@ export function GenieSearchModal({
       return;
     }
 
-    if (prefersReducedMotion || skipOpenAnimation) {
+    if (prefersReducedMotion || COARSE || skipOpenAnimation) {
       setAnimState("settled");
       return;
     }
@@ -503,7 +557,7 @@ export function GenieSearchModal({
   const handleClose = () => {
     if (animState === "closing") return;
 
-    if (prefersReducedMotion) {
+    if (prefersReducedMotion || COARSE) {
       onClose();
       return;
     }
@@ -632,6 +686,29 @@ export function GenieSearchModal({
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen && animState === "settled") {
         handleClose();
+        return;
+      }
+      if (e.key !== "Tab" || !isOpen || animState !== "settled") return;
+
+      const dialog = dialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((element) => element.getClientRects().length > 0);
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (!first || !last) {
+        e.preventDefault();
+        dialog.focus();
+      } else if (e.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) {
+        e.preventDefault();
+        first.focus();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -649,7 +726,7 @@ export function GenieSearchModal({
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
         onClick={handleClose}
-        className="fixed inset-0 bg-[#25170F]/60 backdrop-blur-md cursor-pointer"
+        className="overlay-scrim fixed inset-0 bg-[#25170F]/60 backdrop-blur-md cursor-pointer"
       />
 
       {/* Fluid Canvas Layer for macOS Genie Morphing Deformation */}
@@ -664,7 +741,14 @@ export function GenieSearchModal({
       {/* Real Interactive React Modal Card (Shown when settled) */}
       {animState === "settled" && (
           <div className="genie-modal-shell fixed inset-0 z-30 flex items-center justify-center p-4 pointer-events-auto">
-          <div className="w-full max-w-lg">
+          <div
+            ref={dialogRef}
+            className="w-full max-w-lg"
+            role="dialog"
+            aria-modal="true"
+            aria-label={textureKind === "cart" ? "Your cart" : "Search listings"}
+            tabIndex={-1}
+          >
             {React.cloneElement(children as React.ReactElement<any>, {
               onClose: handleClose,
             })}

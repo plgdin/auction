@@ -1,8 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { MoveRight } from "lucide-react";
+import { MoveRight, ShoppingBag } from "lucide-react";
 import { navigate } from "@/src/components/Link";
+import { COARSE, REDUCED_MOTION, revealDelay, revealDuration } from "@/src/lib/motion";
 
 export interface HeroProps {
   headlineTop?: string;
@@ -51,6 +52,7 @@ function PolaroidPhoto({
   width,
   height,
   priority = false,
+  sizes,
 }: {
   src: string;
   alt: string;
@@ -61,13 +63,19 @@ function PolaroidPhoto({
   width?: number;
   height?: number;
   priority?: boolean;
+  sizes: string;
 }) {
+  const responsiveSourceSet = (format: "avif" | "webp") =>
+    [360, 640, 900]
+      .map((size) => `${src.replace(".jpg", `-${size}.${format}`)} ${size}w`)
+      .join(", ");
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.94, rotate: rotation - 2 }}
       animate={{ opacity: 1, scale: 1, rotate: rotation }}
-      transition={{ duration: 0.8, delay, ease: [0.16, 1, 0.3, 1] }}
-      whileHover={{
+      transition={{ duration: revealDuration(0.8), delay: revealDelay(delay), ease: [0.16, 1, 0.3, 1] }}
+      whileHover={REDUCED_MOTION ? undefined : {
         scale: 1.04,
         rotate: 0,
         zIndex: 40,
@@ -87,15 +95,20 @@ function PolaroidPhoto({
       )}
 
       {/* Supplied photo already carries its handmade paper edge and sepia treatment. */}
-      <img
-        src={src}
-        alt={alt}
-        width={width}
-        height={height}
-        className="block h-auto w-full transition-transform duration-500 group-hover:scale-[1.015]"
-        loading="eager"
-        fetchPriority={priority ? "high" : undefined}
-      />
+      <picture>
+        <source type="image/avif" srcSet={responsiveSourceSet("avif")} sizes={sizes} />
+        <source type="image/webp" srcSet={responsiveSourceSet("webp")} sizes={sizes} />
+        <img
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          sizes={sizes}
+          className="block h-auto w-full transition-transform duration-500 group-hover:scale-[1.015]"
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : undefined}
+        />
+      </picture>
     </motion.div>
   );
 }
@@ -105,8 +118,8 @@ function Hero({
   headlineMiddle = "Closet a",
   headlineAccent = "Second Life.",
   description = "Turn your pre-loved clothes, accessories and more into cash — easily, safely, and sustainably with lelam.co.",
-  primaryCtaText = "Start Selling Now",
-  primaryCtaHref = "#/sell",
+  primaryCtaText = "Start Selling",
+  primaryCtaHref = "#/sell/new",
   className = "",
 }: HeroProps) {
   return (
@@ -124,10 +137,10 @@ function Hero({
              LEFT SECTION — BRAND AND MESSAGE (approx 45%)
              ======================================================== */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
+            initial={COARSE || REDUCED_MOTION ? false : { opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.85, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:col-span-5 xl:col-span-5 flex flex-col items-start gap-4 sm:gap-5 lg:gap-6 z-10"
+            transition={{ duration: revealDuration(0.85), ease: [0.16, 1, 0.3, 1] }}
+            className="home-hero-copy lg:col-span-5 xl:col-span-5 flex flex-col items-start gap-4 sm:gap-5 lg:gap-6 z-10"
           >
             {/* Main Headline: Give Your Closet a Second Life. */}
             <div className="relative">
@@ -167,8 +180,8 @@ function Hero({
               {description}
             </p>
 
-            {/* CTA Button: Start Selling Now → */}
-              <div className="relative isolate pt-1 flex flex-col items-start gap-3">
+            {/* Primary selling action and direct route to the shop */}
+            <div className="home-hero-cta-group relative isolate pt-1 flex flex-row items-center gap-3">
               <button
                 type="button"
                 onClick={() => navigate(primaryCtaHref)}
@@ -177,6 +190,14 @@ function Hero({
               >
                 <span>{primaryCtaText}</span>
                 <MoveRight className="w-5 h-5 transition-transform duration-200 group-hover:translate-x-1" />
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate("#/products")}
+                className="home-hero-secondary-cta inline-flex items-center justify-center gap-2 rounded-[10px] border-2 border-[#493022]/55 bg-[#FAF7F2] px-6 py-3.5 text-base font-medium text-[#493022] shadow-[0_5px_16px_rgba(73,48,34,0.12)] transition-colors duration-200 hover:bg-white"
+              >
+                <ShoppingBag className="h-4 w-4" />
+                <span>Buy Now</span>
               </button>
             </div>
           </motion.div>
@@ -194,6 +215,7 @@ function Hero({
                   alt="Neatly folded pre-loved knitted sweaters"
                   width={1122}
                   height={1402}
+                  sizes="(min-width: 640px) 238px, 40vw"
                   rotation={7}
                   tapePlacement="top-right"
                   delay={0.2}
@@ -207,6 +229,7 @@ function Hero({
                   alt="Vintage brown leather jacket hanging on a wooden hanger"
                   width={1122}
                   height={1402}
+                  sizes="(min-width: 640px) 314px, calc((100vw - 2.5rem) * 0.54)"
                   rotation={-2}
                   tapePlacement="top-center"
                   delay={0.1}
@@ -221,6 +244,7 @@ function Hero({
                   alt="Vintage leather handbag with a gold chain strap"
                   width={1448}
                   height={1086}
+                  sizes="(min-width: 640px) 252px, 43vw"
                   rotation={-5.5}
                   tapePlacement="top-right"
                   delay={0.3}

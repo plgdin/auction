@@ -1,98 +1,93 @@
 import { expect, test } from "@playwright/test";
 
-test("a one-of-one auction can be found, saved, and added to a persistent bid list", async ({
+test("a one-of-one piece can be saved and added to a persistent cart", async ({
   page,
 }) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Outerwear", exact: true }).click();
-  await expect(page.locator("#shop .product-card")).toHaveCount(2);
-  await page
-    .getByRole("button", { name: "Save The worn-in denim jacket", exact: true })
-    .click();
-  await page
-    .getByRole("button", { name: "View The worn-in denim jacket", exact: true })
-    .click();
-  const detail = page.getByRole("dialog", { name: "A closer look" });
-  await detail
-    .getByRole("button", { name: "Add to bid list" })
+  await page.goto("/#/products");
+  const jacket = page.locator(".shop-card").filter({
+    has: page.getByRole("link", { name: "The worn-in denim jacket" }),
+  });
+  await expect(jacket).toBeVisible();
+  await jacket
+    .getByRole("button", { name: "Save The worn-in denim jacket" })
     .click();
   await expect(
-    detail.getByRole("button", { name: "View bid list" }),
-  ).toBeVisible();
-  await detail.getByRole("button", { name: "View bid list" }).click();
-  const bag = page.getByRole("dialog", { name: "Your bid list (1)" });
-  await expect(bag.locator(".bag-item")).toHaveCount(1);
-  await expect(bag.locator(".subtotal")).toContainText("$64");
-  await bag.getByRole("button", { name: "Review bid list" }).click();
-  await expect(page.getByRole("dialog")).toContainText(
-    "no bid will be submitted",
-  );
-  await page.getByRole("button", { name: "Close dialog" }).click();
-  await page.reload();
-  await page.getByRole("button", { name: "Saved finds, 1 items" }).click();
-  await expect(page.getByRole("dialog").locator(".product-card")).toHaveCount(
-    1,
-  );
-  await page.keyboard.press("Escape");
-  await page
-    .getByRole("button", { name: "Open bid list, 1 items" })
-    .click();
-  await expect(page.getByRole("dialog").locator(".bag-item")).toHaveCount(1);
-  await page
-    .getByRole("button", { name: "Remove The worn-in denim jacket" })
-    .click();
-  await expect(page.getByRole("dialog")).toContainText(
-    "Save or add a live auction here",
-  );
-});
-
-test("search handles matching and empty results, including product details", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await page.getByRole("button", { name: "Search the archive" }).click();
-  const search = page.getByRole("dialog", { name: "Search live auctions" });
-  await search.getByRole("textbox", { name: "Search products" }).fill("denim");
-  await expect(search.locator(".product-card")).toHaveCount(2);
-  await search
-    .getByRole("button", { name: "View The worn-in denim jacket", exact: true })
-    .click();
-  await expect(
-    page.getByRole("dialog", { name: "A closer look" }),
-  ).toBeVisible();
-  await page
-    .getByRole("dialog", { name: "A closer look" })
-    .getByRole("button", { name: "Close dialog" })
-    .click();
-  await expect(search).toBeVisible();
-  await search
-    .getByRole("textbox", { name: "Search products" })
-    .fill("no-such-piece");
-  await expect(search).toContainText("No auctions match that search.");
-  await search.getByRole("button", { name: "Clear search" }).click();
-  await expect(search.locator(".product-card")).toHaveCount(6);
-});
-
-test("collections, expanded inventory, and the newsletter preview respond to input", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await expect(page.locator("#shop .product-card")).toHaveCount(4);
-  await page.getByRole("button", { name: "View all auctions" }).click();
-  await expect(page.locator("#shop .product-card")).toHaveCount(6);
-  await page.getByRole("button", { name: /Explore the denim edit/ }).click();
-  await expect(page.locator("#shop .product-card")).toHaveCount(1);
-  await expect(
-    page.getByRole("button", { name: "Denim", exact: true }),
+    jacket.getByRole("button", { name: "Unsave The worn-in denim jacket" }),
   ).toHaveAttribute("aria-pressed", "true");
-  await page.getByLabel("Your email address").fill("vintage@example.com");
-  await page.getByRole("button", { name: /Join the (lelam|Sunday) list/i }).click();
-  await expect(page.locator(".newsletter-note")).toContainText(
-    "You’re on the preview list!",
+  await jacket
+    .getByRole("button", { name: "Add The worn-in denim jacket to cart" })
+    .click();
+
+  await page.goto("/#/cart");
+  await expect(page.locator(".cart-item")).toHaveCount(1);
+  await expect(page.locator(".cart-item")).toContainText(
+    "The worn-in denim jacket",
   );
+
+  await page.reload();
+  await expect(page.locator(".cart-item")).toHaveCount(1);
 });
 
-test("phone navigation and shopping work without horizontal overflow", async ({
+test("search finds products, handles empty results, and opens product details", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Search listings" }).click();
+
+  const searchInput = page.getByRole("textbox", { name: "Search listings" });
+  await expect(searchInput).toBeVisible();
+  await searchInput.fill("denim");
+  const result = page.getByRole("button", {
+    name: /The worn-in denim jacket/,
+  });
+  await expect(result).toBeVisible();
+  await result.click();
+
+  await expect(page).toHaveURL(/#\/product\/p-1$/);
+  await expect(
+    page.getByRole("heading", { name: "The worn-in denim jacket" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "Purchase options" }),
+  ).toBeVisible();
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Search listings" }).click();
+  await page
+    .getByRole("textbox", { name: "Search listings" })
+    .fill("no-such-piece");
+  await expect(page.getByText(/Nothing matched/)).toBeVisible();
+});
+
+test("Shop shows a two-column mobile grid and an accessible filter dialog", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/#/products");
+
+  const grid = page.locator(".shop-grid");
+  await expect(grid).toHaveClass(/is-grid/);
+  await expect(grid.locator(".shop-card")).toHaveCount(9);
+  await expect
+    .poll(() =>
+      grid.evaluate(
+        (element) =>
+          getComputedStyle(element).gridTemplateColumns.split(" ").length,
+      ),
+    )
+    .toBe(2);
+
+  await page.getByRole("button", { name: "Filters" }).click();
+  const filters = page.locator('.shop-filters[role="dialog"]');
+  await expect(filters).toBeVisible();
+  await expect(
+    filters.getByRole("heading", { name: "Filter pieces" }),
+  ).toBeVisible();
+  await filters.locator(".shop-filter-close").click();
+  await expect(filters).not.toBeVisible();
+});
+
+test("mobile navigation, product and cart flows work without horizontal overflow", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -100,32 +95,31 @@ test("phone navigation and shopping work without horizontal overflow", async ({
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   await page.evaluate(() => document.fonts.ready);
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(
-    "One-of-one clothes.",
-  );
-  await page.getByRole("button", { name: "Open menu" }).click();
+
+  const mobileNav = page.getByRole("navigation", {
+    name: "Main navigation",
+  });
+  await expect(mobileNav).toBeVisible();
+  await mobileNav.getByRole("button", { name: "Shop" }).click();
+  await expect(page).toHaveURL(/#\/products$/);
+
+  const firstCard = page.locator(".shop-card").first();
+  await firstCard.getByRole("link", { name: /^View / }).click();
+  await expect(page).toHaveURL(/#\/product\/p-\d+$/);
   await page
-    .getByRole("navigation", { name: "Mobile navigation" })
-    .getByRole("link", { name: "Live auctions" })
+    .getByRole("region", { name: "Purchase options" })
+    .getByRole("button", { name: "Add to cart" })
     .click();
-  await expect(
-    page.getByRole("navigation", { name: "Mobile navigation" }),
-  ).not.toBeVisible();
-  await page
-    .locator("#shop .product-card")
-    .first()
-    .getByRole("button", { name: "Place a bid" })
-    .click();
-  await page
-    .getByRole("button", { name: "Open bid list, 1 items" })
-    .click();
-  await expect(page.getByRole("dialog").locator(".bag-item")).toHaveCount(1);
-  await page.getByRole("button", { name: "Close dialog" }).click();
+  await page.goto("/#/cart");
+  await expect(page.locator(".cart-item")).toHaveCount(1);
+
   for (const width of [320, 390, 640, 768, 1024, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     await expect
       .poll(() =>
-        page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        page.evaluate(
+          () => document.documentElement.scrollWidth <= window.innerWidth,
+        ),
       )
       .toBe(true);
   }

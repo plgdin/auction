@@ -5,6 +5,7 @@ import { toast } from "../lib/toast";
 import type { Product } from "../lib/types";
 import { Link, navigate } from "./Link";
 import { StatusPill } from "./Ui";
+import { animateCartAdded } from "../lib/cartAnimation";
 
 export function ProductCard({ product, compact = false }: { product: Product; compact?: boolean }) {
   const { db, favorites, toggleFavorite, addToCart, cart } = useStore();
@@ -57,6 +58,7 @@ export function ProductCard({ product, compact = false }: { product: Product; co
               }
               const result = addToCart(product.id);
               if (result.ok) {
+                animateCartAdded();
                 toast("Added to cart.", "success");
               } else {
                 toast(result.error, "error");
