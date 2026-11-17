@@ -1677,7 +1677,7 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 .account-order-foot > div { display: flex; gap: 16px; flex-wrap: wrap; }
 .account-order-foot .text-link { font-size: 12.5px; }
 
-.address-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.address-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
 .address-card { border: 1px solid var(--mkt-line); border-radius: 11px; padding: 16px; display: grid; gap: 3px; align-content: start; }
 .address-card-head { display: flex; align-items: center; gap: 7px; }
 .address-card-head strong { font-size: 13px; }
@@ -1686,7 +1686,6 @@ html::-webkit-scrollbar, body::-webkit-scrollbar { display: none; width: 0; heig
 .address-card p { margin: 5px 0; font-size: 12.5px; line-height: 1.5; }
 .address-card .text-link { margin-top: 8px; font-size: 12px; }
 .address-card-actions { display: flex; align-items: center; gap: 14px; margin-top: 8px; }
-.address-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
 
 .notification-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .notification-list li { display: flex; align-items: flex-start; gap: 11px; padding: 14px 0; border-bottom: 1px solid var(--mkt-line); }
