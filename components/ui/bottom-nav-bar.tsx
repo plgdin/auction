@@ -81,9 +81,9 @@ export function BottomNavBar({
           <motion.button
             key={item.label}
             data-active={isActive ? "true" : undefined}
-            whileTap={{ scale: 0.97 }}
+            whileTap={{ scale: 0.92 }}
             className={cn(
-              "flex items-center gap-0 px-3 py-2 rounded-full transition-colors duration-200 relative h-10 min-w-[44px] min-h-[40px] max-h-[44px] font-bold",
+              "flex items-center gap-0 px-3 py-2 rounded-full transition-colors duration-180 relative h-10 min-w-[44px] min-h-[44px] max-h-[44px] font-bold select-none",
               isActive
                 ? "bg-[#493022]/12 text-[#382212] gap-2"
                 : "bg-transparent text-[#5c4033] hover:text-[#382212] hover:bg-[#493022]/6",
@@ -108,9 +108,9 @@ export function BottomNavBar({
                 marginLeft: isActive ? "6px" : "0px",
               }}
               transition={{
-                width: { type: "spring", stiffness: 350, damping: 32 },
-                opacity: { duration: 0.19 },
-                marginLeft: { duration: 0.19 },
+                width: { type: "spring", stiffness: 380, damping: 28 },
+                opacity: { duration: 0.16 },
+                marginLeft: { duration: 0.16 },
               }}
               className={cn("overflow-hidden flex items-center max-w-[72px]")}
             >

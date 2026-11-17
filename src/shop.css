@@ -650,12 +650,21 @@
     0.54% 9.09%,
     0.22% 0%
   );
-  transition: transform 200ms ease, filter 200ms ease;
+  transition: transform 220ms cubic-bezier(0.16, 1, 0.3, 1), filter 220ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .shop-card:hover {
   transform: translateY(-3px);
-  filter: drop-shadow(0 7px 7px rgba(89, 58, 28, 0.18));
+  filter: drop-shadow(0 8px 12px rgba(89, 58, 28, 0.18));
+}
+
+.shop-card:hover .shop-card-tape {
+  transform: translateX(-50%) rotate(-0.8deg) scale(1.02);
+}
+
+.shop-card:active {
+  transform: translateY(-1px) scale(0.985);
+  transition-duration: 80ms;
 }
 
 .shop-card-media {
@@ -720,15 +729,39 @@
   background: rgba(255, 251, 241, 0.92);
   color: #4a3722;
   box-shadow: 0 1px 2px rgba(72, 48, 22, 0.14);
-  transition: transform 150ms ease;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1), background-color 150ms ease, color 150ms ease;
+  cursor: pointer;
+}
+
+/* Fitts' Law: touch target expansion */
+.shop-heart::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
 }
 
 .shop-heart:hover {
-  transform: scale(1.08);
+  transform: scale(1.12);
+  background: #ffffff;
+}
+
+.shop-heart:active {
+  transform: scale(0.82);
+  transition-duration: 60ms;
 }
 
 .shop-heart.is-saved {
   color: #9a5a3c;
+}
+
+.shop-heart.is-saved svg {
+  animation: heart-pop 0.38s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes heart-pop {
+  0% { transform: scale(0.65); }
+  50% { transform: scale(1.36); }
+  100% { transform: scale(1); }
 }
 
 .shop-card-info {
@@ -845,9 +878,17 @@
   animation: shopCartBounce 0.48s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
+/* Fitts' Law: touch target expansion */
+.shop-cart::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+}
+
 .shop-cart:active {
-  transform: translateY(0) scale(0.94);
+  transform: translateY(0) scale(0.88);
   box-shadow: 0 1px 3px rgba(46, 26, 12, 0.2);
+  transition-duration: 60ms;
 }
 
 .shop-cart.is-in-cart {
