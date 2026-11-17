@@ -43,27 +43,26 @@
 
 .shop-filters {
   position: relative;
+  filter: drop-shadow(0 4px 10px rgba(60, 40, 20, 0.16)) drop-shadow(0 14px 28px rgba(60, 40, 20, 0.18));
 }
 
 .shop-filter-paper {
   position: relative;
   width: 100%;
   max-width: 280px;
-  padding: 22px 20px 48px;
-  filter: drop-shadow(0 6px 16px rgba(73, 48, 34, 0.22));
-}
-
-.shop-filter-paper::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-color: #F8EEDB;
-  background-image: url("/images/warm-ivory-paper.jpg");
-  background-size: 350px auto;
-  filter: url(#filter-deckle-tear);
-  z-index: 0;
-  box-shadow: inset 0 0 14px rgba(180, 140, 100, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  padding: 24px 22px 56px;
+  background-color: #f7edda;
+  background-image: 
+    radial-gradient(ellipse at 50% 50%, rgba(255, 252, 245, 0.5) 0%, rgba(240, 222, 190, 0.2) 65%, rgba(175, 128, 75, 0.32) 100%),
+    url("/images/warm-ivory-paper.jpg");
+  background-size: cover, 350px auto;
+  box-shadow: inset 0 0 28px rgba(160, 115, 65, 0.22), inset 0 0 6px rgba(120, 80, 40, 0.18);
+  clip-path: polygon(
+    0% 0.25%, 4.17% 0.42%, 8.33% 0.58%, 12.5% 0.51%, 16.67% 0.61%, 20.83% 0.48%, 25% 0.52%, 29.17% 0.33%, 33.33% 0.34%, 37.5% 0.34%, 41.67% 0.15%, 45.83% 0.19%, 50% 0.06%, 54.17% 0.16%, 58.33% 0.09%, 62.5% 0.25%, 66.67% 0.42%, 70.83% 0.39%, 75% 0.55%, 79.17% 0.48%, 83.33% 0.58%, 87.5% 0.45%, 91.67% 0.49%, 95.83% 0.51%, 100% 0.31%,
+    99.27% 2.22%, 99.41% 4.44%, 98.96% 6.67%, 99.14% 8.89%, 99.36% 11.11%, 99.01% 13.33%, 99.3% 15.56%, 99.6% 17.78%, 99.31% 20%, 99.63% 22.22%, 99.93% 24.44%, 99.16% 26.67%, 99.86% 28.89%, 99.48% 31.11%, 99.66% 33.33%, 99.82% 35.56%, 99.35% 37.78%, 99.47% 40%, 99.6% 42.22%, 99.13% 44.44%, 99.29% 46.67%, 99.47% 48.89%, 99.09% 51.11%, 99.34% 53.33%, 99.02% 55.56%, 99.32% 57.78%, 99.64% 60%, 98.9% 62.22%, 99.65% 64.44%, 99.94% 66.67%, 99.59% 68.89%, 99.81% 71.11%, 99.95% 73.33%, 99.54% 75.56%, 99.68% 77.78%, 99.2% 80%, 98.87% 82.22%, 99.46% 84.44%, 99.01% 86.67%, 99.2% 88.89%, 99.42% 91.11%, 99.07% 93.33%, 99.35% 95.56%, 99.65% 97.78%, 99.36% 100%,
+    97.22% 97.23%, 94.44% 97.81%, 91.67% 97.54%, 88.89% 98.11%, 86.11% 97.85%, 83.33% 98.42%, 80.56% 98.05%, 77.78% 98.42%, 75% 98.8%, 72.22% 98.33%, 69.44% 98.71%, 66.67% 98.24%, 63.89% 98.61%, 61.11% 98.14%, 58.33% 98.52%, 55.56% 98.05%, 52.78% 98.42%, 50% 98.8%, 47.22% 98.33%, 44.44% 98.71%, 41.67% 98.24%, 38.89% 98.61%, 36.11% 98.14%, 33.33% 98.52%, 30.56% 98.05%, 27.78% 98.42%, 25% 98.8%, 22.22% 98.33%, 19.44% 98.71%, 16.67% 98.24%, 13.89% 98.61%, 11.11% 98.14%, 8.33% 98.52%, 5.56% 98.05%, 2.78% 98.42%, 0% 98.8%,
+    0.4% 97.78%, 0.56% 95.56%, 0.13% 93.33%, 0.32% 91.11%, 0.52% 88.89%, 0.15% 86.67%, 0.4% 84.44%, 0.08% 82.22%, 0.36% 80%, 0.66% 77.78%, 0.37% 75.56%, 0.67% 73.33%, 0.38% 71.11%, 0.67% 68.89%, 1.4% 66.67%, 0.61% 64.44%, 0.85% 62.22%, 1.07% 60%, 0.67% 57.78%, 0.84% 55.56%, 0.41% 53.33%, 0.56% 51.11%, 0.72% 48.89%, 0.27% 46.67%, 0.44% 44.44%, 0.05% 42.22%, 0.21% 40%, 0.43% 37.78%, 0.07% 35.56%, 0.33% 33.33%, 0.61% 31.11%, 0.75% 28.89%, 0.6% 26.67%, 0.32% 24.44%, 0.62% 22.22%, 0.92% 20%, 0.61% 17.78%, 0.88% 15.56%, 0.53% 13.33%, 0.75% 11.11%, 0.96% 8.89%, 0.55% 6.67%, 0.72% 4.44%, 0.88% 2.22%
+  );
 }
 
 .shop-filter-content {
@@ -82,8 +81,9 @@
 .shop-filter-title h2 {
   margin: 0;
   font-family: var(--shop-serif);
-  font-weight: 600;
-  font-size: 24px;
+  font-style: italic;
+  font-weight: 700;
+  font-size: 26px;
   letter-spacing: -0.01em;
   color: #2e1e12;
 }
@@ -104,8 +104,8 @@
   justify-content: space-between;
   margin: 0 0 10px;
   font-family: var(--shop-serif);
-  font-size: 14.5px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   color: #2e1e12;
 }
 
@@ -296,18 +296,6 @@
   color: #8a6a47;
   text-decoration: underline;
   text-underline-offset: 3px;
-}
-
-.shop-flowers {
-  position: absolute;
-  bottom: -60px;
-  left: -34px;
-  width: 184px;
-  height: auto;
-  transform: rotate(-7deg);
-  pointer-events: none;
-  opacity: 0.96;
-  z-index: 1;
 }
 
 /* ---------- Results header ---------- */
@@ -786,6 +774,7 @@
 
   .shop-filters {
     width: 100%;
+    filter: none;
   }
 
   .shop-filter-paper {
@@ -794,11 +783,10 @@
     gap: 0 20px;
     padding: 16px 18px 22px;
     max-width: 100%;
+    clip-path: none;
     border-radius: 6px;
     background: #f8efdd;
-  }
-  .shop-filter-paper::before {
-    display: none;
+    box-shadow: 0 2px 8px rgba(73, 48, 34, 0.12);
   }
 
   .shop-filter-title,
@@ -821,10 +809,6 @@
 
   .shop-clear {
     justify-self: start;
-  }
-
-  .shop-flowers {
-    display: none;
   }
 
   .shop-title {

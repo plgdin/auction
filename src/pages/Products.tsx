@@ -168,14 +168,6 @@ export function ProductsPage() {
   return (
     <main className="page-shell shop-page">
       <section className="shop-sheet" aria-labelledby="shop-title">
-        <svg width="0" height="0" className="sr-only" aria-hidden="true">
-          <defs>
-            <filter id="filter-deckle-tear" x="-10%" y="-10%" width="120%" height="120%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G" />
-            </filter>
-          </defs>
-        </svg>
         <div className="shop-layout">
           <aside className="shop-filters" aria-label="Filters">
             <div className="shop-filter-paper">
