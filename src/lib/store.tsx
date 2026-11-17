@@ -1667,7 +1667,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const deliveredAt = Date.now();
         for (const entry of next.affiliateCommissions ?? []) {
           if (entry.orderId === target.id && entry.status === "pending") {
-            const days = entry.returnWindowDays || next.settings.returnWindowDays || 7;
+            const days = entry.returnWindowDays ?? next.settings.returnWindowDays ?? 7;
             entry.eligibleAt = new Date(deliveredAt + days * 86_400_000).toISOString();
           }
         }
