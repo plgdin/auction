@@ -2,6 +2,8 @@
 @source "../components";
 
 @theme {
+  --font-serif: "DM Serif Display", Georgia, serif;
+  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary: var(--primary);
@@ -5259,33 +5261,34 @@ body {
 }
 
 .auctions-page .auction-explain {
-  border: 1px solid rgba(73, 48, 34, 0.16) !important;
-  background: rgba(73, 48, 34, 0.12) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 4px 16px rgba(73, 48, 34, 0.06) !important;
+  border: 1px solid #301c0f !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 8px 24px rgba(44, 26, 14, 0.18) !important;
 }
 
 .auctions-page .auction-explain > div {
-  background: #FAF7F2 !important;
-  color: #493022 !important;
+  background: #442a17 !important;
+  color: #ffffff !important;
 }
 
 .auctions-page .auction-explain strong {
   font-size: 14.5px !important;
   font-weight: 700 !important;
-  color: #27170a !important;
+  color: #ffffff !important;
   letter-spacing: -0.01em !important;
 }
 
 .auctions-page .auction-explain p {
   font-size: 12.5px !important;
-  font-weight: 500 !important;
+  font-weight: 400 !important;
   line-height: 1.55 !important;
-  color: #543f30 !important;
+  color: rgba(255, 255, 255, 0.85) !important;
 }
 
 .auctions-page .auction-explain svg {
-  color: #27170a !important;
+  color: #ffffff !important;
+  stroke: #ffffff !important;
   stroke-width: 2.2px !important;
 }
 

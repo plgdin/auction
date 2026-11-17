@@ -124,7 +124,6 @@ export function ProductDetailPage() {
               >
                 <Heart size={18} fill={saved ? "currentColor" : "none"} />
               </button>
-              <span className="gallery-condition">{product.condition}</span>
             </div>
             {product.images.length > 1 && (
               <div className="product-gallery-thumbs">
@@ -145,14 +144,20 @@ export function ProductDetailPage() {
 
           <div className="product-detail-info">
             <div className="product-detail-topline">
-              <span>{product.category}</span>
-              <StatusPill status={product.status} />
+              <span className="product-category-crumb">{product.category}</span>
+              {product.status !== "active" ? (
+                <StatusPill status={product.status} />
+              ) : (
+                <span className="product-scarcity-badge">
+                  <span className="scarcity-dot" /> One of one
+                </span>
+              )}
             </div>
             <h1>{product.title}</h1>
             <section className="product-purchase-panel" aria-label="Purchase options">
               <div className="product-detail-price">
-                <strong>{formatMoney(product.askingPrice)}</strong>
-                <span>Seller’s asking price</span>
+                <strong className="product-price-amount">{formatMoney(product.askingPrice)}</strong>
+                <span className="product-price-label">Seller’s asking price</span>
               </div>
 
               {auction ? (
@@ -330,7 +335,6 @@ export function ProductDetailPage() {
           <section className="similar-section">
             <div className="section-heading">
               <div>
-                <div className="eyebrow">YOU MAY ALSO LIKE</div>
                 <h2>More in {product.category.toLowerCase()}.</h2>
               </div>
               <Link href={`#/products?category=${encodeURIComponent(product.category)}`} className="text-link">

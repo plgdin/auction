@@ -300,7 +300,10 @@ export function ExpandingSearchDock({
                             </div>
 
                             {item.price !== undefined && (
-                              <span className="font-serif text-[13px] font-semibold text-[#493022] shrink-0">
+                              <span
+                                className="text-[13px] font-semibold text-[#493022] shrink-0 tabular-nums"
+                                style={{ fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+                              >
                                 {formatPrice(item.price)}
                               </span>
                             )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   Bell,
@@ -95,10 +96,10 @@ export function LelamNavbar({
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
-      {/* Top Paper Craft Torn Edge — sits as the topmost layer above the header and bookmark anchors */}
+      {/* Top Paper Craft Torn Edge — sits above the bookmark anchors, seamlessly tucking them into the top edge */}
       <div
         className="paper-craft-top absolute top-0 left-0 right-0 w-full pointer-events-none select-none overflow-hidden"
-        style={{ height: "32px", zIndex: 45 }}
+        style={{ height: "32px", zIndex: 40 }}
         aria-hidden="true"
       >
         <img
@@ -119,7 +120,10 @@ export function LelamNavbar({
         />
       </div>
 
-      <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-none z-35">
+      <div
+        className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-none"
+        style={{ zIndex: 50 }}
+      >
         <a
           href="#top"
           className="flex items-center text-[#493022] brand-logo no-underline shrink-0 pointer-events-auto"
@@ -316,7 +320,11 @@ export function LelamNavbar({
         </div>
       </div>
 
-      <nav className="mobile-bottom-nav" aria-label="Main navigation">
+      <nav
+        className="mobile-bottom-nav"
+        aria-label="Main navigation"
+        style={{ fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+      >
         {navItems.map((item, index) => {
           const Icon = item.icon;
           const isActive = mobileActiveIndex === index;
@@ -325,11 +333,30 @@ export function LelamNavbar({
               key={item.label}
               type="button"
               aria-current={isActive ? "page" : undefined}
-              className={isActive ? "is-active" : ""}
+              className={`mobile-nav-item ${isActive ? "is-active" : ""}`}
               onClick={() => handleNavChange(index, item)}
+              style={{ fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
             >
-              <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
-              <span>{item.label}</span>
+              {isActive && (
+                <motion.div
+                  layoutId="mobile-bottom-nav-pill"
+                  className="mobile-nav-pill"
+                  transition={{
+                    type: "spring",
+                    stiffness: 420,
+                    damping: 32,
+                  }}
+                />
+              )}
+              <span
+                className="mobile-nav-content"
+                style={{ fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
+              >
+                <Icon size={21} strokeWidth={isActive ? 2.3 : 1.8} />
+                <span style={{ fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+                  {item.label}
+                </span>
+              </span>
             </button>
           );
         })}
