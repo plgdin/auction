@@ -28,6 +28,7 @@ const SellerDashboardPage = lazy(() => import("./pages/SellerDashboard").then((m
 const AccountPage = lazy(() => import("./pages/Account").then((module) => ({ default: module.AccountPage })));
 const AdminPage = lazy(() => import("./pages/Admin").then((module) => ({ default: module.AdminPage })));
 const OrderDetailPage = lazy(() => import("./pages/OrderDetail").then((module) => ({ default: module.OrderDetailPage })));
+const PoliciesPage = lazy(() => import("./pages/Policies").then((module) => ({ default: module.PoliciesPage })));
 
 type ToastItem = { id: number; message: string; tone: string };
 
@@ -617,6 +618,7 @@ function Routes() {
   if (path === "/account") return <AccountPage />;
   if (path === "/admin") return <AdminPage />;
   if (path.startsWith("/orders/")) return <OrderDetailPage />;
+  if (["/terms", "/privacy", "/returns", "/auction-terms"].includes(path)) return <PoliciesPage />;
   return <NotFound />;
 }
 
@@ -669,6 +671,15 @@ function Shell() {
         { label: "My offers", href: "#/account?tab=offers" },
         { label: "Saved finds", href: "#/account?tab=saved" },
         { label: user ? "My account" : "Create account", href: user ? "#/account" : "#/register" },
+      ],
+    },
+    {
+      title: "Policies",
+      links: [
+        { label: "Terms of Service", href: "#/terms" },
+        { label: "Privacy Policy", href: "#/privacy" },
+        { label: "Returns & Refunds", href: "#/returns" },
+        { label: "Auction Terms", href: "#/auction-terms" },
       ],
     },
   ];

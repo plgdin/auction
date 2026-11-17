@@ -14,6 +14,9 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
+  const acceptedPoliciesRef = useRef(false);
+  acceptedPoliciesRef.current = acceptedPolicies;
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isGoogleReady, setIsGoogleReady] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
@@ -42,6 +45,10 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               import.meta.env.VITE_GOOGLE_CLIENT_ID ||
               "1049245914760-kg2qrso5hc0for9edra9ughf5b4qahga.apps.googleusercontent.com",
             callback: async (response: any) => {
+              if (mode === "register" && !acceptedPoliciesRef.current) {
+                toast("Please accept the Terms of Service and Privacy Policy.", "error");
+                return;
+              }
               setIsGoogleLoading(true);
               const res = await signInWithGoogle(response.credential);
               setIsGoogleLoading(false);
@@ -70,7 +77,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     checkInterval = setInterval(initializeGoogleButton, 200);
     initializeGoogleButton();
     return () => clearInterval(checkInterval);
-  }, [signInWithGoogle, destination]);
+  }, [signInWithGoogle, destination, mode]);
 
   const submit = () => {
     if (mode === "login") {
@@ -81,6 +88,10 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       } else {
         toast(result.error, "error");
       }
+      return;
+    }
+    if (!acceptedPolicies) {
+      toast("Please accept the Terms of Service and Privacy Policy.", "error");
       return;
     }
     const result = register({ name, email, password });
@@ -181,6 +192,21 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               </div>
             </Field>
 
+            {mode === "register" && (
+              <label className="legal-consent">
+                <input
+                  type="checkbox"
+                  checked={acceptedPolicies}
+                  onChange={(event) => setAcceptedPolicies(event.target.checked)}
+                  required
+                />
+                <span>
+                  I agree to the <Link href="#/terms">Terms of Service</Link> and{" "}
+                  <Link href="#/privacy">Privacy Policy</Link>.
+                </span>
+              </label>
+            )}
+
             <button type="submit" className="button button-olive auth-submit">
               {mode === "login" ? (
                 <>
@@ -206,6 +232,10 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
                 className="button button-ghost button-google"
                 disabled={isGoogleLoading}
                 onClick={async () => {
+                  if (mode === "register" && !acceptedPolicies) {
+                    toast("Please accept the Terms of Service and Privacy Policy.", "error");
+                    return;
+                  }
                   const google = (window as any).google;
                   if (google?.accounts?.id) {
                     google.accounts.id.prompt();

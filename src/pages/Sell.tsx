@@ -23,7 +23,7 @@ import { promptAuth, withNext } from "../lib/authGate";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import { sellerCommissionPercent, sellerNetPayout } from "../lib/sellerMath";
+import { sellerNetPayout } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import type { Condition } from "../lib/types";
 
@@ -556,7 +556,7 @@ export function SellPage() {
           <div className="sell-block-head"><span className="step-number">03</span><div><h2>Price & options</h2><p>Set the asking price. Buyers can buy instantly or send a private offer.</p></div></div>
           <div className="field-row two">
             <Field label="Asking price (₹) *" hint="Buyers pay this for Buy now, or bid in auctions."><input type="number" min={1} inputMode="numeric" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="1450" /></Field>
-            <Field label="You receive" hint={`${sellerCommissionPercent(user?.sellerTier)}% commission is deducted on completed sales (${user?.sellerTier === "verified" ? "Verified Big Seller" : "Normal Seller"}).`}><div className="sell-payout">{formatMoney(sellerNetPayout(Math.round((Number(form.price) || 0) * 100), user?.sellerTier))}</div></Field>
+            <Field label="You receive" hint="10% seller commission is deducted; that amount is inclusive of GST."><div className="sell-payout">{formatMoney(sellerNetPayout(Math.round((Number(form.price) || 0) * 100), user?.sellerTier))}</div></Field>
           </div>
           <div className="sell-options">
             <label><input type="checkbox" checked={form.allowOffers} onChange={(e) => update("allowOffers", e.target.checked)} /><span><strong>Allow private offers</strong><em>Buyers can send a price privately. You choose whether to accept — an offer you ignore expires on its own.</em></span></label>

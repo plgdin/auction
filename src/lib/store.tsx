@@ -130,6 +130,10 @@ function futureIso(hours: number) {
   return new Date(Date.now() + hours * 3600_000).toISOString();
 }
 
+function futureMinutes(minutes: number) {
+  return new Date(Date.now() + minutes * 60_000).toISOString();
+}
+
 export function computeAuctionSettlement(
   _askingPrice: number,
   winningBid: number,
@@ -214,7 +218,7 @@ function createOrder(
     auctionId: input.auctionId,
     address: input.address,
     createdAt: nowIso(),
-    paymentDeadline: futureIso(next.settings.auctionPaymentDeadlineHours),
+    paymentDeadline: futureMinutes(next.settings.auctionPaymentDeadlineMinutes),
   };
   next.orders.unshift(order);
   return order;
@@ -444,7 +448,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
             buyer.id,
             "auction_won",
             "You won the auction",
-            `You won ${product.title} for ${(winnerBid.amount / 100).toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 })}. Complete payment within ${next.settings.auctionPaymentDeadlineHours} hours.`,
+            `You won ${product.title} for ${(winnerBid.amount / 100).toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 })}. Complete payment within ${next.settings.auctionPaymentDeadlineMinutes} minutes.`,
             `#/orders/${order.id}`,
           );
         }
@@ -579,7 +583,7 @@ export type ListingInput = {
   auctionConsent: boolean;
 };
 
-type ActionResult = { ok: true } | { ok: false; error: string };
+type ActionResult = { ok: true; addressId?: string } | { ok: false; error: string };
 
 type PlaceBidResult = { ok: true; amount: number; extended: boolean } | { ok: false; error: string };
 
@@ -2158,14 +2162,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         }
         user.addresses.push(created);
       }
+      const savedAddressId = address.id ?? user.addresses[user.addresses.length - 1]?.id;
       if (address.isDefault) {
         user.addresses = user.addresses.map((item) => ({
           ...item,
-          isDefault: item.id === address.id,
+          isDefault: item.id === savedAddressId,
         }));
+      } else if (user.addresses.length && !user.addresses.some((item) => item.isDefault)) {
+        user.addresses[0].isDefault = true;
       }
       commit(next);
-      return { ok: true };
+      return { ok: true, addressId: savedAddressId };
     },
     [commit],
   );

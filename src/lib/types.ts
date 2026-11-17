@@ -320,7 +320,7 @@ export interface PlatformSettings {
   auctionMinIncrement: number;
   auctionAntiSnipeSeconds: number;
   auctionAntiSnipeTriggerSeconds: number;
-  auctionPaymentDeadlineHours: number;
+  auctionPaymentDeadlineMinutes: number;
   auctionBudget: number;
   offerValidityHours: number;
   offerCheckoutHours: number;

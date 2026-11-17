@@ -6,7 +6,7 @@ import { CATEGORIES } from "../lib/categories";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import { sellerNetPayout, sellerCommissionPercent } from "../lib/sellerMath";
+import { sellerNetPayout } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import type { Category, Condition } from "../lib/types";
 
@@ -52,6 +52,7 @@ export function SellFormPage() {
   const [images, setImages] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState("");
   const [fileBusy, setFileBusy] = useState(false);
+  const [acceptedSellerTerms, setAcceptedSellerTerms] = useState(false);
 
   useEffect(() => {
     if (editing) {
@@ -151,6 +152,10 @@ export function SellFormPage() {
   };
 
   const submit = () => {
+    if (!acceptedSellerTerms) {
+      toast("Please accept the seller terms before publishing or saving this listing.", "error");
+      return;
+    }
     const input = {
       title: form.title,
       description: form.description,
@@ -443,8 +448,7 @@ export function SellFormPage() {
                     <strong>{formatMoney(sellerNetPayout(Math.round(Number(form.price) * 100), user?.sellerTier))}</strong>
                   </div>
                   <p>
-                    After {sellerCommissionPercent(user?.sellerTier)}% seller commission ({user?.sellerTier === "verified" ? "Verified Big Seller" : "Normal Seller"}). Credited within 5 business
-                    days after the buyer confirms arrival.
+                    After a 10% seller commission, inclusive of GST. Settlement starts after the 3-day buyer return-request window closes.
                   </p>
                 </div>
               )}
@@ -476,6 +480,16 @@ export function SellFormPage() {
                   </span>
                 </label>
               </div>
+              <label className="legal-consent seller-consent">
+                <input
+                  type="checkbox"
+                  checked={acceptedSellerTerms}
+                  onChange={(event) => setAcceptedSellerTerms(event.target.checked)}
+                />
+                <span>
+                  I confirm this listing is accurate and lawful, and agree to the <Link href="#/terms">Terms of Service</Link> and <Link href="#/auction-terms">Auction Terms</Link>.
+                </span>
+              </label>
             </section>
           </div>
 
@@ -507,7 +521,7 @@ export function SellFormPage() {
                 </li>
                 <li>Private offers (if you allow them) land in your dashboard.</li>
                 <li>Buyer pays → rider collects from your door.</li>
-                <li>Payout within 5 business days of buyer approval.</li>
+                <li>Settlement starts after the buyer&apos;s 3-day post-delivery request window closes.</li>
               </ol>
               <button type="button" className="button button-olive summary-cta" onClick={submit}>
                 {editing ? "Save changes" : "Hang it on the rail"} <ArrowUpRight size={15} />
@@ -523,7 +537,7 @@ export function SellFormPage() {
               </h3>
               <ul>
                 <li>Doorstep delivery is available across India.</li>
-                <li>{sellerCommissionPercent(user?.sellerTier)}% seller commission is deducted from the full sale price.</li>
+                <li>10% seller commission, inclusive of GST, is deducted from the sale price.</li>
                 <li>Offers stay private; there is no public haggling.</li>
               </ul>
               <div className="sell-trust">

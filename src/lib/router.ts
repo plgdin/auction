@@ -23,16 +23,29 @@ export function parseRoute(hash: string): Route {
   };
 }
 
+function readCurrentRoute(): Route {
+  const routeSource =
+    window.location.hash ||
+    (window.location.pathname !== "/"
+      ? `#${window.location.pathname}${window.location.search}`
+      : "");
+  return parseRoute(routeSource);
+}
+
 export function useRoute(): Route {
-  const [route, setRoute] = useState<Route>(() => parseRoute(window.location.hash));
+  const [route, setRoute] = useState<Route>(readCurrentRoute);
   useEffect(() => {
     const onChange = () => {
       startTransition(() => {
-        setRoute(parseRoute(window.location.hash));
+        setRoute(readCurrentRoute());
       });
     };
     window.addEventListener("hashchange", onChange);
-    return () => window.removeEventListener("hashchange", onChange);
+    window.addEventListener("popstate", onChange);
+    return () => {
+      window.removeEventListener("hashchange", onChange);
+      window.removeEventListener("popstate", onChange);
+    };
   }, []);
   return route;
 }

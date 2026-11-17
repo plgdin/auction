@@ -526,7 +526,7 @@ export function AdminPage() {
                           const tier = e.target.value as "normal" | "verified";
                           updateSellerTier(account.id, tier);
                           toast(
-                            `Updated ${account.name} to ${tier === "verified" ? "Verified Big Seller (5% fee)" : "Normal Seller (10% fee)"}.`,
+                            `Updated ${account.name} seller verification status. Commission remains 10%, inclusive of GST.`,
                             "success",
                           );
                         }}
@@ -542,7 +542,7 @@ export function AdminPage() {
                         }}
                       >
                         <option value="normal">Normal Seller (10%)</option>
-                        <option value="verified">Verified Big Seller (5%)</option>
+                        <option value="verified">Verified seller (10% commission)</option>
                       </select>
                     ) : (
                       <span>—</span>
@@ -1133,15 +1133,15 @@ export function AdminPage() {
                     }
                   />
                 </Field>
-                <Field label="Payment deadline (hours)">
+                <Field label="Auction winner payment deadline (minutes)">
                   <input
                     type="number"
                     min={1}
-                    value={settings.auctionPaymentDeadlineHours}
+                    value={settings.auctionPaymentDeadlineMinutes}
                     onChange={(event) =>
                       setSettings((previous) => ({
                         ...previous,
-                        auctionPaymentDeadlineHours: Number(event.target.value),
+                        auctionPaymentDeadlineMinutes: Number(event.target.value),
                       }))
                     }
                   />

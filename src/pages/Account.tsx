@@ -50,6 +50,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
   const route = useRoute();
   const [tab, setTab] = useState(route.query.get("tab") || defaultTab || "orders");
   const [showAddressForm, setShowAddressForm] = useState(false);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [profile, setProfile] = useState({ name: "", phone: "", bio: "", location: "" });
   const [reviewOrder, setReviewOrder] = useState("");
   const [reviewRating, setReviewRating] = useState(5);
@@ -156,7 +157,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
               <div className="eyebrow">MY ACCOUNT</div>
               <h1>{user.name}</h1>
               <p>
-                {user.email} · {user.sellerTier === "verified" ? "Verified Big Seller (5% fee)" : "Normal Seller (10% fee)"} · Joined {formatDate(user.joinedAt)}
+                {user.email} · Seller commission 10% (inclusive of GST) · Joined {formatDate(user.joinedAt)}
               </p>
             </div>
           </div>
@@ -197,7 +198,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
           <div className="stat-card">
             <span><Wallet size={15} /> Paid Out</span>
             <strong>{formatMoney(lifetimeEarnings)}</strong>
-            <em>{user.sellerTier === "verified" ? "5% platform commission" : "10% platform commission"}</em>
+            <em>10% seller commission, inclusive of GST</em>
           </div>
         </div>
 
@@ -277,7 +278,9 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                           <span>
                             {order.shipment
                               ? order.shipment.events.at(-1)?.note
-                              : "Awaiting payment"}
+                              : order.paymentStatus !== "paid"
+                                ? `${order.source === "auction" ? "Auction payment due" : "Awaiting payment"}${order.paymentDeadline ? ` · ${formatDateTime(order.paymentDeadline)}` : ""}`
+                                : "Payment confirmed"}
                           </span>
                           <div>
                             {order.status === "pending_payment" && (
@@ -573,7 +576,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
             <div className="account-section-head">
               <h2>Earnings & Payouts</h2>
               <span>
-                Your sales earnings net of {user.sellerTier === "verified" ? "5% (Verified Big Seller)" : "10% (Normal Seller)"} commission.
+                  Your sales earnings after a 10% seller commission, inclusive of GST.
               </span>
             </div>
             <EarningsTab />
@@ -609,9 +612,12 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
             <div className="account-section-head">
               <h2>Delivery addresses</h2>
               <button
-                type="button"
-                className="button button-ghost"
-                onClick={() => setShowAddressForm((open) => !open)}
+                  type="button"
+                  className="button button-ghost"
+                  onClick={() => {
+                    setEditingAddressId(null);
+                    setShowAddressForm((open) => !open);
+                  }}
               >
                 <Plus size={14} /> {showAddressForm ? "Close" : "Add address"}
               </button>
@@ -620,8 +626,15 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
             {showAddressForm && (
               <div className="panel address-form-panel">
                 <AddressForm
-                  onSaved={() => setShowAddressForm(false)}
-                  onCancel={() => setShowAddressForm(false)}
+                  initial={user.addresses.find((address) => address.id === editingAddressId)}
+                  onSaved={() => {
+                    setShowAddressForm(false);
+                    setEditingAddressId(null);
+                  }}
+                  onCancel={() => {
+                    setShowAddressForm(false);
+                    setEditingAddressId(null);
+                  }}
                 />
               </div>
             )}
@@ -642,16 +655,28 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                       {address.city}, {address.state} {address.pincode}
                     </p>
                     <span>{address.phone}</span>
-                    <button
-                      type="button"
-                      className="text-link danger"
-                      onClick={() => {
-                        removeAddress(address.id);
-                        toast("Address removed.");
-                      }}
-                    >
-                      Remove
-                    </button>
+                    <div className="address-card-actions">
+                      <button
+                        type="button"
+                        className="text-link"
+                        onClick={() => {
+                          setEditingAddressId(address.id);
+                          setShowAddressForm(true);
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        type="button"
+                        className="text-link danger"
+                        onClick={() => {
+                          removeAddress(address.id);
+                          toast("Address removed.");
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </div>
                   </article>
                 ))}
               </div>

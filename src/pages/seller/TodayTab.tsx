@@ -52,7 +52,7 @@ export function TodayTab({ onGoToTab }: { onGoToTab: (tab: string) => void }) {
         </button>
         <button type="button" className="today-money-fig" onClick={() => onGoToTab("money")}>
           <strong>{formatMoney(pendingPayout)}</strong>
-          <span>arriving · buyer approval · ≤5 business days</span>
+          <span>settlement after 3-day post-delivery request window</span>
         </button>
         <button type="button" className="today-money-fig" onClick={() => onGoToTab("orders")}>
           <strong>{handOffOrders.length || "—"}</strong>

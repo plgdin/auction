@@ -421,21 +421,24 @@ export function ProductsPage() {
                     </button>
                   </h3>
                   {openSections.price && (
-                    <div className="shop-filter-options">
-                      <input
-                        type="range"
-                        className="shop-range"
-                        min={0}
-                        max={highestPrice}
-                        step={5000}
-                        value={Math.min(maxPrice, highestPrice)}
-                        onChange={(event) => setMaxPrice(Number(event.target.value))}
-                        aria-label="Maximum price"
-                      />
-                      <div className="shop-price-ends">
-                        <span>₹0</span>
-                        <span>{formatMoney(Math.min(maxPrice, highestPrice))}+</span>
+                    <div className="shop-filter-options shop-price-control">
+                      <label htmlFor="shop-max-price">Maximum price</label>
+                      <div className="shop-price-input-wrap">
+                        <span aria-hidden="true">₹</span>
+                        <input
+                          id="shop-max-price"
+                          type="number"
+                          min={0}
+                          max={highestPrice}
+                          step={5000}
+                          value={Math.min(maxPrice, highestPrice)}
+                          onChange={(event) => setMaxPrice(Math.max(0, Number(event.target.value) || 0))}
+                          aria-label="Maximum price"
+                        />
                       </div>
+                      <button type="button" className="shop-price-reset" onClick={() => setMaxPrice(highestPrice)}>
+                        Show all prices
+                      </button>
                     </div>
                   )}
                 </section>

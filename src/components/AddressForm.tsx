@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Field } from "./Ui";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
@@ -11,7 +11,7 @@ export function AddressForm({
   onCancel,
 }: {
   initial?: Address;
-  onSaved?: () => void;
+  onSaved?: (addressId?: string) => void;
   onCancel?: () => void;
 }) {
   const { saveAddress } = useStore();
@@ -26,6 +26,20 @@ export function AddressForm({
     pincode: initial?.pincode || "",
     isDefault: initial?.isDefault ?? true,
   });
+
+  useEffect(() => {
+    setForm({
+      label: initial?.label || "Home",
+      name: initial?.name || "",
+      phone: initial?.phone || "",
+      line1: initial?.line1 || "",
+      line2: initial?.line2 || "",
+      city: initial?.city || "",
+      state: initial?.state || "",
+      pincode: initial?.pincode || "",
+      isDefault: initial?.isDefault ?? true,
+    });
+  }, [initial]);
 
   const update = (key: keyof typeof form, value: string | boolean) =>
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -42,7 +56,7 @@ export function AddressForm({
         const result = saveAddress({ ...form, id: initial?.id });
         if (result.ok) {
           toast("Address saved.", "success");
-          onSaved?.();
+          onSaved?.(result.addressId);
         } else {
           toast(result.error, "error");
         }
@@ -50,7 +64,11 @@ export function AddressForm({
     >
       <div className="field-row three">
         <Field label="Label">
-          <input value={form.label} onChange={(event) => update("label", event.target.value)} />
+          <select value={form.label} onChange={(event) => update("label", event.target.value)}>
+            <option value="Home">Home</option>
+            <option value="Work">Work</option>
+            <option value="Other">Other</option>
+          </select>
         </Field>
         <Field label="Recipient name">
           <input

@@ -6,15 +6,14 @@ import { useStore } from "../../lib/store";
 
 /**
  * Money — payouts over time. Honest figures from settlements only, shown net
- * of the seller commission. Story: rider delivers → buyer confirms
- * arrival → credited within 5 business days.
+ * of the seller commission. Seller settlement begins after the 3-day
+ * post-delivery request window closes.
  */
 export function MoneyTab() {
   const { db, user } = useStore();
   if (!user) return null;
 
   const commPct = sellerCommissionPercent(user.sellerTier);
-  const tierLabel = user.sellerTier === "verified" ? "Verified Big Seller (5%)" : "Normal Seller (10%)";
 
   const mySettlements = db.settlements
     .filter((settlement) => settlement.sellerId === user.id)
@@ -36,14 +35,14 @@ export function MoneyTab() {
             <Banknote size={16} /> In your pocket
           </span>
           <strong>{formatMoney(lifetime)}</strong>
-          <em>settled and credited, after {commPct}% seller commission ({tierLabel})</em>
+            <em>settled and credited, after {commPct}% commission inclusive of GST</em>
         </div>
         <div className="stat-card">
           <span>
             <Clock3 size={16} /> On its way
           </span>
           <strong>{formatMoney(pending)}</strong>
-          <em>credited ≤5 business days after buyer approval</em>
+            <em>settlement starts after the 3-day post-delivery request window</em>
         </div>
       </div>
 
@@ -54,13 +53,13 @@ export function MoneyTab() {
         </div>
         <ol className="money-steps">
           <li>
-            <span>1.</span> The rider collects the parcel at your door and delivers it to the buyer.
+            <span>1.</span> The seller dispatches the item and the delivery partner confirms delivery.
           </li>
           <li>
-            <span>2.</span> The buyer confirms arrival — you never chase anyone.
+            <span>2.</span> The buyer has 3 days from confirmed delivery to raise an eligible request.
           </li>
           <li>
-            <span>3.</span> Your payout is credited within 5 business days, after {commPct}% commission on the sale price ({tierLabel}).
+            <span>3.</span> If no eligible request is raised, settlement is initiated through the payment-provider arrangement after {commPct}% commission, inclusive of GST.
           </li>
         </ol>
       </section>
@@ -91,12 +90,11 @@ export function MoneyTab() {
             ))}
           </>
         ) : (
-          <p className="panel-empty">No payouts yet. They appear the moment an order is delivered and approved.</p>
+          <p className="panel-empty">No payouts yet. Settlement begins after delivery and the 3-day request window.</p>
         )}
         {mySettlements.length > 0 && (
           <p className="fineprint">
-            {commPct}% seller commission ({tierLabel}) is already deducted from the full sale price
-            in each row, including the final winning bid on auction lots.
+            {commPct}% seller commission, inclusive of GST, is deducted from the sale price in each row, including auction wins.
           </p>
         )}
       </section>

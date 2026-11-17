@@ -4,18 +4,16 @@ import type { Offer, SellerTier } from "./types";
  * Seller-side money logic. Every figure on the sell page and seller dashboard
  * must come from these helpers so the demo never shows invented numbers.
  *
- * Normal seller: 10% commission on sale price.
- * Verified big seller: 5% commission on sale price.
+ * Seller commission: 10% of the sale price, inclusive of GST.
  * Buyer platform fee: ₹10 (1000 paise) charged at checkout.
  */
 
 export const SELLER_COMMISSION_PERCENT = 10;
 export const SELLER_COMMISSION_PERCENT_NORMAL = 10;
-export const SELLER_COMMISSION_PERCENT_VERIFIED = 5;
 export const BUYER_PLATFORM_FEE_PAISE = 1_000;
 
-export function sellerCommissionPercent(tier?: SellerTier): number {
-  return tier === "verified" ? SELLER_COMMISSION_PERCENT_VERIFIED : SELLER_COMMISSION_PERCENT_NORMAL;
+export function sellerCommissionPercent(_tier?: SellerTier): number {
+  return SELLER_COMMISSION_PERCENT;
 }
 
 export function sellerCommission(amount: number, tier?: SellerTier): number {

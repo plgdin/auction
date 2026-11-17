@@ -22,8 +22,7 @@ export function OrdersTab() {
     return (
       <div className="panel orders-empty">
         <p className="panel-empty">
-          No orders yet. When a buyer pays, they appear here with the delivery label ready — pickup from your
-          door, payout within 5 business days of buyer approval.
+          No orders yet. When a buyer pays, they appear here with delivery details. Settlement starts after the buyer&apos;s 3-day post-delivery request window closes.
         </p>
       </div>
     );

@@ -11,7 +11,8 @@ import {
   Users,
 } from "lucide-react";
 import { Countdown } from "../components/Countdown";
-import { Link } from "../components/Link";
+import { Link, navigate } from "../components/Link";
+import { Modal } from "../components/Modal";
 import { StatusPill } from "../components/Ui";
 import { formatMoney, formatDateTime, shortDate } from "../lib/format";
 import { useRoute } from "../lib/router";
@@ -25,8 +26,11 @@ export function AuctionDetailPage() {
   const auction = db.auctions.find((item) => item.id === auctionId);
   const [bidRupees, setBidRupees] = useState("");
   const [lastResult, setLastResult] = useState<string>("");
+  const [acceptedAuctionTerms, setAcceptedAuctionTerms] = useState(false);
+  const [showWinnerPayment, setShowWinnerPayment] = useState(false);
 
   const product = auction ? db.products.find((item) => item.id === auction.productId) : undefined;
+  const winnerOrder = auction?.orderId ? db.orders.find((item) => item.id === auction.orderId) : undefined;
 
   const minimum = useMemo(() => {
     if (!auction) return 0;
@@ -36,7 +40,17 @@ export function AuctionDetailPage() {
   useEffect(() => {
     setBidRupees("");
     setLastResult("");
+    setShowWinnerPayment(false);
   }, [auctionId]);
+
+  useEffect(() => {
+    if (!auction || !user || auction.status !== "completed" || auction.winnerId !== user.id || !winnerOrder) return;
+    if (winnerOrder.paymentStatus === "paid") return;
+    const seenKey = `lelam-auction-winner-prompt:${winnerOrder.id}`;
+    if (sessionStorage.getItem(seenKey)) return;
+    sessionStorage.setItem(seenKey, "shown");
+    setShowWinnerPayment(true);
+  }, [auction, user, winnerOrder]);
 
   if (!auction || !product) {
     return (
@@ -66,6 +80,10 @@ export function AuctionDetailPage() {
   const leading = Boolean(user && auction.highestBidderId === user.id);
 
   const submitBid = () => {
+    if (!acceptedAuctionTerms) {
+      toast("Please accept the Auction Terms before bidding.", "error");
+      return;
+    }
     const amount = Math.round(Number(bidRupees) * 100);
     if (!bidRupees.trim() || Number.isNaN(amount)) {
       toast("Enter a bid amount.", "error");
@@ -172,8 +190,7 @@ export function AuctionDetailPage() {
             <div className="auction-guarantee">
               <Info size={16} />
               <p>
-                Seller commission is 10% of the final winning bid, whether it falls above or below the
-                asking price.
+                <strong>How bidding works:</strong> bids must meet the displayed minimum and increment. A bid in the final 30 seconds adds 30 seconds. The highest valid bid when the timer ends wins and must be paid within 5 minutes. <Link href="#/auction-terms">Full Auction Terms</Link>.
               </p>
             </div>
 
@@ -208,7 +225,17 @@ export function AuctionDetailPage() {
                     ),
                   )}
                 </div>
-                <button type="button" className="button button-olive auction-bid-submit" onClick={submitBid}>
+                <label className="legal-consent auction-consent">
+                  <input
+                    type="checkbox"
+                    checked={acceptedAuctionTerms}
+                    onChange={(event) => setAcceptedAuctionTerms(event.target.checked)}
+                  />
+                  <span>
+                    I agree to the <Link href="#/auction-terms">Auction Terms</Link>. Verified email is required to bid.
+                  </span>
+                </label>
+                <button type="button" className="button button-olive auction-bid-submit" onClick={submitBid} disabled={!acceptedAuctionTerms}>
                   Place bid <Gavel size={15} />
                 </button>
                 {participating && (
@@ -270,12 +297,6 @@ export function AuctionDetailPage() {
                   <span>Seller payout</span>
                   <strong>{formatMoney(auction.financial?.sellerPayout ?? 0)}</strong>
                 </div>
-                {auction.financial && auction.financial.platformCommission > 0 && (
-                  <p>
-                    10% seller commission: {formatMoney(auction.financial.platformCommission)} of the
-                    full winning bid.
-                  </p>
-                )}
               </div>
             )}
 
@@ -301,7 +322,24 @@ export function AuctionDetailPage() {
               )}
             </div>
 
-            {lastResult && <p className="auction-last-result">{lastResult}</p>}
+    {lastResult && <p className="auction-last-result">{lastResult}</p>}
+
+            {showWinnerPayment && winnerOrder && (
+              <Modal title="You won — complete your purchase" onClose={() => setShowWinnerPayment(false)}>
+                <div className="modal-body">
+                  <p>You won <strong>{product.title}</strong> for {formatMoney(winnerOrder.total)}.</p>
+                  <p>Complete payment within 5 minutes. You can return to this order from your account.</p>
+                  {winnerOrder.paymentDeadline && <Countdown to={winnerOrder.paymentDeadline} prefix="Payment due in" />}
+                  <button
+                    type="button"
+                    className="button button-olive"
+                    onClick={() => navigate(`#/orders/${winnerOrder.id}`)}
+                  >
+                    Pay now
+                  </button>
+                </div>
+              </Modal>
+            )}
 
             <div className="auction-detail-actions">
               <button

@@ -28,6 +28,7 @@ export function CheckoutPage() {
   const [showAddressForm, setShowAddressForm] = useState(!user?.addresses.length);
   const [payment, setPayment] = useState<"upi" | "card" | "cod">("upi");
   const [placing, setPlacing] = useState(false);
+  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
 
   const productId = route.query.get("product") || undefined;
   const offerId = route.query.get("offer") || undefined;
@@ -130,6 +131,10 @@ export function CheckoutPage() {
   }
 
   const placeOrder = () => {
+    if (!acceptedPolicies) {
+      toast("Please accept the checkout policies to continue.", "error");
+      return;
+    }
     if (!selectedAddress || !address) {
       toast("Choose or add a delivery address.", "error");
       return;
@@ -224,10 +229,9 @@ export function CheckoutPage() {
 
               {showAddressForm && (
                 <AddressForm
-                  onSaved={() => {
+                  onSaved={(addressId) => {
                     setShowAddressForm(false);
-                    const latest = useStore;
-                    void latest;
+                    if (addressId) setSelectedAddress(addressId);
                   }}
                   onCancel={user.addresses.length > 0 ? () => setShowAddressForm(false) : undefined}
                 />
@@ -329,7 +333,7 @@ export function CheckoutPage() {
                 <strong>{formatMoney(subtotal)}</strong>
               </div>
               <div className="summary-row">
-                <span>Platform fee</span>
+                <span>Platform fee <small>(plus applicable GST)</small></span>
                 <strong>{formatMoney(platformFee)}</strong>
               </div>
               {offer && (
@@ -350,11 +354,22 @@ export function CheckoutPage() {
                     : "Choose a delivery address"}
                 </span>
               </div>
+              <label className="legal-consent checkout-consent">
+                <input
+                  type="checkbox"
+                  checked={acceptedPolicies}
+                  onChange={(event) => setAcceptedPolicies(event.target.checked)}
+                />
+                <span>
+                  I agree to the <Link href="#/terms">Terms</Link>, <Link href="#/privacy">Privacy Policy</Link>, and{" "}
+                  <Link href="#/returns">Return Policy</Link>.
+                </span>
+              </label>
               <button
                 type="button"
                 className="button button-olive summary-cta"
                 onClick={placeOrder}
-                disabled={placing || !address || !serviceable}
+                disabled={placing || !address || !serviceable || !acceptedPolicies}
               >
                 {placing ? "Placing order…" : "Place order"} <ArrowRight size={15} />
               </button>
