@@ -31,7 +31,6 @@ export function AuctionsPage() {
     <main className="page-shell auctions-page">
       <div className="section-wrap">
         <PageHeader
-          eyebrow="THE RANDOM AUCTION"
           title={
             <>
               A few pieces go <em>live.</em>
