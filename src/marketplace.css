@@ -1933,6 +1933,27 @@ html { scroll-behavior: smooth; }
     box-shadow: 0 10px 30px -4px rgba(54, 34, 18, 0.20), 0 4px 12px rgba(54, 34, 18, 0.08) !important;
     pointer-events: auto !important;
   }
+  .mobile-bottom-nav button {
+    color: #5c4033 !important;
+  }
+  .mobile-bottom-nav button svg {
+    color: currentColor !important;
+    stroke: currentColor !important;
+  }
+  .mobile-bottom-nav button span {
+    color: currentColor !important;
+  }
+  .mobile-bottom-nav button:hover {
+    color: #382212 !important;
+  }
+  .mobile-bottom-nav button[data-active="true"] {
+    color: #382212 !important;
+    background-color: rgba(73, 48, 34, 0.12) !important;
+  }
+  .mobile-bottom-nav button[data-active="true"] svg,
+  .mobile-bottom-nav button[data-active="true"] span {
+    color: #382212 !important;
+  }
   .mobile-nav-item {
     position: relative;
     display: flex;
