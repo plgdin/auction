@@ -4,8 +4,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  Grid2X2,
-  List,
   X,
 } from "lucide-react";
 import { ShopCard } from "../components/ShopCard";
@@ -32,7 +30,6 @@ const conditionOptions: Array<{ value: Condition | "All"; label: string }> = [
 const sizes = ["XS", "S", "M", "L", "XL", "XXL"];
 
 type Sort = "newest" | "price-asc" | "price-desc";
-type View = "grid" | "list";
 
 function keyForQuery(category: string | null): FilterKey {
   if (!category) return "all";
@@ -68,7 +65,6 @@ export function ProductsPage() {
   const [sort, setSort] = useState<Sort>("newest");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState(100000);
-  const [view, setView] = useState<View>("grid");
   const [page, setPage] = useState(1);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     category: true,
@@ -543,32 +539,8 @@ export function ProductsPage() {
               <p className="shop-found">{visible.length} Items found</p>
             </header>
 
-            <div className="shop-view-sticky-wrap">
-              <div className="shop-view">
-                <span>View:</span>
-                <button
-                  type="button"
-                  aria-label="Grid view"
-                  aria-pressed={view === "grid"}
-                  className={view === "grid" ? "is-active" : ""}
-                  onClick={() => setView("grid")}
-                >
-                  <Grid2X2 size={15} strokeWidth={1.7} />
-                </button>
-                <button
-                  type="button"
-                  aria-label="List view"
-                  aria-pressed={view === "list"}
-                  className={view === "list" ? "is-active" : ""}
-                  onClick={() => setView("list")}
-                >
-                  <List size={18} strokeWidth={1.7} />
-                </button>
-              </div>
-            </div>
-
             {pageProducts.length ? (
-              <div className={`shop-grid is-${view}`}>
+              <div className="shop-grid is-grid">
                 {pageProducts.map((product, index) => (
                   <ShopCard key={product.id} product={product} priority={index === 0} />
                 ))}
