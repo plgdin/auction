@@ -46,7 +46,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
           google.accounts.id.initialize({
             client_id:
               import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-              "646836716775-qdcu7env4a6i8490odqktdhji4p8qk93.apps.googleusercontent.com",
+              "1049245914760-kg2qrso5hc0for9edra9ughf5b4qahga.apps.googleusercontent.com",
             callback: async (response: any) => {
               setIsGoogleLoading(true);
               const res = await signInWithGoogle(response.credential);
