@@ -398,26 +398,32 @@ html { scroll-behavior: smooth; }
   pointer-events: none;
 }
 .segmented-tabs button > .segmented-tab-label,
-.segmented-tabs button > .segmented-tab-count,
-.segmented-tabs button > span {
+.segmented-tabs button > .segmented-tab-count {
   position: relative;
   z-index: 1;
 }
-.segmented-tabs button span {
+.segmented-tab-label {
+  font-size: 14.5px;
+  font-weight: 600;
+  background: transparent !important;
+}
+.segmented-tab-count {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
   border-radius: 999px;
   background: rgba(23, 21, 15, 0.09);
-  font-size: 9px;
+  font-size: 11.5px;
+  font-weight: 700;
   transition: background 150ms ease, color 150ms ease;
 }
 .segmented-tabs button:hover { color: var(--mkt-ink); }
 .segmented-tabs button.is-active { background: transparent; color: #fff; }
-.segmented-tabs button.is-active span { background: rgba(255, 255, 255, 0.2); }
+.segmented-tabs button.is-active .segmented-tab-label { font-weight: 700; color: #fff; }
+.segmented-tabs button.is-active .segmented-tab-count { background: rgba(255, 255, 255, 0.2); color: #fff; }
 
 .chip-button {
   display: inline-flex;
