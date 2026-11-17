@@ -72,7 +72,7 @@ export function LelamNavbar({
     }
   };
 
-  const demoUsers = db.users.filter((candidate) => ["u-buyer", "u-seller", "u-admin"].includes(candidate.id));
+  const demoUsers = db.users.filter((candidate) => ["u-buyer", "u-admin"].includes(candidate.id));
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
@@ -199,10 +199,10 @@ export function LelamNavbar({
                       role="menuitem"
                       onClick={() => {
                         setAccountOpen(false);
-                        navigate("#/account?tab=listings");
+                        navigate("#/seller");
                       }}
                     >
-                      <Store size={16} /> My Listings & Sales
+                      <Store size={16} /> Seller dashboard
                     </button>
                     <button
                       type="button"

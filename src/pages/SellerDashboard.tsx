@@ -89,26 +89,6 @@ export function SellerDashboardPage() {
     );
   }
 
-  if (!user.isSeller && user.role !== "admin") {
-    return (
-      <main className="page-shell">
-        <div className="section-wrap empty-state page-empty">
-          <Store size={38} />
-          <h2>You are not selling yet.</h2>
-          <p>Open a seller account from your profile, then list your first piece.</p>
-          <div className="modal-actions center">
-            <Link href="#/sell?start=1" className="button button-olive">
-              Try listing
-            </Link>
-            <Link href="#/account?tab=profile" className="button button-ghost">
-              My profile
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
   const myProducts = db.products.filter((product) => product.sellerId === user.id);
   const myOffers = db.offers.filter((offer) => offer.sellerId === user.id);
   const myOrders = db.orders.filter((order) => order.sellerId === user.id);

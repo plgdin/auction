@@ -7,9 +7,8 @@ import { useRoute } from "../lib/router";
 import { toast } from "../lib/toast";
 
 const demoAccounts = [
-  { label: "Client demo (Aisha)", email: "buyer@lelam.co", password: "demo1234", note: "Buy, bid, and sell items" },
-  { label: "Client demo (Nila)", email: "seller@lelam.co", password: "demo1234", note: "Listings, offers, buy & sell" },
-  { label: "Admin demo", email: "admin@lelam.co", password: "admin1234", note: "Reviews, settings, platform" },
+  { label: "Client Account (Aisha)", email: "buyer@lelam.co", password: "demo1234", note: "Browse, buy, and sell items" },
+  { label: "Admin Account", email: "admin@lelam.co", password: "admin1234", note: "Reviews, settings, platform" },
 ];
 
 export function AuthPage({ mode }: { mode: "login" | "register" }) {

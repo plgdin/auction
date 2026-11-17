@@ -12,6 +12,7 @@ import {
   Plus,
   Tag,
   Truck,
+  Store,
   UserPlus,
   UserRound,
   Wallet,
@@ -162,6 +163,9 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
           <div className="account-header-actions">
             <Link href="#/sell?start=1" className="button button-olive">
               <Plus size={15} /> List an item
+            </Link>
+            <Link href="#/seller" className="button button-ghost">
+              <Store size={15} /> Seller dashboard
             </Link>
             {user.role === "admin" && (
               <Link href="#/admin" className="button button-ghost">
