@@ -415,18 +415,16 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
             ) : (
-              <div className="my-auto flex flex-col items-center justify-center py-12 px-4 text-center">
-                <div
-                  className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[#DECDB4] shadow-sm"
-                  style={{ backgroundColor: "#F3E7D3" }}
+              <div className="my-auto flex flex-col items-center justify-center py-12 px-6 text-center">
+                <Heart size={32} strokeWidth={1.3} className="text-[#8C745A] mb-3" />
+                <h3
+                  className="text-2xl text-[#3a2816] mb-1.5"
+                  style={{ fontFamily: '"DM Serif Display", Georgia, serif' }}
                 >
-                  <Heart size={28} className="text-[#8C5E3C]" />
-                </div>
-                <h3 className="font-serif text-2xl font-normal text-[#332417] mb-1.5">
-                  Nothing saved yet.
+                  Nothing saved yet
                 </h3>
-                <p className="text-xs sm:text-sm text-[#8C745A] max-w-[260px] leading-relaxed mb-6">
-                  Tap the heart on any piece you love to keep it here for later.
+                <p className="text-sm text-[#8C745A] max-w-[240px] leading-relaxed mb-5">
+                  Tap the heart on any piece to save it here for later.
                 </p>
                 <button
                   type="button"
@@ -434,11 +432,11 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                     onClose();
                     navigate("#/products");
                   }}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl py-3 px-6 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
+                  className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.99]"
                   style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
                 >
-                  <span>Browse the rail</span>
-                  <ArrowRight size={16} />
+                  <span>Browse pieces</span>
+                  <ArrowRight size={14} />
                 </button>
               </div>
             )}
