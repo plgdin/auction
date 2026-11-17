@@ -12,7 +12,6 @@ import { ShopCard } from "../components/ShopCard";
 import { SelectMenu } from "../components/Ui";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import { formatMoney } from "../lib/format";
 import { CATEGORIES, findTopForLegacy, groupsFor } from "../lib/categories";
 import type { Condition, Product } from "../lib/types";
 
