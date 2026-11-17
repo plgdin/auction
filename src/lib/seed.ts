@@ -1580,7 +1580,7 @@ export function createSeedDatabase(): Database {
       affiliateCommissionPct: 5,
       returnWindowDays: 7,
     },
-    sessionUserId: "u-buyer",
+    sessionUserId: null,
     carts: { "u-buyer": [], guest: [] },
     favorites: { "u-buyer": ["p-3", "p-5"], "u-seller": [], guest: [] },
   };

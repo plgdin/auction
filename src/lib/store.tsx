@@ -105,6 +105,9 @@ function loadDatabase(): Database {
             if (!u.sellerTier) u.sellerTier = "normal";
           }
         }
+        if (parsed.sessionUserId === "u-buyer" || parsed.sessionUserId === "u-seller") {
+          parsed.sessionUserId = null;
+        }
         return { ...parsed, settings: { ...seeded.settings, ...parsed.settings } };
       }
     }
