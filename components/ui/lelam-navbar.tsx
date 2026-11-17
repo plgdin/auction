@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import {
   ArrowRight,
   Bell,
@@ -17,6 +16,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { BookmarkNav, type BookmarkNavItem } from "@/components/ui/bookmark-nav";
+import { BottomNavBar } from "@/components/ui/bottom-nav-bar";
 import { navigate } from "@/src/components/Link";
 import { useRoute } from "@/src/lib/router";
 import { useStore } from "@/src/lib/store";
@@ -320,47 +320,15 @@ export function LelamNavbar({
         </div>
       </div>
 
-      <nav
-        className="mobile-bottom-nav"
-        aria-label="Main navigation"
-        style={{ fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
-      >
-        {navItems.map((item, index) => {
-          const Icon = item.icon;
-          const isActive = mobileActiveIndex === index;
-          return (
-            <button
-              key={item.label}
-              type="button"
-              aria-current={isActive ? "page" : undefined}
-              className={`mobile-nav-item ${isActive ? "is-active" : ""}`}
-              onClick={() => handleNavChange(index, item)}
-              style={{ fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
-            >
-              {isActive && (
-                <motion.div
-                  layoutId="mobile-bottom-nav-pill"
-                  className="mobile-nav-pill"
-                  transition={{
-                    type: "spring",
-                    stiffness: 420,
-                    damping: 32,
-                  }}
-                />
-              )}
-              <span
-                className="mobile-nav-content"
-                style={{ fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}
-              >
-                <Icon size={21} strokeWidth={isActive ? 2.3 : 1.8} />
-                <span style={{ fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
-                  {item.label}
-                </span>
-              </span>
-            </button>
-          );
-        })}
-      </nav>
+      <div className="mobile-bottom-nav-wrapper">
+        <BottomNavBar
+          stickyBottom
+          className="mobile-bottom-nav"
+          activeIndex={mobileActiveIndex}
+          items={navItems}
+          onChange={(index, item) => handleNavChange(index, item as BookmarkNavItem)}
+        />
+      </div>
     </header>
   );
 }

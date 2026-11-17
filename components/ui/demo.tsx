@@ -4,6 +4,7 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SlideTabs } from '@/components/ui/slide-tabs';
+import BottomNavBar from '@/components/ui/bottom-nav-bar';
 import {
 	Drawer,
 	DrawerBody,
@@ -196,4 +197,12 @@ export function SlideTabsDemo() {
 	);
 }
 
-export { SlideTabsDemo as DemoOne };
+export function BottomNavBarDemo() {
+	return (
+		<div className="w-full grid min-h-[200px] place-content-center bg-[#FAF7F2] p-8">
+			<BottomNavBar />
+		</div>
+	);
+}
+
+export { SlideTabsDemo as DemoOne, BottomNavBarDemo as Demo };
