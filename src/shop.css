@@ -682,7 +682,8 @@
   transform: translateX(-50%) rotate(-1.6deg);
   background: url("/ass/tape-strip.png") center / 100% 100% no-repeat;
   mix-blend-mode: multiply;
-  opacity: 0.92;
+  opacity: 0.95;
+  filter: drop-shadow(0 1px 1.5px rgba(60, 36, 18, 0.16));
   pointer-events: none;
 }
 
