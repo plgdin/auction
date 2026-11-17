@@ -542,7 +542,7 @@
   flex-direction: column;
   height: auto;
   padding: 6px 6px 8px;
-  background: #f8eedb;
+  background: #FAF7F2;
   filter: drop-shadow(0 3px 3px rgba(89, 58, 28, 0.14));
   clip-path: polygon(
     0% 0.38%,
@@ -644,7 +644,7 @@
   flex: 0 0 auto;
   aspect-ratio: 1 / 1.16;
   margin-bottom: 0;
-  background: #d9c6a8;
+  background: #ece3d5;
   overflow: hidden;
   clip-path: polygon(
     0 1%, 4% 0, 10% 0.8%, 18% 0, 26% 0.7%, 34% 0, 42% 0.6%, 50% 0,
