@@ -495,7 +495,7 @@ function Routes() {
   const path = route.path;
 
   if (path === "/" || path === "") return <HomePage />;
-  if (path === "/products") return <ProductsPage />;
+  if (path === "/products" || path === "/shop") return <ProductsPage />;
   if (path.startsWith("/product/")) return <ProductDetailPage />;
   if (path === "/cart") return <CartPage />;
   if (path === "/checkout") return <CheckoutPage />;
@@ -584,11 +584,12 @@ function Shell() {
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={route.path.split("/")[1] || "home"}
-            initial={{ opacity: 0.88, y: 3 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0.88, y: -3 }}
+            initial={{ opacity: 0.88 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0.88 }}
             transition={{ duration: 0.16, ease: "easeOut" }}
             className="w-full"
+            style={{ transform: "none" }}
           >
             <Routes />
           </motion.div>

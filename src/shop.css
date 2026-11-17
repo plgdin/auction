@@ -17,6 +17,7 @@
   margin: 0;
   background: transparent;
   color: var(--shop-ink);
+  overflow: visible;
 }
 
 .shop-sheet {
@@ -26,6 +27,7 @@
   background: transparent;
   box-shadow: none;
   clip-path: none;
+  overflow: visible;
 }
 
 /* ---------- Layout ---------- */
@@ -43,7 +45,9 @@
 
 .shop-filters {
   position: sticky;
-  top: 76px;
+  top: 80px;
+  align-self: start;
+  z-index: 20;
   filter: drop-shadow(0 4px 10px rgba(60, 40, 20, 0.16)) drop-shadow(0 14px 28px rgba(60, 40, 20, 0.18));
 }
 
