@@ -34,6 +34,83 @@ function cubicBezierPoint(
 }
 
 /**
+ * Constructs a continuous smooth boundary path with curved rounded corners (24px radius)
+ * that perfectly matches the modal card's rounded-3xl profile on all 4 corners.
+ */
+function buildGenieBoundaryPath(
+  leftPoints: { x: number; y: number }[],
+  rightPoints: { x: number; y: number }[],
+  targetRadius = 24
+): Path2D {
+  const N = leftPoints.length;
+  const path = new Path2D();
+  if (N < 2) return path;
+
+  const tl = leftPoints[0];
+  const tr = rightPoints[0];
+  const bl = leftPoints[N - 1];
+  const br = rightPoints[N - 1];
+
+  const maxRw = Math.min(tr.x - tl.x, br.x - bl.x) * 0.45;
+  const maxRh = Math.min(bl.y - tl.y, br.y - tr.y) * 0.45;
+  const r = Math.max(0, Math.min(targetRadius, maxRw, maxRh));
+
+  if (r < 2) {
+    path.moveTo(tl.x, tl.y);
+    for (let i = 1; i < N; i++) path.lineTo(leftPoints[i].x, leftPoints[i].y);
+    for (let i = N - 1; i >= 0; i--) path.lineTo(rightPoints[i].x, rightPoints[i].y);
+    path.closePath();
+    return path;
+  }
+
+  let kTr = 0;
+  while (kTr < N && rightPoints[kTr].y < tr.y + r) kTr++;
+
+  let kBr = N - 1;
+  while (kBr >= 0 && rightPoints[kBr].y > br.y - r) kBr--;
+
+  let kBl = N - 1;
+  while (kBl >= 0 && leftPoints[kBl].y > bl.y - r) kBl--;
+
+  let kTl = 0;
+  while (kTl < N && leftPoints[kTl].y < tl.y + r) kTl++;
+
+  // 1. Top edge starting after top-left rounded corner
+  path.moveTo(tl.x + r, tl.y);
+  path.lineTo(tr.x - r, tr.y);
+
+  // 2. Top-right rounded corner
+  const nextTr = kTr < N ? rightPoints[kTr] : br;
+  path.arcTo(tr.x, tr.y, nextTr.x, nextTr.y, r);
+
+  // 3. Right curved boundary contour
+  for (let i = kTr; i <= kBr; i++) {
+    path.lineTo(rightPoints[i].x, rightPoints[i].y);
+  }
+
+  // 4. Bottom-right rounded corner
+  path.arcTo(br.x, br.y, br.x - r, br.y, r);
+
+  // 5. Bottom edge towards bottom-left
+  path.lineTo(bl.x + r, bl.y);
+
+  // 6. Bottom-left rounded corner
+  const nextBl = kBl >= 0 ? leftPoints[kBl] : tl;
+  path.arcTo(bl.x, bl.y, nextBl.x, nextBl.y, r);
+
+  // 7. Left curved boundary contour
+  for (let i = kBl; i >= kTl; i--) {
+    path.lineTo(leftPoints[i].x, leftPoints[i].y);
+  }
+
+  // 8. Top-left rounded corner
+  path.arcTo(tl.x, tl.y, tl.x + r, tl.y, r);
+  path.closePath();
+
+  return path;
+}
+
+/**
  * Draws the high-fidelity parchment Search Modal Card texture onto an offscreen canvas.
  * Perfectly mirrors the layout, Gumela Arabic typography, warm colors, borders, and controls of SearchModalCard.
  */
@@ -210,6 +287,7 @@ export function GenieSearchModal({
   children,
 }: GenieSearchModalProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const domModalRef = useRef<HTMLDivElement | null>(null);
   const [animState, setAnimState] = useState<"idle" | "opening" | "settled" | "closing">("idle");
   const animRef = useRef<number | null>(null);
   const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -274,6 +352,10 @@ export function GenieSearchModal({
     }
 
     setAnimState("opening");
+    if (domModalRef.current) {
+      domModalRef.current.style.opacity = "0";
+      domModalRef.current.style.pointerEvents = "none";
+    }
 
     const geom = getGeometry();
     const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
@@ -337,19 +419,12 @@ export function GenieSearchModal({
       for (let i = 0; i < N; i++) {
         const v = i / (N - 1); // 0 at top, 1 at bottom
 
-        // Wave propagation: bottom slices lead outward, top slices stream from target
-        const delay = (1 - v) * 0.34;
-        const localT = Math.max(0, Math.min(1, (p - delay) / (1 - 0.34)));
+        // Soft progressive wave propagation: all slices glide to a stop smoothly by p = 0.90
+        const waveDelay = (1 - v) * 0.14;
+        const localP = Math.max(0, Math.min(1, (p - waveDelay) / (1 - 0.14)));
 
-        // Smooth cubic hermite flow
-        const ease = localT * localT * (3 - 2 * localT);
-
-        // Elastic overshoot settling bounce as card expands into position
-        let settle = 1;
-        if (p > 0.8) {
-          const settleP = (p - 0.8) / 0.2;
-          settle = 1 + Math.sin(settleP * Math.PI) * 0.016 * (1 - v * 0.4);
-        }
+        // Luxurious cubic ease-out: reaches exact destination smoothly with zero velocity
+        const ease = 1 - Math.pow(1 - localP, 3);
 
         // Spine position sampled along cubic Bézier trajectory
         const spine = cubicBezierPoint(p0, p1, p2, p3, ease);
@@ -359,45 +434,16 @@ export function GenieSearchModal({
         const currY = geom.targetY + (destY - geom.targetY) * ease;
         const currX = spine.x;
 
-        // Fluid trumpet / funnel curved width expansion
+        // Fluid trumpet curved width expansion
         const currW =
-          (geom.targetW + (geom.modalW - geom.targetW) * Math.pow(ease, 1.7)) * settle;
+          geom.targetW + (geom.modalW - geom.targetW) * Math.pow(ease, 1.4);
 
         leftPoints.push({ x: currX - currW / 2, y: currY });
         rightPoints.push({ x: currX + currW / 2, y: currY });
       }
 
-      // Construct continuous smooth boundary path with organic rounded bottom corners
-      const boundaryPath = new Path2D();
-      boundaryPath.moveTo(leftPoints[0].x, leftPoints[0].y);
-
-      // Left curved edge
-      for (let i = 1; i < N; i++) {
-        boundaryPath.lineTo(leftPoints[i].x, leftPoints[i].y);
-      }
-
-      // Rounded bottom edge
-      const cornerR = Math.min(24, (rightPoints[N - 1].x - leftPoints[N - 1].x) * 0.1);
-      boundaryPath.arcTo(
-        leftPoints[N - 1].x,
-        leftPoints[N - 1].y,
-        rightPoints[N - 1].x,
-        rightPoints[N - 1].y,
-        cornerR,
-      );
-      boundaryPath.arcTo(
-        rightPoints[N - 1].x,
-        rightPoints[N - 1].y,
-        rightPoints[N - 2].x,
-        rightPoints[N - 2].y,
-        cornerR,
-      );
-
-      // Right curved edge back to top
-      for (let i = N - 1; i >= 0; i--) {
-        boundaryPath.lineTo(rightPoints[i].x, rightPoints[i].y);
-      }
-      boundaryPath.closePath();
+      // Construct continuous smooth boundary path with curved rounded corners (24px)
+      const boundaryPath = buildGenieBoundaryPath(leftPoints, rightPoints, 24);
 
       // Realistic paper shadow under the fluid shape
       ctx.save();
@@ -412,6 +458,10 @@ export function GenieSearchModal({
       ctx.save();
       ctx.clip(boundaryPath);
 
+      // Taper slice overlap to eliminate fuzzy banding at the end
+      const overlapX = Math.max(0.4, (1 - p) * 2.0);
+      const overlapY = Math.max(0.2, (1 - p) * 1.0);
+
       // Draw horizontal slices of offscreen card texture
       for (let i = 0; i < N; i++) {
         const sy = i * (offscreen.height / N);
@@ -421,11 +471,11 @@ export function GenieSearchModal({
         const currY = leftPoints[i].y;
         const currW = rightPoints[i].x - leftPoints[i].x;
 
-        const dx = currX - currW / 2 - 2;
-        const dy = currY - 0.5;
-        const dw = currW + 4;
+        const dx = currX - currW / 2 - overlapX;
+        const dy = currY - overlapY * 0.5;
+        const dw = currW + overlapX * 2;
         const nextY = i < N - 1 ? leftPoints[i + 1].y : currY + geom.modalH / N;
-        const dh = Math.max(geom.modalH / N, nextY - currY + 1.2);
+        const dh = Math.max(geom.modalH / N, nextY - currY + overlapY);
 
         ctx.drawImage(offscreen, 0, sy, offscreen.width, sh, dx, dy, dw, dh);
       }
@@ -436,10 +486,25 @@ export function GenieSearchModal({
       ctx.lineWidth = 1.5;
       ctx.stroke(boundaryPath);
 
+      // Smooth cross-fade handover during the final frames
+      if (p >= 0.86) {
+        const fadeP = Math.min(1, (p - 0.86) / 0.14);
+        if (domModalRef.current) {
+          domModalRef.current.style.opacity = String(fadeP);
+        }
+        canvas.style.opacity = String(1 - fadeP);
+      }
+
       if (p < 1) {
         animRef.current = requestAnimationFrame(renderFrame);
       } else {
         // Animation finished: swap smoothly to the real interactive React DOM modal
+        if (domModalRef.current) {
+          domModalRef.current.style.opacity = "1";
+          domModalRef.current.style.pointerEvents = "auto";
+        }
+        canvas.style.display = "none";
+        canvas.style.opacity = "1";
         setAnimState("settled");
       }
     };
@@ -461,6 +526,14 @@ export function GenieSearchModal({
     }
 
     setAnimState("closing");
+    if (domModalRef.current) {
+      domModalRef.current.style.opacity = "0";
+      domModalRef.current.style.pointerEvents = "none";
+    }
+    if (canvasRef.current) {
+      canvasRef.current.style.display = "block";
+      canvasRef.current.style.opacity = "1";
+    }
 
     const geom = getGeometry();
     const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
@@ -510,11 +583,11 @@ export function GenieSearchModal({
       // When closing: TOP slice leads the suction into the button, bottom follows
       for (let i = 0; i < N; i++) {
         const v = i / (N - 1);
-        const delayClose = v * 0.34; // top (v=0) gets sucked first
-        const localQ = Math.max(0, Math.min(1, (q - delayClose) / (1 - 0.34)));
+        const delayClose = v * 0.18; // top (v=0) gets sucked first
+        const localQ = Math.max(0, Math.min(1, (q - delayClose) / (1 - 0.18)));
 
         // Suction acceleration into button
-        const easeClose = Math.pow(localQ, 2.6);
+        const easeClose = Math.pow(localQ, 2.4);
         const remaining = 1 - easeClose;
 
         const spine = cubicBezierPoint(p0, p1, p2, p3, remaining);
@@ -523,22 +596,14 @@ export function GenieSearchModal({
         const currY = geom.targetY + (destY - geom.targetY) * remaining;
         const currX = spine.x;
 
-        const currW = geom.targetW + (geom.modalW - geom.targetW) * Math.pow(remaining, 1.7);
+        const currW = geom.targetW + (geom.modalW - geom.targetW) * Math.pow(remaining, 1.4);
 
         leftPoints.push({ x: currX - currW / 2, y: currY });
         rightPoints.push({ x: currX + currW / 2, y: currY });
       }
 
-      // Smooth boundary path for closing suction
-      const boundaryPath = new Path2D();
-      boundaryPath.moveTo(leftPoints[0].x, leftPoints[0].y);
-      for (let i = 1; i < N; i++) {
-        boundaryPath.lineTo(leftPoints[i].x, leftPoints[i].y);
-      }
-      for (let i = N - 1; i >= 0; i--) {
-        boundaryPath.lineTo(rightPoints[i].x, rightPoints[i].y);
-      }
-      boundaryPath.closePath();
+      // Smooth boundary path with curved rounded corners (24px) for closing suction
+      const boundaryPath = buildGenieBoundaryPath(leftPoints, rightPoints, 24);
 
       // Shadow
       ctx.save();
@@ -553,6 +618,9 @@ export function GenieSearchModal({
       ctx.save();
       ctx.clip(boundaryPath);
 
+      const overlapCloseX = Math.max(0.4, (1 - q) * 2.0);
+      const overlapCloseY = Math.max(0.2, (1 - q) * 1.0);
+
       for (let i = 0; i < N; i++) {
         const sy = i * (offscreen.height / N);
         const sh = offscreen.height / N;
@@ -561,11 +629,11 @@ export function GenieSearchModal({
         const currY = leftPoints[i].y;
         const currW = rightPoints[i].x - leftPoints[i].x;
 
-        const dx = currX - currW / 2 - 2;
-        const dy = currY - 0.5;
-        const dw = currW + 4;
+        const dx = currX - currW / 2 - overlapCloseX;
+        const dy = currY - overlapCloseY * 0.5;
+        const dw = currW + overlapCloseX * 2;
         const nextY = i < N - 1 ? leftPoints[i + 1].y : currY + geom.modalH / N;
-        const dh = Math.max(geom.modalH / N, nextY - currY + 1.2);
+        const dh = Math.max(geom.modalH / N, nextY - currY + overlapCloseY);
 
         ctx.drawImage(offscreen, 0, sy, offscreen.width, sh, dx, dy, dw, dh);
       }
@@ -621,9 +689,16 @@ export function GenieSearchModal({
         className="pointer-events-none fixed inset-0 z-20 h-full w-full"
       />
 
-      {/* Real Interactive React Modal Card (Shown when settled) */}
-      {animState === "settled" && (
-          <div className="genie-modal-shell fixed inset-0 z-30 flex items-center justify-center p-4 pointer-events-auto">
+      {/* Real Interactive React Modal Card */}
+      {animState !== "idle" && (
+        <div
+          ref={domModalRef}
+          style={{
+            opacity: animState === "settled" ? 1 : 0,
+            pointerEvents: animState === "settled" ? "auto" : "none",
+          }}
+          className="genie-modal-shell fixed inset-0 z-30 flex items-center justify-center p-4 pointer-events-auto"
+        >
           <div className="w-full max-w-lg">
             {React.cloneElement(children as React.ReactElement<any>, {
               onClose: handleClose,

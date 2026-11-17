@@ -264,6 +264,44 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   );
 }
 
+function CartOverlay({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        onClick={onClose}
+        className="fixed inset-0 bg-[#25170F]/55 backdrop-blur-sm"
+      />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 16 }}
+        transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
+        className="relative z-10 w-full max-w-[512px] flex justify-center"
+      >
+        <CartOverlayCard onClose={onClose} />
+      </motion.div>
+    </div>
+  );
+}
+
 function SavedOverlay({ onClose }: { onClose: () => void }) {
   const { db, favorites, toggleFavorite } = useStore();
   const saved = db.products.filter((product) => favorites.includes(product.id));
@@ -295,7 +333,7 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: "100%", opacity: 0 }}
           transition={{ type: "spring", stiffness: 350, damping: 32 }}
-          className="relative z-10 flex h-full w-full max-w-md flex-col border-l border-[#D5C2A5] shadow-[-20px_0_60px_rgba(40,24,14,0.35)]"
+          className="relative z-10 flex h-full w-full max-w-md flex-col rounded-l-[28px] sm:rounded-l-[32px] overflow-hidden border-l border-[#D5C2A5] shadow-[-20px_0_60px_rgba(40,24,14,0.35)]"
           style={{ backgroundColor: "#FAF4EB" }}
         >
           {/* Header */}
@@ -303,14 +341,12 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
             <div className="flex items-center gap-2.5">
               <Heart size={18} className="text-[#8C5E3C] fill-[#8C5E3C]/20" />
               <h2
-                className="text-xl sm:text-2xl tracking-tight select-none inline-flex items-baseline gap-1.5"
+                className="text-2xl sm:text-[26px] tracking-tight select-none inline-flex items-baseline gap-1.5 font-bold"
                 style={{
-                  fontFamily: '"Gumela Arabic", serif',
-                  fontWeight: 800,
-                  color: "#493022",
-                  textTransform: "lowercase",
-                  WebkitTextStroke: "0.6px #493022",
-                  paintOrder: "stroke fill",
+                  fontFamily: '"DM Serif Display", Georgia, serif',
+                  fontWeight: 700,
+                  color: "#3a2816",
+                  letterSpacing: "-0.02em",
                 }}
               >
                 saved finds
@@ -379,18 +415,16 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                 ))}
               </div>
             ) : (
-              <div className="my-auto flex flex-col items-center justify-center py-12 px-4 text-center">
-                <div
-                  className="mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-[#DECDB4] shadow-sm"
-                  style={{ backgroundColor: "#F3E7D3" }}
+              <div className="my-auto flex flex-col items-center justify-center py-12 px-6 text-center">
+                <Heart size={32} strokeWidth={1.3} className="text-[#8C745A] mb-3" />
+                <h3
+                  className="text-2xl text-[#3a2816] mb-1.5"
+                  style={{ fontFamily: '"DM Serif Display", Georgia, serif' }}
                 >
-                  <Heart size={28} className="text-[#8C5E3C]" />
-                </div>
-                <h3 className="font-serif text-2xl font-normal text-[#332417] mb-1.5">
-                  Nothing saved yet.
+                  Nothing saved yet
                 </h3>
-                <p className="text-xs sm:text-sm text-[#8C745A] max-w-[260px] leading-relaxed mb-6">
-                  Tap the heart on any piece you love to keep it here for later.
+                <p className="text-sm text-[#8C745A] max-w-[240px] leading-relaxed mb-5">
+                  Tap the heart on any piece to save it here for later.
                 </p>
                 <button
                   type="button"
@@ -398,11 +432,11 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                     onClose();
                     navigate("#/products");
                   }}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl py-3 px-6 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
+                  className="inline-flex items-center gap-1.5 rounded-full px-6 py-3 text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.99]"
                   style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
                 >
-                  <span>Browse the rail</span>
-                  <ArrowRight size={16} />
+                  <span>Browse pieces</span>
+                  <ArrowRight size={14} />
                 </button>
               </div>
             )}
@@ -417,7 +451,7 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                   onClose();
                   navigate("#/products");
                 }}
-                className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 px-4 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
+                className="w-full flex items-center justify-center gap-2 rounded-full py-3.5 px-6 text-sm font-semibold transition-all hover:opacity-95 active:scale-[0.99]"
                 style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
               >
                 <span>Browse more pieces</span>
@@ -495,7 +529,7 @@ function Routes() {
   const path = route.path;
 
   if (path === "/" || path === "") return <HomePage />;
-  if (path === "/products") return <ProductsPage />;
+  if (path === "/products" || path === "/shop") return <ProductsPage />;
   if (path.startsWith("/product/")) return <ProductDetailPage />;
   if (path === "/cart") return <CartPage />;
   if (path === "/checkout") return <CheckoutPage />;
@@ -517,16 +551,13 @@ function Shell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const [cartOpenInstant, setCartOpenInstant] = useState(false);
   const [authPrompt, setAuthPrompt] = useState<AuthPromptDetail | null>(null);
   const [lastPath, setLastPath] = useState(route.path);
 
   useEffect(() => onAuthPrompt(setAuthPrompt), []);
 
   useEffect(() => {
-    const openCart = (event: Event) => {
-      const detail = (event as CustomEvent<{ instant?: boolean }>).detail;
-      setCartOpenInstant(Boolean(detail?.instant));
+    const openCart = () => {
       setCartOpen(true);
     };
     window.addEventListener("lelam-open-cart", openCart);
@@ -564,15 +595,6 @@ function Shell() {
         { label: user ? "My account" : "Create account", href: user ? "#/account" : "#/register" },
       ],
     },
-    {
-      title: "",
-      links: [
-        { label: "Doorstep delivery" },
-        { label: "Across India" },
-        { label: "Private offers only" },
-        { label: "Demo marketplace" },
-      ],
-    },
   ];
 
   return (
@@ -583,20 +605,29 @@ function Shell() {
         unreadCount={unreadCount}
         onOpenSearch={() => setSearchOpen(true)}
         onOpenSaved={() => setSavedOpen(true)}
-        onOpenCart={() => {
-          setCartOpenInstant(false);
-          setCartOpen(true);
-        }}
+        onOpenCart={() => setCartOpen(true)}
       />
 
       <div className="site-content">
-        <Routes />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={route.path.split("/")[1] || "home"}
+            initial={{ opacity: 0.88 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0.88 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            className="w-full"
+            style={{ transform: "none" }}
+          >
+            <Routes />
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <HalftoneWordmarkFooter
         wordmark="lelam"
         label={<span className="brand-wordmark">lelam.co</span>}
-        meta="©2026 · Doorstep delivery across India"
+        meta="©2026"
         preset="paper"
         palette={{ background: "transparent", ink: "#493022", warm: "#C98F7D" }}
         columns={footerColumns}
@@ -604,20 +635,11 @@ function Shell() {
       />
 
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
-      {cartOpen && (
-        <GenieSearchModal
-          isOpen
-          onClose={() => {
-            setCartOpen(false);
-            setCartOpenInstant(false);
-          }}
-          originSelector=".lelam-bid-btn"
-          textureKind="cart"
-          skipOpenAnimation={cartOpenInstant}
-        >
-          <CartOverlayCard />
-        </GenieSearchModal>
-      )}
+      <AnimatePresence>
+        {cartOpen && (
+          <CartOverlay onClose={() => setCartOpen(false)} />
+        )}
+      </AnimatePresence>
       {savedOpen && <SavedOverlay onClose={() => setSavedOpen(false)} />}
       {authPrompt && <AuthPrompt detail={authPrompt} onClose={() => setAuthPrompt(null)} />}
       <ToastHost />

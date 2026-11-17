@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { motion } from "framer-motion";
 import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { Link } from "./Link";
 import { conditionLabel } from "../lib/format";
@@ -62,7 +63,7 @@ export function PageHeader({
   description,
   action,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: ReactNode;
   description?: string;
   action?: ReactNode;
@@ -70,7 +71,7 @@ export function PageHeader({
   return (
     <div className="page-header">
       <div>
-        <div className="eyebrow">{eyebrow}</div>
+        {eyebrow ? <div className="eyebrow">{eyebrow}</div> : null}
         <h1>{title}</h1>
         {description && <p>{description}</p>}
       </div>
@@ -353,19 +354,23 @@ export function Tabs({
   tabs,
   active,
   onChange,
+  layoutId,
 }: {
   tabs: { id: string; label: string; count?: number }[];
   active: string;
   onChange: (id: string) => void;
+  layoutId?: string;
 }) {
   const activeRef = useRef<HTMLButtonElement>(null);
+  const reactId = useId();
+  const pillLayoutId = layoutId || `tabs-pill-${reactId}`;
 
   useEffect(() => {
     activeRef.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [active]);
 
   return (
-    <div className="segmented-tabs">
+    <div className="segmented-tabs" role="tablist">
       {tabs.map((tab) => {
         const isActive = active === tab.id;
         return (
@@ -373,12 +378,28 @@ export function Tabs({
             key={tab.id}
             ref={isActive ? activeRef : undefined}
             type="button"
+            role="tab"
+            aria-selected={isActive}
             aria-pressed={isActive}
-            className={isActive ? "is-active" : ""}
+            className={`segmented-tab-btn ${isActive ? "is-active" : ""}`}
             onClick={() => onChange(tab.id)}
           >
-            {tab.label}
-            {typeof tab.count === "number" && <span>{tab.count}</span>}
+            {isActive && (
+              <motion.span
+                layoutId={pillLayoutId}
+                className="segmented-tab-pill"
+                transition={{
+                  type: "spring",
+                  stiffness: 420,
+                  damping: 32,
+                  mass: 0.8,
+                }}
+              />
+            )}
+            <span className="segmented-tab-label">{tab.label}</span>
+            {typeof tab.count === "number" && (
+              <span className="segmented-tab-count">{tab.count}</span>
+            )}
           </button>
         );
       })}

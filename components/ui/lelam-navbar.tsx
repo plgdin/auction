@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { startTransition, useEffect, useRef, useState } from "react";
 import {
   Bell,
   Gavel,
@@ -68,7 +68,9 @@ export function LelamNavbar({
   const handleNavChange = (_: number, item: BookmarkNavItem) => {
     if (item.href) {
       setAccountOpen(false);
-      navigate(item.href);
+      startTransition(() => {
+        navigate(item.href);
+      });
     }
   };
 

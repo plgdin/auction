@@ -1,4 +1,4 @@
-import { Heart, ShoppingBag } from "lucide-react";
+import { Check, Heart, ShoppingBag } from "lucide-react";
 import { Link, navigate } from "./Link";
 import { useStore } from "../lib/store";
 import { formatMoney } from "../lib/format";
@@ -43,18 +43,33 @@ export function ShopCard({ product }: { product: Product }) {
       </div>
 
       <div className="shop-card-info">
-        <Link href={`#/product/${product.id}`} className="shop-card-title">
-          {product.title}
-        </Link>
-        <p className="shop-card-meta">
-          Size: {product.size || "One size"} <span>·</span> {condition}
-        </p>
+        <div className="shop-card-main">
+          <div className="shop-card-topline">
+            <span className="shop-card-category">{product.category}</span>
+            <span className="shop-card-condition-tag">{condition}</span>
+          </div>
+          <Link href={`#/product/${product.id}`} className="shop-card-title">
+            {product.title}
+          </Link>
+          {product.description && (
+            <p className="shop-card-desc">{product.description}</p>
+          )}
+          <p className="shop-card-meta">
+            <span>Size: {product.size || "One size"}</span> <span>·</span> {condition}
+            {product.brand && <> <span>·</span> {product.brand}</>}
+            {product.location && <> <span>·</span> 📍 {product.location}</>}
+          </p>
+        </div>
+
         <div className="shop-card-buy">
-          <strong className="shop-card-price">{formatMoney(product.askingPrice)}</strong>
+          <div className="shop-card-price-wrap">
+            <span className="shop-card-price-label">Price</span>
+            <strong className="shop-card-price">{formatMoney(product.askingPrice)}</strong>
+          </div>
           <button
             type="button"
             className={`shop-cart ${inCart ? "is-in-cart" : ""}`}
-            aria-label={inCart ? `View cart with ${product.title}` : `Add ${product.title} to cart`}
+            aria-label={inCart ? `In cart: ${product.title}` : `Add ${product.title} to cart`}
             onClick={() => {
               if (inCart) {
                 navigate("#/cart");
@@ -65,7 +80,11 @@ export function ShopCard({ product }: { product: Product }) {
               else toast(result.error, "error");
             }}
           >
-            <ShoppingBag size={14} strokeWidth={1.7} />
+            {inCart ? (
+              <Check size={14} strokeWidth={2.4} />
+            ) : (
+              <ShoppingBag size={14} strokeWidth={1.8} />
+            )}
           </button>
         </div>
       </div>

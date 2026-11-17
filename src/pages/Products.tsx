@@ -69,6 +69,40 @@ export function ProductsPage() {
   const [maxPrice, setMaxPrice] = useState(100000);
   const [view, setView] = useState<View>("grid");
   const [page, setPage] = useState(1);
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    category: true,
+    type: true,
+    condition: true,
+    price: true,
+    size: true,
+    sort: true,
+  });
+
+  const scrollToProducts = () => {
+    const target = document.querySelector<HTMLElement>(".shop-results");
+    if (target) {
+      const navOffset = 80;
+      const elementPosition = target.getBoundingClientRect().top + window.scrollY;
+      const offsetPosition = Math.max(0, elementPosition - navOffset);
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: "smooth",
+      });
+    } else {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
+  const handlePageChange = (nextPage: number) => {
+    setPage(nextPage);
+    requestAnimationFrame(() => {
+      scrollToProducts();
+    });
+  };
+
+  const toggleSection = (key: string) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   useEffect(() => {
     setCategory(keyForQuery(route.query.get("category")));
@@ -157,7 +191,7 @@ export function ProductsPage() {
 
   const toggleSize = (size: string) =>
     setSelectedSizes((previous) =>
-      previous.includes(size) ? previous.filter((item) => item !== size) : [...previous, size],
+      previous.includes(size) ? [] : [size],
     );
 
   const toggleGroup = (group: string) =>
@@ -168,14 +202,6 @@ export function ProductsPage() {
   return (
     <main className="page-shell shop-page">
       <section className="shop-sheet" aria-labelledby="shop-title">
-        <svg width="0" height="0" className="sr-only" aria-hidden="true">
-          <defs>
-            <filter id="filter-deckle-tear" x="-10%" y="-10%" width="120%" height="120%">
-              <feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise" />
-              <feDisplacementMap in="SourceGraphic" in2="noise" scale="7" xChannelSelector="R" yChannelSelector="G" />
-            </filter>
-          </defs>
-        </svg>
         <div className="shop-layout">
           <aside className="shop-filters" aria-label="Filters">
             <div className="shop-filter-paper">
@@ -187,125 +213,217 @@ export function ProductsPage() {
 
                 <section className="shop-filter-group">
                   <h3>
-                    Category <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
-                  </h3>
-                  {shopCategories.map((option) => (
-                    <label key={option.key} className="shop-check">
-                      <input
-                        type="checkbox"
-                        checked={category === option.key}
-                        onChange={() => setCategory(option.key)}
+                    <button
+                      type="button"
+                      className="shop-filter-toggle"
+                      onClick={() => toggleSection("category")}
+                      aria-expanded={openSections.category}
+                    >
+                      <span>Category</span>
+                      <ChevronDown
+                        size={14}
+                        strokeWidth={1.8}
+                        className={`shop-chevron ${openSections.category ? "is-open" : ""}`}
                       />
-                      <span>{option.label}</span>
-                      {option.key !== "all" && counts.get(option.key as string) ? (
-                        <em className="shop-check-count">{counts.get(option.key as string)}</em>
-                      ) : null}
-                    </label>
-                  ))}
+                    </button>
+                  </h3>
+                  {openSections.category && (
+                    <div className="shop-filter-options">
+                      {shopCategories.map((option) => (
+                        <label key={option.key} className="shop-check">
+                          <input
+                            type="checkbox"
+                            checked={category === option.key}
+                            onChange={() => setCategory(option.key)}
+                          />
+                          <span>{option.label}</span>
+                          {option.key !== "all" && counts.get(option.key as string) ? (
+                            <em className="shop-check-count">{counts.get(option.key as string)}</em>
+                          ) : null}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </section>
 
                 {groupOptions.length > 0 && (
                   <section className="shop-filter-group">
                     <h3>
-                      Type <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
-                    </h3>
-                    {groupOptions.map((group) => (
-                      <label key={group} className="shop-check">
-                        <input
-                          type="checkbox"
-                          checked={selectedGroups.includes(group)}
-                          onChange={() => toggleGroup(group)}
+                      <button
+                        type="button"
+                        className="shop-filter-toggle"
+                        onClick={() => toggleSection("type")}
+                        aria-expanded={openSections.type}
+                      >
+                        <span>Type</span>
+                        <ChevronDown
+                          size={14}
+                          strokeWidth={1.8}
+                          className={`shop-chevron ${openSections.type ? "is-open" : ""}`}
                         />
-                        <span>{group}</span>
-                      </label>
-                    ))}
+                      </button>
+                    </h3>
+                    {openSections.type && (
+                      <div className="shop-filter-options">
+                        {groupOptions.map((group) => (
+                          <label key={group} className="shop-check">
+                            <input
+                              type="checkbox"
+                              checked={selectedGroups.includes(group)}
+                              onChange={() => toggleGroup(group)}
+                            />
+                            <span>{group}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
                   </section>
                 )}
 
                 <section className="shop-filter-group">
                   <h3>
-                    Condition <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
-                  </h3>
-                  {conditionOptions.map((option) => (
-                    <label key={option.value} className="shop-check">
-                      <input
-                        type="checkbox"
-                        checked={condition === option.value}
-                        onChange={() =>
-                          setCondition(condition === option.value ? "All" : option.value)
-                        }
+                    <button
+                      type="button"
+                      className="shop-filter-toggle"
+                      onClick={() => toggleSection("condition")}
+                      aria-expanded={openSections.condition}
+                    >
+                      <span>Condition</span>
+                      <ChevronDown
+                        size={14}
+                        strokeWidth={1.8}
+                        className={`shop-chevron ${openSections.condition ? "is-open" : ""}`}
                       />
-                      <span>{option.label}</span>
-                    </label>
-                  ))}
+                    </button>
+                  </h3>
+                  {openSections.condition && (
+                    <div className="shop-filter-options">
+                      {conditionOptions.map((option) => (
+                        <label key={option.value} className="shop-check">
+                          <input
+                            type="checkbox"
+                            checked={condition === option.value}
+                            onChange={() =>
+                              setCondition(condition === option.value ? "All" : option.value)
+                            }
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </section>
 
                 <section className="shop-filter-group shop-price">
                   <h3>
-                    Price Range <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
+                    <button
+                      type="button"
+                      className="shop-filter-toggle"
+                      onClick={() => toggleSection("price")}
+                      aria-expanded={openSections.price}
+                    >
+                      <span>Price Range</span>
+                      <ChevronDown
+                        size={14}
+                        strokeWidth={1.8}
+                        className={`shop-chevron ${openSections.price ? "is-open" : ""}`}
+                      />
+                    </button>
                   </h3>
-                  <input
-                    type="range"
-                    className="shop-range"
-                    min={0}
-                    max={highestPrice}
-                    step={5000}
-                    value={Math.min(maxPrice, highestPrice)}
-                    onChange={(event) => setMaxPrice(Number(event.target.value))}
-                    aria-label="Maximum price"
-                  />
-                  <div className="shop-price-ends">
-                    <span>₹0</span>
-                    <span>{formatMoney(Math.min(maxPrice, highestPrice))}+</span>
-                  </div>
+                  {openSections.price && (
+                    <div className="shop-filter-options">
+                      <input
+                        type="range"
+                        className="shop-range"
+                        min={0}
+                        max={highestPrice}
+                        step={5000}
+                        value={Math.min(maxPrice, highestPrice)}
+                        onChange={(event) => setMaxPrice(Number(event.target.value))}
+                        aria-label="Maximum price"
+                      />
+                      <div className="shop-price-ends">
+                        <span>₹0</span>
+                        <span>{formatMoney(Math.min(maxPrice, highestPrice))}+</span>
+                      </div>
+                    </div>
+                  )}
                 </section>
 
                 <section className="shop-filter-group">
                   <h3>
-                    Size <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
+                    <button
+                      type="button"
+                      className="shop-filter-toggle"
+                      onClick={() => toggleSection("size")}
+                      aria-expanded={openSections.size}
+                    >
+                      <span>Size</span>
+                      <ChevronDown
+                        size={14}
+                        strokeWidth={1.8}
+                        className={`shop-chevron ${openSections.size ? "is-open" : ""}`}
+                      />
+                    </button>
                   </h3>
-                  <div className="shop-size-list">
-                    {sizes.map((size) => (
-                      <button
-                        type="button"
-                        key={size}
-                        className={selectedSizes.includes(size) ? "selected" : ""}
-                        onClick={() => toggleSize(size)}
-                        aria-pressed={selectedSizes.includes(size)}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
+                  {openSections.size && (
+                    <div className="shop-filter-options shop-size-list">
+                      {sizes.map((size) => (
+                        <button
+                          type="button"
+                          key={size}
+                          className={selectedSizes.includes(size) ? "selected" : ""}
+                          onClick={() => toggleSize(size)}
+                          aria-pressed={selectedSizes.includes(size)}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </section>
 
                 <section className="shop-sort">
                   <h3>
-                    Sort By <ChevronDown size={14} strokeWidth={1.8} className="is-up" />
+                    <button
+                      type="button"
+                      className="shop-filter-toggle"
+                      onClick={() => toggleSection("sort")}
+                      aria-expanded={openSections.sort}
+                    >
+                      <span>Sort By</span>
+                      <ChevronDown
+                        size={14}
+                        strokeWidth={1.8}
+                        className={`shop-chevron ${openSections.sort ? "is-open" : ""}`}
+                      />
+                    </button>
                   </h3>
-                  <div className="shop-select-wrap">
-                    <SelectMenu
-                      value={sort}
-                      ariaLabel="Sort by"
-                      options={[
-                        { value: "newest", label: "Recently Listed" },
-                        { value: "price-asc", label: "Price: Low to High" },
-                        { value: "price-desc", label: "Price: High to Low" },
-                      ]}
-                      onChange={(value) => setSort(value as Sort)}
-                    />
-                  </div>
+                  {openSections.sort && (
+                    <div className="shop-select-wrap">
+                      <SelectMenu
+                        value={sort}
+                        ariaLabel="Sort by"
+                        options={[
+                          { value: "newest", label: "Recently Listed" },
+                          { value: "price-asc", label: "Price: Low to High" },
+                          { value: "price-desc", label: "Price: High to Low" },
+                        ]}
+                        onChange={(value) => setSort(value as Sort)}
+                      />
+                    </div>
+                  )}
                 </section>
               </div>
             </div>
-            <img className="shop-flowers" src="/ass/dried-flowers.png" alt="" aria-hidden="true" />
           </aside>
 
           <section className="shop-results">
             <header className="shop-heading">
-              <div>
-                <p className="shop-found">{visible.length} Items found</p>
-              </div>
+              <p className="shop-found">{visible.length} Items found</p>
+            </header>
+
+            <div className="shop-view-sticky-wrap">
               <div className="shop-view">
                 <span>View:</span>
                 <button
@@ -327,7 +445,7 @@ export function ProductsPage() {
                   <List size={18} strokeWidth={1.7} />
                 </button>
               </div>
-            </header>
+            </div>
 
             {pageProducts.length ? (
               <div className={`shop-grid is-${view}`}>
@@ -351,7 +469,7 @@ export function ProductsPage() {
                   type="button"
                   aria-label="Previous page"
                   disabled={page === 1}
-                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                  onClick={() => handlePageChange(Math.max(1, page - 1))}
                 >
                   <ChevronLeft size={15} strokeWidth={1.7} />
                 </button>
@@ -364,7 +482,7 @@ export function ProductsPage() {
                       key={item}
                       aria-current={page === item ? "page" : undefined}
                       className={page === item ? "is-active" : ""}
-                      onClick={() => setPage(item)}
+                      onClick={() => handlePageChange(item)}
                     >
                       {item}
                     </button>
@@ -374,7 +492,7 @@ export function ProductsPage() {
                   type="button"
                   aria-label="Next page"
                   disabled={page === pageCount}
-                  onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
+                  onClick={() => handlePageChange(Math.min(pageCount, page + 1))}
                 >
                   <ChevronRight size={15} strokeWidth={1.7} />
                 </button>

@@ -108,13 +108,7 @@ function BookmarkSvgBackdrop({
     <svg
       viewBox={`0 0 ${width} ${totalH}`}
       preserveAspectRatio="none"
-      className="absolute inset-0 w-full h-full pointer-events-none select-none overflow-visible"
-      style={{
-        filter: isActive
-          ? "drop-shadow(0 7px 14px rgba(45, 25, 12, 0.3)) drop-shadow(0 2px 4px rgba(45, 25, 12, 0.16))"
-          : "drop-shadow(0 5px 10px rgba(45, 25, 12, 0.18)) drop-shadow(0 1px 3px rgba(45, 25, 12, 0.1))",
-        transition: "filter 0.25s ease",
-      }}
+      className="absolute inset-0 w-full h-full pointer-events-none select-none overflow-visible drop-shadow-[0_5px_10px_rgba(45,25,12,0.22)]"
       aria-hidden="true"
     >
       <defs>
@@ -140,7 +134,7 @@ function BookmarkSvgBackdrop({
         stroke="rgba(89, 54, 28, 0.28)"
         strokeWidth="0.8"
         animate={{ opacity: isActive ? 0 : 1 }}
-        transition={{ duration: 0.25, ease: "easeInOut" }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
       />
 
       {/* Rich Dark Brown Paper Overlay (Active on Click) */}
@@ -150,7 +144,7 @@ function BookmarkSvgBackdrop({
         stroke="rgba(59, 32, 17, 0.6)"
         strokeWidth="0.8"
         animate={{ opacity: isActive ? 1 : 0 }}
-        transition={{ duration: 0.25, ease: "easeInOut" }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
       />
 
       {/* Handmade Stitched Dashed Border */}
@@ -163,7 +157,7 @@ function BookmarkSvgBackdrop({
         animate={{
           stroke: isActive ? "rgba(245, 235, 220, 0.45)" : "rgba(89, 54, 28, 0.42)",
         }}
-        transition={{ duration: 0.25 }}
+        transition={{ duration: 0.2 }}
       />
     </svg>
   );
@@ -254,21 +248,16 @@ export function BookmarkNav({
       if (onChange) {
         onChange(index, item);
       }
+      if (leaveTimer.current) {
+        clearTimeout(leaveTimer.current);
+      }
       // Brief visual feedback before smoothly retracting back to resting position
-      setTimeout(() => {
+      leaveTimer.current = setTimeout(() => {
         setIsExpanded(false);
       }, 160);
     },
     [onChange]
   );
-
-  // Staggered pull-down timings: Home ~300ms, Shop ~380ms, Auctions ~460ms
-  const staggerDelays = [0, 0.08, 0.16];
-  const swingRotations = [
-    [0, -2.0, 1.0, -0.3, 0],
-    [0, 1.8, -0.9, 0.3, 0],
-    [0, -1.8, 0.9, -0.3, 0],
-  ];
 
   return (
     <nav
@@ -307,31 +296,41 @@ export function BookmarkNav({
               role="none"
               style={{
                 transformOrigin: "top center",
+                willChange: "transform",
               }}
               initial={false}
               animate={
                 shouldReduceMotion
-                  ? { y: isExpanded ? pulledY : tuckedY, scaleY: 1, scaleX: 1 }
+                  ? { y: isExpanded ? pulledY : tuckedY }
                   : {
                       y: isExpanded ? pulledY : tuckedY,
-                      scaleY: isExpanded ? [0.96, 1.04, 0.99, 1] : [1, 1.03, 0.98, 1],
-                      scaleX: isExpanded ? [1.02, 0.98, 1.01, 1] : [1, 0.98, 1.01, 1],
-                      rotate: isExpanded ? swingRotations[index] : 0,
-                      transition: {
+                      rotate: isExpanded ? (index === 0 ? -1.2 : index === 2 ? 1.2 : 0) : 0,
+                    }
+              }
+              transition={
+                shouldReduceMotion
+                  ? { duration: 0.15 }
+                  : {
+                      y: {
                         type: "spring",
-                        stiffness: 160 - index * 10,
-                        damping: 17,
-                        mass: 0.85 + index * 0.08,
-                        delay: isExpanded ? staggerDelays[index] : 0,
+                        stiffness: 280,
+                        damping: 24,
+                        mass: 0.75,
+                        delay: isExpanded ? index * 0.04 : 0,
+                      },
+                      rotate: {
+                        type: "spring",
+                        stiffness: 240,
+                        damping: 20,
+                        delay: isExpanded ? index * 0.04 : 0,
                       },
                     }
               }
               whileHover={
-                isExpanded && !shouldReduceMotion
+                !shouldReduceMotion
                   ? {
-                      y: pulledY + 3,
-                      rotate: index === 0 ? -1.2 : index === 2 ? 1.2 : -0.3,
-                      transition: { duration: 0.18, ease: "easeOut" },
+                      y: (isExpanded ? pulledY : tuckedY) + 3,
+                      transition: { duration: 0.15, ease: "easeOut" },
                     }
                   : {}
               }
@@ -353,11 +352,7 @@ export function BookmarkNav({
                 aria-label={`${item.label}${isActive ? " (current page)" : ""}`}
                 aria-current={isActive ? "page" : undefined}
                 onClick={() => {
-                  if (!isExpanded) {
-                    setIsExpanded(true);
-                  } else {
-                    handleSelect(index, item);
-                  }
+                  handleSelect(index, item);
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "ArrowRight") {
@@ -392,24 +387,14 @@ export function BookmarkNav({
                   {/* Hero Icon - centered in bookmark body above the bottom notch; visible ONLY in pulled-down state */}
                   <div className="absolute inset-x-0 top-0 bottom-4 sm:bottom-5 flex items-center justify-center">
                     <motion.div
-                      animate={
-                        isExpanded && !shouldReduceMotion
-                          ? index === 0
-                            ? { opacity: 1, scale: [0.55, 1.18, 0.94, 1], y: [6, -3, 1, 0] } // Home gentle bounce
-                            : index === 1
-                            ? { opacity: 1, rotate: [0, -14, 10, -4, 0], scale: [0.55, 1.14, 1], y: [6, 0] } // Shop tote bag swing
-                            : { opacity: 1, rotate: [0, -22, 6, -2, 0], scale: [0.55, 1.15, 1], y: [6, 0] } // Auctions gavel tap
-                          : {
-                              opacity: isExpanded ? 1 : 0,
-                              scale: isExpanded ? 1 : 0.65,
-                              rotate: 0,
-                              y: isExpanded ? 0 : -8,
-                            }
-                      }
+                      animate={{
+                        opacity: isExpanded ? 1 : 0,
+                        scale: isExpanded ? 1 : 0.65,
+                        y: isExpanded ? 0 : -6,
+                      }}
                       transition={{
-                        duration: isExpanded ? 0.36 : 0.18,
-                        delay: isExpanded ? staggerDelays[index] + 0.08 : 0,
-                        ease: isExpanded ? "easeOut" : "easeIn",
+                        duration: isExpanded ? 0.22 : 0.16,
+                        ease: [0.16, 1, 0.3, 1],
                       }}
                       style={{
                         transformOrigin: index === 2 ? "bottom left" : "center",
@@ -435,15 +420,14 @@ export function BookmarkNav({
                         isExpanded
                           ? shouldReduceMotion
                             ? { opacity: 0 }
-                            : { opacity: 0, y: 7, scale: 0.85, filter: "blur(1.2px)" }
+                            : { opacity: 0, y: 6, scale: 0.9, filter: "blur(0.8px)" }
                           : shouldReduceMotion
                           ? { opacity: 1 }
                           : { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }
                       }
                       transition={{
-                        duration: isExpanded ? 0.18 : 0.22,
-                        delay: isExpanded ? 0 : 0.12,
-                        ease: "easeOut",
+                        duration: isExpanded ? 0.16 : 0.2,
+                        ease: [0.16, 1, 0.3, 1],
                       }}
                       className="text-[11.5px] sm:text-[13px] leading-tight tracking-[0.01em] transition-colors duration-200 select-none whitespace-nowrap"
                       style={{
