@@ -158,7 +158,11 @@ export function SelectMenu({
         ref={trigger}
         type="button"
         className="select-menu-trigger"
-        aria-label={ariaLabel}
+        aria-label={
+          ariaLabel
+            ? `${ariaLabel}: ${options.find((option) => option.value === value)?.label ?? value}`
+            : undefined
+        }
         aria-haspopup="listbox"
         aria-expanded={open}
         disabled={disabled}

@@ -296,7 +296,6 @@ export function BookmarkNav({
               role="none"
               style={{
                 transformOrigin: "top center",
-                willChange: "transform",
               }}
               initial={false}
               animate={
