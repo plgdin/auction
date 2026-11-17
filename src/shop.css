@@ -429,15 +429,23 @@
 
 .shop-results {
   min-width: 0;
-  padding-top: 4px;
+  padding-top: 0;
 }
 
 .shop-heading {
+  position: sticky;
+  top: 80px;
+  z-index: 15;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 18px;
+  margin-bottom: 16px;
+  padding: 10px 4px 10px 2px;
+  background: rgba(243, 229, 210, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(73, 48, 34, 0.12);
 }
 
 .shop-title {
@@ -469,7 +477,7 @@
 }
 
 .shop-found {
-  margin: 9px 0 0 2px;
+  margin: 0;
   font: 500 12px/1 "DM Sans", sans-serif;
   color: #261608;
 }
@@ -478,7 +486,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding-bottom: 4px;
+  padding-bottom: 0;
 }
 
 .shop-view span {
@@ -1104,6 +1112,10 @@
   }
 
   .shop-filters {
+    top: 68px;
+  }
+
+  .shop-heading {
     top: 68px;
   }
 
