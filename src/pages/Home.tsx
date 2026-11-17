@@ -15,6 +15,29 @@ import { useStore } from "../lib/store";
 /** Toggles the interactive clothing rail section on the homepage. Kept in code, hidden for now. */
 const SHOW_RAIL = false;
 
+const SELLING_BENEFITS = [
+  {
+    icon: Coins,
+    title: "Turn clutter into cash",
+    description: "Give unused items a new home and earn while you declutter.",
+  },
+  {
+    icon: Leaf,
+    title: "A more sustainable you",
+    description: "Reduce textile waste and be part of a circular fashion cycle.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Simple & secure",
+    description: "Verified buyers, safe transactions, and reliable support.",
+  },
+  {
+    icon: Users,
+    title: "A community that values pre-loved",
+    description: "Connect with mindful shoppers who love quality and unique finds.",
+  },
+];
+
 /** Translucent beige masking tape strip with torn edges and dashed fiber cuts */
 function WashiTape({
   className = "",
@@ -191,8 +214,8 @@ export function HomePage() {
       {/* 4. "HOW SELLING ON LELAM.CO WORKS" STORYBOARD */}
       <section className="relative w-full py-10 sm:py-12 md:py-16 px-5 sm:px-8 md:px-12 lg:px-16">
         <div className="max-w-7xl mx-auto">
-          {/* Header row with cursive taped note */}
-          <div className="relative flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 sm:mb-16">
+          {/* Header row */}
+          <div className="mb-12 sm:mb-16">
             <div>
               <h2
                 className="text-3xl sm:text-4xl md:text-5xl text-[#493022] font-normal tracking-tight"
@@ -230,27 +253,6 @@ export function HomePage() {
                 />
               </svg>
             </div>
-
-            {/* Cursive taped note on a torn blush paper banner (Asset 03) */}
-            <motion.div
-              initial={{ opacity: 0, rotate: 2 }}
-              whileInView={{ opacity: 1, rotate: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="relative self-start md:self-auto w-full max-w-xs min-h-[92px] px-6 py-4 -rotate-1"
-            >
-              <span
-                aria-hidden="true"
-                className="paper-note pointer-events-none select-none absolute inset-0 -z-10 drop-shadow-[0_6px_16px_rgba(73,48,34,0.16)]"
-              />
-              <WashiTape className="-top-3 left-1/2 -translate-x-1/2" width="w-20" rotate="rotate-2" />
-              <p
-                className="relative z-10 text-2xl sm:text-[1.7rem] text-[#493022] leading-tight text-center"
-                style={{ fontFamily: "'Caveat', cursive", fontWeight: 600 }}
-              >
-                It’s simple, quick, and hassle-free.
-              </p>
-            </motion.div>
           </div>
 
           {/* 4 Step Polaroid Cards with Arrows */}
@@ -390,95 +392,45 @@ export function HomePage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-14 items-center">
-            {/* Left Column: 2x2 Benefits Grid (approx 60%) */}
-            <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-6 lg:gap-5 items-start">
-              {/* Benefit 1 */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="flex flex-col items-center text-center lg:border-r border-[#493022]/15 lg:pr-4"
-              >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-[#493022] mb-3">
-                  <Coins className="w-7 h-7" strokeWidth={1.8} />
-                </div>
-                <h3
-                  className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: "var(--serif)" }}
-                >
-                  Turn clutter into cash
-                </h3>
-                <p className="text-base text-[#6B5646] leading-relaxed">
-                  Give unused items a new home and earn while you declutter.
-                </p>
-              </motion.div>
+            {/* Left Column: 4 Benefits with perfect symmetry and horizontal alignment */}
+            <div className="lg:col-span-8 grid grid-cols-2 sm:grid-cols-4 items-start">
+              {SELLING_BENEFITS.map((benefit, index) => {
+                const Icon = benefit.icon;
+                return (
+                  <motion.div
+                    key={benefit.title}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: 0.1 * (index + 1) }}
+                    className={`group flex flex-col items-center text-center px-3 sm:px-4 lg:px-5 py-2 ${
+                      index !== 3 ? "sm:border-r border-[#493022]/15" : ""
+                    } ${index % 2 === 0 ? "border-r border-[#493022]/15 sm:border-r-0" : ""} ${
+                      index < 2 ? "mb-6 pb-6 border-b border-[#493022]/15 sm:border-b-0 sm:mb-0 sm:pb-2" : ""
+                    }`}
+                  >
+                    {/* Centered Icon Badge */}
+                    <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-[#EFE4D2]/75 border border-[#493022]/12 flex items-center justify-center text-[#493022] mb-3.5 shadow-[0_2px_8px_rgba(73,48,34,0.06)] shrink-0 transition-transform duration-200 group-hover:scale-105">
+                      <Icon className="w-6 h-6" strokeWidth={1.8} />
+                    </div>
 
-              {/* Benefit 2 */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="flex flex-col items-center text-center lg:border-r border-[#493022]/15 lg:pr-4"
-              >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-[#493022] mb-3">
-                  <Leaf className="w-7 h-7" strokeWidth={1.8} />
-                </div>
-                <h3
-                  className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: "var(--serif)" }}
-                >
-                  A more sustainable you
-                </h3>
-                <p className="text-base text-[#6B5646] leading-relaxed">
-                  Reduce textile waste and be part of a circular fashion cycle.
-                </p>
-              </motion.div>
+                    {/* Uniform Height Title Container for Horizontal Baseline Alignment */}
+                    <div className="h-[52px] sm:h-[60px] flex items-center justify-center mb-2 w-full px-1">
+                      <h3
+                        className="text-lg sm:text-[1.25rem] font-serif font-medium text-[#493022] leading-[1.25] tracking-tight text-center text-balance"
+                        style={{ fontFamily: "var(--serif)" }}
+                      >
+                        {benefit.title}
+                      </h3>
+                    </div>
 
-              {/* Benefit 3 */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="flex flex-col items-center text-center lg:border-r border-[#493022]/15 lg:pr-4"
-              >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-[#493022] mb-3">
-                  <ShieldCheck className="w-7 h-7" strokeWidth={1.8} />
-                </div>
-                <h3
-                  className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: "var(--serif)" }}
-                >
-                  Simple & secure
-                </h3>
-                <p className="text-base text-[#6B5646] leading-relaxed">
-                  Verified buyers, safe transactions, and reliable support.
-                </p>
-              </motion.div>
-
-              {/* Benefit 4 */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-                className="flex flex-col items-center text-center"
-              >
-                <div className="w-10 h-10 rounded-full flex items-center justify-center text-[#493022] mb-3">
-                  <Users className="w-7 h-7" strokeWidth={1.8} />
-                </div>
-                <h3
-                  className="text-xl sm:text-2xl font-medium text-[#493022] mb-1.5"
-                  style={{ fontFamily: "var(--serif)" }}
-                >
-                  A community that values pre-loved
-                </h3>
-                <p className="text-base text-[#6B5646] leading-relaxed">
-                  Connect with mindful shoppers who love quality and unique finds.
-                </p>
-              </motion.div>
+                    {/* Balanced Description */}
+                    <p className="text-xs sm:text-[13.5px] text-[#6B5646] leading-[1.65] text-center text-balance max-w-[210px]">
+                      {benefit.description}
+                    </p>
+                  </motion.div>
+                );
+              })}
             </div>
 
             {/* Right Column: Polaroid of Rack with Dried Botanical Flowers (approx 40%) */}

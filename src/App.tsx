@@ -564,15 +564,6 @@ function Shell() {
         { label: user ? "My account" : "Create account", href: user ? "#/account" : "#/register" },
       ],
     },
-    {
-      title: "",
-      links: [
-        { label: "Doorstep delivery" },
-        { label: "Across India" },
-        { label: "Private offers only" },
-        { label: "Demo marketplace" },
-      ],
-    },
   ];
 
   return (
@@ -590,13 +581,24 @@ function Shell() {
       />
 
       <div className="site-content">
-        <Routes />
+        <AnimatePresence mode="wait" initial={false}>
+          <motion.div
+            key={route.path.split("/")[1] || "home"}
+            initial={{ opacity: 0.88, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0.88, y: -3 }}
+            transition={{ duration: 0.16, ease: "easeOut" }}
+            className="w-full"
+          >
+            <Routes />
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <HalftoneWordmarkFooter
         wordmark="lelam"
         label={<span className="brand-wordmark">lelam.co</span>}
-        meta="©2026 · Doorstep delivery across India"
+        meta="©2026"
         preset="paper"
         palette={{ background: "transparent", ink: "#493022", warm: "#C98F7D" }}
         columns={footerColumns}

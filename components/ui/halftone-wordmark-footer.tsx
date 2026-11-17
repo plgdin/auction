@@ -147,32 +147,92 @@ const HWF_CSS = `
 }
 .hwf-root canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; max-width: none; }
 .hwf-top {
-  position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.25fr) repeat(3, minmax(0, 1fr));
-  gap: 24px; padding: clamp(22px, 3.4vw, 40px) clamp(20px, 3.4vw, 44px) 0;
-  font-family: var(--hwf-mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase; line-height: 1.75;
+  position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 1.35fr) repeat(auto-fit, minmax(180px, 1fr));
+  gap: 28px; padding: clamp(24px, 3.5vw, 42px) clamp(20px, 3.5vw, 44px) 0;
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: clamp(12.5px, 1.1vw, 14px);
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  line-height: 1.85;
+  font-weight: 700;
 }
-.hwf-brand strong { display: block; font-weight: 500; }
-.hwf-brand span { opacity: .45; }
-.hwf-col h3 { margin: 0; font: inherit; opacity: .4; font-weight: 500; }
+.hwf-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.hwf-brand strong {
+  display: inline-flex;
+  align-items: baseline;
+  font-weight: 800;
+  font-size: 18px;
+  margin-bottom: 0;
+  color: #2B180D;
+}
+.hwf-brand strong .brand-wordmark {
+  font-size: 21px;
+  font-weight: 800;
+  -webkit-text-stroke: 1.1px currentColor;
+  paint-order: stroke fill;
+}
+.hwf-brand span {
+  opacity: .88;
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: .04em;
+  color: #493022;
+}
+.hwf-col h3 {
+  margin: 0 0 6px 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  opacity: 1;
+  color: #2B180D;
+}
 .hwf-col ul { list-style: none; margin: 0; padding: 0; }
 .hwf-col a, .hwf-up {
-  color: inherit; text-decoration: none; opacity: .78; background: none; border: 0;
-  display: inline-flex; align-items: center; min-height: 24px;
-  font: inherit; letter-spacing: inherit; text-transform: inherit; cursor: pointer;
-  background-image: linear-gradient(currentColor, currentColor); background-size: 0% 1px;
-  background-repeat: no-repeat; background-position: 0 100%; transition: opacity .25s ease, background-size .35s cubic-bezier(.2,.7,.1,1);
+  color: #493022;
+  text-decoration: none;
+  opacity: .95;
+  background: none;
+  border: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  font: inherit;
+  font-size: clamp(12.5px, 1.1vw, 14px);
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1.5px;
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  transition: opacity .2s ease, background-size .3s cubic-bezier(.2,.7,.1,1), color .2s ease;
 }
-.hwf-col a:hover, .hwf-up:hover { opacity: 1; background-size: 100% 1px; }
-.hwf-col a:focus-visible, .hwf-up:focus-visible { outline: 1px solid currentColor; outline-offset: 3px; opacity: 1; }
+.hwf-col a:hover, .hwf-up:hover {
+  opacity: 1;
+  color: #1A0F07;
+  background-size: 100% 1.5px;
+}
+.hwf-col a:focus-visible, .hwf-up:focus-visible { outline: 2px solid #493022; outline-offset: 3px; opacity: 1; }
 .hwf-rule {
   position: relative; z-index: 1; display: flex; justify-content: flex-end; align-items: center; gap: 16px;
-  margin: clamp(18px, 2.6vw, 30px) clamp(20px, 3.4vw, 44px) 0; padding-top: 12px;
-  border-top: 0.5px solid color-mix(in srgb, var(--hwf-ink) 16%, transparent);
-  font-family: var(--hwf-mono); font-size: 10.5px; letter-spacing: .18em; text-transform: uppercase;
+  margin: clamp(14px, 2.2vw, 24px) clamp(20px, 3.4vw, 44px) 0; padding-top: 8px;
+  border-top: none;
+  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: clamp(12px, 1.05vw, 13px);
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
 .hwf-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 720px) {
-  .hwf-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); row-gap: 18px; }
+  .hwf-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); row-gap: 20px; }
   .hwf-brand { grid-column: 1 / -1; }
 }
 @media (prefers-reduced-motion: reduce) {

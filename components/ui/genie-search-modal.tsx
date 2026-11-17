@@ -34,6 +34,83 @@ function cubicBezierPoint(
 }
 
 /**
+ * Constructs a continuous smooth boundary path with curved rounded corners (24px radius)
+ * that perfectly matches the modal card's rounded-3xl profile on all 4 corners.
+ */
+function buildGenieBoundaryPath(
+  leftPoints: { x: number; y: number }[],
+  rightPoints: { x: number; y: number }[],
+  targetRadius = 24
+): Path2D {
+  const N = leftPoints.length;
+  const path = new Path2D();
+  if (N < 2) return path;
+
+  const tl = leftPoints[0];
+  const tr = rightPoints[0];
+  const bl = leftPoints[N - 1];
+  const br = rightPoints[N - 1];
+
+  const maxRw = Math.min(tr.x - tl.x, br.x - bl.x) * 0.45;
+  const maxRh = Math.min(bl.y - tl.y, br.y - tr.y) * 0.45;
+  const r = Math.max(0, Math.min(targetRadius, maxRw, maxRh));
+
+  if (r < 2) {
+    path.moveTo(tl.x, tl.y);
+    for (let i = 1; i < N; i++) path.lineTo(leftPoints[i].x, leftPoints[i].y);
+    for (let i = N - 1; i >= 0; i--) path.lineTo(rightPoints[i].x, rightPoints[i].y);
+    path.closePath();
+    return path;
+  }
+
+  let kTr = 0;
+  while (kTr < N && rightPoints[kTr].y < tr.y + r) kTr++;
+
+  let kBr = N - 1;
+  while (kBr >= 0 && rightPoints[kBr].y > br.y - r) kBr--;
+
+  let kBl = N - 1;
+  while (kBl >= 0 && leftPoints[kBl].y > bl.y - r) kBl--;
+
+  let kTl = 0;
+  while (kTl < N && leftPoints[kTl].y < tl.y + r) kTl++;
+
+  // 1. Top edge starting after top-left rounded corner
+  path.moveTo(tl.x + r, tl.y);
+  path.lineTo(tr.x - r, tr.y);
+
+  // 2. Top-right rounded corner
+  const nextTr = kTr < N ? rightPoints[kTr] : br;
+  path.arcTo(tr.x, tr.y, nextTr.x, nextTr.y, r);
+
+  // 3. Right curved boundary contour
+  for (let i = kTr; i <= kBr; i++) {
+    path.lineTo(rightPoints[i].x, rightPoints[i].y);
+  }
+
+  // 4. Bottom-right rounded corner
+  path.arcTo(br.x, br.y, br.x - r, br.y, r);
+
+  // 5. Bottom edge towards bottom-left
+  path.lineTo(bl.x + r, bl.y);
+
+  // 6. Bottom-left rounded corner
+  const nextBl = kBl >= 0 ? leftPoints[kBl] : tl;
+  path.arcTo(bl.x, bl.y, nextBl.x, nextBl.y, r);
+
+  // 7. Left curved boundary contour
+  for (let i = kBl; i >= kTl; i--) {
+    path.lineTo(leftPoints[i].x, leftPoints[i].y);
+  }
+
+  // 8. Top-left rounded corner
+  path.arcTo(tl.x, tl.y, tl.x + r, tl.y, r);
+  path.closePath();
+
+  return path;
+}
+
+/**
  * Draws the high-fidelity parchment Search Modal Card texture onto an offscreen canvas.
  * Perfectly mirrors the layout, Gumela Arabic typography, warm colors, borders, and controls of SearchModalCard.
  */
@@ -367,37 +444,8 @@ export function GenieSearchModal({
         rightPoints.push({ x: currX + currW / 2, y: currY });
       }
 
-      // Construct continuous smooth boundary path with organic rounded bottom corners
-      const boundaryPath = new Path2D();
-      boundaryPath.moveTo(leftPoints[0].x, leftPoints[0].y);
-
-      // Left curved edge
-      for (let i = 1; i < N; i++) {
-        boundaryPath.lineTo(leftPoints[i].x, leftPoints[i].y);
-      }
-
-      // Rounded bottom edge
-      const cornerR = Math.min(24, (rightPoints[N - 1].x - leftPoints[N - 1].x) * 0.1);
-      boundaryPath.arcTo(
-        leftPoints[N - 1].x,
-        leftPoints[N - 1].y,
-        rightPoints[N - 1].x,
-        rightPoints[N - 1].y,
-        cornerR,
-      );
-      boundaryPath.arcTo(
-        rightPoints[N - 1].x,
-        rightPoints[N - 1].y,
-        rightPoints[N - 2].x,
-        rightPoints[N - 2].y,
-        cornerR,
-      );
-
-      // Right curved edge back to top
-      for (let i = N - 1; i >= 0; i--) {
-        boundaryPath.lineTo(rightPoints[i].x, rightPoints[i].y);
-      }
-      boundaryPath.closePath();
+      // Construct continuous smooth boundary path with curved rounded corners (24px)
+      const boundaryPath = buildGenieBoundaryPath(leftPoints, rightPoints, 24);
 
       // Realistic paper shadow under the fluid shape
       ctx.save();
@@ -529,16 +577,8 @@ export function GenieSearchModal({
         rightPoints.push({ x: currX + currW / 2, y: currY });
       }
 
-      // Smooth boundary path for closing suction
-      const boundaryPath = new Path2D();
-      boundaryPath.moveTo(leftPoints[0].x, leftPoints[0].y);
-      for (let i = 1; i < N; i++) {
-        boundaryPath.lineTo(leftPoints[i].x, leftPoints[i].y);
-      }
-      for (let i = N - 1; i >= 0; i--) {
-        boundaryPath.lineTo(rightPoints[i].x, rightPoints[i].y);
-      }
-      boundaryPath.closePath();
+      // Smooth boundary path with curved rounded corners (24px) for closing suction
+      const boundaryPath = buildGenieBoundaryPath(leftPoints, rightPoints, 24);
 
       // Shadow
       ctx.save();
