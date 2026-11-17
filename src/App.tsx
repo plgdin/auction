@@ -264,6 +264,44 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   );
 }
 
+function CartOverlay({ onClose }: { onClose: () => void }) {
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.22, ease: "easeOut" }}
+        onClick={onClose}
+        className="fixed inset-0 bg-[#25170F]/55 backdrop-blur-sm"
+      />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 16 }}
+        transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
+        className="relative z-10 w-full max-w-[512px] flex justify-center"
+      >
+        <CartOverlayCard onClose={onClose} />
+      </motion.div>
+    </div>
+  );
+}
+
 function SavedOverlay({ onClose }: { onClose: () => void }) {
   const { db, favorites, toggleFavorite } = useStore();
   const saved = db.products.filter((product) => favorites.includes(product.id));
@@ -517,16 +555,13 @@ function Shell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
-  const [cartOpenInstant, setCartOpenInstant] = useState(false);
   const [authPrompt, setAuthPrompt] = useState<AuthPromptDetail | null>(null);
   const [lastPath, setLastPath] = useState(route.path);
 
   useEffect(() => onAuthPrompt(setAuthPrompt), []);
 
   useEffect(() => {
-    const openCart = (event: Event) => {
-      const detail = (event as CustomEvent<{ instant?: boolean }>).detail;
-      setCartOpenInstant(Boolean(detail?.instant));
+    const openCart = () => {
       setCartOpen(true);
     };
     window.addEventListener("lelam-open-cart", openCart);
@@ -574,10 +609,7 @@ function Shell() {
         unreadCount={unreadCount}
         onOpenSearch={() => setSearchOpen(true)}
         onOpenSaved={() => setSavedOpen(true)}
-        onOpenCart={() => {
-          setCartOpenInstant(false);
-          setCartOpen(true);
-        }}
+        onOpenCart={() => setCartOpen(true)}
       />
 
       <div className="site-content">
@@ -607,20 +639,11 @@ function Shell() {
       />
 
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
-      {cartOpen && (
-        <GenieSearchModal
-          isOpen
-          onClose={() => {
-            setCartOpen(false);
-            setCartOpenInstant(false);
-          }}
-          originSelector=".lelam-bid-btn"
-          textureKind="cart"
-          skipOpenAnimation={cartOpenInstant}
-        >
-          <CartOverlayCard />
-        </GenieSearchModal>
-      )}
+      <AnimatePresence>
+        {cartOpen && (
+          <CartOverlay onClose={() => setCartOpen(false)} />
+        )}
+      </AnimatePresence>
       {savedOpen && <SavedOverlay onClose={() => setSavedOpen(false)} />}
       {authPrompt && <AuthPrompt detail={authPrompt} onClose={() => setAuthPrompt(null)} />}
       <ToastHost />
