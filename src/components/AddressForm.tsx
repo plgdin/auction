@@ -50,7 +50,11 @@ export function AddressForm({
     >
       <div className="field-row three">
         <Field label="Label">
-          <input value={form.label} onChange={(event) => update("label", event.target.value)} />
+          <input
+            value={form.label}
+            onChange={(event) => update("label", event.target.value)}
+            placeholder="e.g. Home, Studio"
+          />
         </Field>
         <Field label="Recipient name">
           <input
@@ -58,6 +62,7 @@ export function AddressForm({
             onChange={(event) => update("name", event.target.value)}
             required
             autoComplete="name"
+            placeholder="Full name"
           />
         </Field>
         <Field label="Phone">
@@ -67,6 +72,7 @@ export function AddressForm({
             required
             inputMode="tel"
             autoComplete="tel"
+            placeholder="10-digit mobile"
           />
         </Field>
       </div>
@@ -76,6 +82,7 @@ export function AddressForm({
           onChange={(event) => update("line1", event.target.value)}
           required
           autoComplete="address-line1"
+          placeholder="Flat, House no., Building, Apartment"
         />
       </Field>
       <Field label="Address line 2" hint="Optional">
@@ -83,16 +90,27 @@ export function AddressForm({
           value={form.line2}
           onChange={(event) => update("line2", event.target.value)}
           autoComplete="address-line2"
+          placeholder="Area, Street, Landmark"
         />
       </Field>
       <div className="field-row three">
         <Field label="City">
-          <input value={form.city} onChange={(event) => update("city", event.target.value)} required />
+          <input
+            value={form.city}
+            onChange={(event) => update("city", event.target.value)}
+            required
+            placeholder="City"
+          />
         </Field>
         <Field label="State">
-          <input value={form.state} onChange={(event) => update("state", event.target.value)} required />
+          <input
+            value={form.state}
+            onChange={(event) => update("state", event.target.value)}
+            required
+            placeholder="State"
+          />
         </Field>
-        <Field label="PIN code" hint="Enter your six-digit Indian PIN code">
+        <Field label="PIN code" hint="6-digit Indian PIN">
           <input
             value={form.pincode}
             onChange={(event) => update("pincode", event.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -102,6 +120,7 @@ export function AddressForm({
             minLength={6}
             maxLength={6}
             pattern="[1-9][0-9]{5}"
+            placeholder="PIN code"
           />
         </Field>
       </div>

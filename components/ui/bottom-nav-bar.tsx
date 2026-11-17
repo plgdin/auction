@@ -83,9 +83,9 @@ export function BottomNavBar({
             data-active={isActive ? "true" : undefined}
             whileTap={{ scale: 0.97 }}
             className={cn(
-              "flex items-center gap-0 px-3 py-2 rounded-full transition-colors duration-200 relative h-10 min-w-[44px] min-h-[40px] max-h-[44px]",
+              "flex items-center gap-0 px-3 py-2 rounded-full transition-colors duration-200 relative h-10 min-w-[44px] min-h-[40px] max-h-[44px] font-bold",
               isActive
-                ? "bg-[#493022]/12 text-[#382212] gap-2 font-semibold"
+                ? "bg-[#493022]/12 text-[#382212] gap-2"
                 : "bg-transparent text-[#5c4033] hover:text-[#382212] hover:bg-[#493022]/6",
               "focus:outline-none focus-visible:ring-0",
             )}
@@ -95,7 +95,7 @@ export function BottomNavBar({
           >
             <Icon
               size={20}
-              strokeWidth={isActive ? 2.3 : 1.8}
+              strokeWidth={isActive ? 2.6 : 2.2}
               aria-hidden
               className="transition-colors duration-200 shrink-0 text-inherit"
             />
@@ -116,8 +116,8 @@ export function BottomNavBar({
             >
               <span
                 className={cn(
-                  "font-medium text-xs whitespace-nowrap select-none transition-opacity duration-200 overflow-hidden text-ellipsis leading-tight text-inherit",
-                  isActive ? "text-[#382212] font-semibold" : "text-[#5c4033]",
+                  "font-bold text-xs whitespace-nowrap select-none transition-opacity duration-200 overflow-hidden text-ellipsis leading-tight text-inherit",
+                  isActive ? "text-[#382212]" : "text-[#5c4033]",
                 )}
                 title={item.label}
               >
