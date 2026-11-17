@@ -1,4 +1,4 @@
-import { Heart, ShoppingBag } from "lucide-react";
+import { Check, Heart, ShoppingBag } from "lucide-react";
 import { Link, navigate } from "./Link";
 import { useStore } from "../lib/store";
 import { formatMoney } from "../lib/format";
@@ -69,7 +69,7 @@ export function ShopCard({ product }: { product: Product }) {
           <button
             type="button"
             className={`shop-cart ${inCart ? "is-in-cart" : ""}`}
-            aria-label={inCart ? `View cart with ${product.title}` : `Add ${product.title} to cart`}
+            aria-label={inCart ? `In cart: ${product.title}` : `Add ${product.title} to cart`}
             onClick={() => {
               if (inCart) {
                 navigate("#/cart");
@@ -80,8 +80,11 @@ export function ShopCard({ product }: { product: Product }) {
               else toast(result.error, "error");
             }}
           >
-            <ShoppingBag size={14} strokeWidth={1.7} />
-            <span className="shop-cart-label">{inCart ? "In cart" : "Add to cart"}</span>
+            {inCart ? (
+              <Check size={14} strokeWidth={2.4} />
+            ) : (
+              <ShoppingBag size={14} strokeWidth={1.8} />
+            )}
           </button>
         </div>
       </div>
