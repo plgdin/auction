@@ -1089,8 +1089,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (order.buyerId !== activeUser.id && order.sellerId !== activeUser.id && activeUser.role !== "admin") {
         return { ok: false, error: "Not your order." };
       }
+      if (activeUser.role !== "admin" && order.source === "auction") {
+        return { ok: false, error: "Auction wins are final. Auction orders can't be cancelled." };
+      }
       if (["shipped", "delivered", "cancelled", "returned"].includes(order.status)) {
         return { ok: false, error: "This order can no longer be cancelled." };
+      }
+      if (
+        order.shipment &&
+        ["picked_up", "in_transit", "out_for_delivery", "delivered", "returned"].includes(order.shipment.status)
+      ) {
+        return { ok: false, error: "The parcel has been picked up. Orders can only be cancelled before pickup." };
       }
       const next = clone(current);
       const target = next.orders.find((item) => item.id === orderId)!;
@@ -1122,6 +1131,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!order) return { ok: false, error: "Order not found." };
       if (order.buyerId !== current.sessionUserId) return { ok: false, error: "Not your order." };
       if (order.status !== "delivered") return { ok: false, error: "Only delivered orders can be returned." };
+      if (order.source === "auction") {
+        return {
+          ok: false,
+          error: "Auction wins are final. If the item is damaged or not as described, report the issue and our team will review it.",
+        };
+      }
       const next = clone(current);
       const target = next.orders.find((item) => item.id === orderId)!;
       target.status = "returned";

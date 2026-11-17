@@ -1580,6 +1580,14 @@ html { scroll-behavior: smooth; }
 .order-header p { font-size: 11.5px; color: var(--mkt-muted); }
 .order-status-stack { display: flex; gap: 7px; flex-wrap: wrap; }
 .order-callout { display: flex; align-items: center; gap: 9px; margin-bottom: 18px; padding: 13px 15px; border-radius: 9px; background: #fbf3ee; font-size: 11.5px; color: #7a5545; }
+.order-callout.is-success { background: #eef2ea; color: #3f6b46; }
+.order-callout.is-success svg { color: var(--mkt-olive); flex: none; }
+.cancel-window-note { margin-top: -6px; padding: 0 4px; font-size: 10.5px; line-height: 1.55; color: var(--mkt-muted); }
+.auction-policy { margin-top: 14px; padding: 14px 16px; border: 1px dashed var(--mkt-line); border-radius: 10px; background: var(--mkt-cream); }
+.auction-policy h3 { display: flex; align-items: center; gap: 7px; font-family: var(--serif); font-size: 14px; margin: 0 0 8px; }
+.auction-policy h3 svg { color: var(--mkt-warm); flex: none; }
+.auction-policy p { font-size: 11px; line-height: 1.6; color: #514d42; margin: 0 0 8px; }
+.auction-policy .text-link { font-size: 11.5px; }
 .order-layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
 .order-main { display: grid; gap: 18px; }
 .order-items { display: grid; gap: 12px; }
@@ -2095,6 +2103,129 @@ html { scroll-behavior: smooth; }
 .sell-how strong { font-size: 16px; }
 .sell-how p { margin-top: 5px; font-size: 14px; line-height: 1.65; }
 .sell-how-note { margin-top: 24px; padding-top: 18px; font-size: 13px; line-height: 1.65; }
+
+/* Scrapbook sell landing — same world as the paper home */
+.sell-hero { align-items: center; }
+.sell-highlight { position: relative; z-index: 0; display: inline-block; }
+.sell-highlight::before {
+  position: absolute;
+  z-index: -1;
+  inset: 16% -3% 8% -4%;
+  content: "";
+  background: var(--mkt-blush, #e7a89d);
+  opacity: .85;
+  transform: rotate(-1.4deg);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 300 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 17C52 4 122 3 297 9l-2 37c-78 12-182 12-291 1Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 300 64' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 17C52 4 122 3 297 9l-2 37c-78 12-182 12-291 1Z'/%3E%3C/svg%3E");
+  -webkit-mask-size: 100% 100%;
+  mask-size: 100% 100%;
+}
+.sell-tape {
+  position: absolute;
+  z-index: 3;
+  top: -11px;
+  left: 50%;
+  width: 74px;
+  height: 22px;
+  background: rgba(198, 162, 108, .52);
+  transform: translateX(-50%) rotate(-3deg);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .18) inset;
+}
+.sell-tape::before,
+.sell-tape::after { position: absolute; top: 0; bottom: 0; width: 3px; content: ""; background: rgba(255, 248, 236, .25); }
+.sell-tape::before { left: 1px; }
+.sell-tape::after { right: 1px; }
+.sell-hand-note {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 24px;
+  padding: 12px 28px 14px;
+  background: #f6e8d2;
+  box-shadow: 0 7px 14px rgba(70, 48, 28, .1);
+  transform: rotate(-2deg);
+}
+.sell-hand-note .sell-tape { width: 58px; top: -10px; transform: translateX(-50%) rotate(5deg); }
+.sell-hand-note p { margin: 0; font-family: "Caveat", cursive; font-weight: 600; font-size: 25px; line-height: 1.2; color: #33241a; }
+.sell-collage { position: relative; min-height: 420px; }
+.sell-polaroid {
+  position: absolute;
+  margin: 0;
+  padding: 11px 11px 30px;
+  background: #fffaf0;
+  box-shadow: 0 16px 30px rgba(58, 38, 22, .22), 0 2px 4px rgba(58, 38, 22, .14);
+}
+.sell-polaroid img { width: 100%; height: 100%; object-fit: cover; display: block; filter: sepia(.16) saturate(.94) contrast(.98); }
+.sell-polaroid .sell-tape { z-index: 4; }
+.sell-polaroid.is-a { top: 18px; left: 4%; width: 54%; height: 62%; transform: rotate(-5deg); z-index: 2; }
+.sell-polaroid.is-a .sell-tape { left: 32%; transform: translateX(-50%) rotate(-7deg); width: 84px; }
+.sell-polaroid.is-b { top: -4px; right: 0; width: 38%; height: 44%; transform: rotate(4deg); z-index: 1; }
+.sell-polaroid.is-b .sell-tape { left: 66%; transform: translateX(-50%) rotate(6deg); width: 58px; }
+.sell-polaroid.is-c { bottom: 6px; right: 4%; width: 44%; height: 40%; transform: rotate(5deg); z-index: 3; }
+.sell-polaroid.is-c .sell-tape { left: 62%; transform: translateX(-50%) rotate(4deg); width: 64px; top: -13px; }
+.sell-stamp {
+  position: absolute;
+  z-index: 4;
+  bottom: 30%;
+  left: -8px;
+  display: grid;
+  place-content: center;
+  gap: 2px;
+  width: 110px;
+  height: 110px;
+  border: 1px dashed rgba(70, 52, 36, .8);
+  border-radius: 50%;
+  background: rgba(247, 236, 219, .9);
+  box-shadow: 0 3px 8px rgba(60, 40, 24, .08);
+  color: #3c2b1d;
+  font-size: 10.5px;
+  letter-spacing: .18em;
+  text-align: center;
+  text-transform: uppercase;
+  transform: rotate(-12deg);
+}
+.sell-stamp::before { position: absolute; inset: 5px; content: ""; border: 1px solid rgba(70, 52, 36, .25); border-radius: 50%; }
+.sell-how { margin: 0 0 56px; }
+.sell-how ol { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(20px, 3vw, 44px); margin-top: 24px; }
+.sell-how li { display: grid; gap: 4px; justify-items: start; }
+.sell-how-photo {
+  position: relative;
+  width: min(210px, 100%);
+  height: 136px;
+  margin-bottom: 14px;
+  padding: 8px 8px 16px;
+  background: #fffaf0;
+  box-shadow: 0 10px 18px rgba(64, 44, 27, .16);
+  transform: rotate(-2deg);
+}
+.sell-how-photo img { width: 100%; height: 100%; object-fit: cover; display: block; filter: sepia(.12) saturate(.94); }
+.sell-how-photo .sell-tape { width: 62px; top: -12px; }
+.sell-how li:nth-child(2) .sell-how-photo { transform: rotate(1.6deg); }
+.sell-how li:nth-child(3) .sell-how-photo { transform: rotate(-1.2deg); }
+.sell-step-number {
+  position: absolute;
+  bottom: -15px;
+  left: -11px;
+  display: grid;
+  place-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #6b4d34;
+  color: #f9eddb;
+  font-family: var(--serif);
+  font-size: 18px;
+  box-shadow: 0 2px 4px rgba(48, 33, 20, .24);
+}
+@media (max-width: 1100px) {
+  .sell-collage { min-height: 360px; }
+  .sell-stamp { left: 0; }
+}
+@media (max-width: 900px) {
+  .sell-collage { min-height: 320px; margin-top: 10px; }
+  .sell-hand-note { margin-top: 20px; }
+  .sell-how ol { grid-template-columns: 1fr; gap: 26px; }
+}
 .sell-layout { grid-template-columns: minmax(0, 1fr) minmax(300px, 360px); gap: clamp(24px, 4vw, 56px); }
 .sell-main { gap: 24px; }
 .sell-block { gap: 22px; padding: clamp(24px, 3vw, 36px); border-radius: 16px; background: #fff; }

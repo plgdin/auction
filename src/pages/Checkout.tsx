@@ -369,7 +369,14 @@ export function CheckoutPage() {
             </div>
             <div className="summary-aside">
               <strong>Need to change something?</strong>
-              <p>You can cancel before the seller arranges pickup.</p>
+              <p>
+                You can cancel free of charge any time before the parcel is picked up. After
+                pickup, the order can&apos;t be cancelled.
+              </p>
+              <p>
+                Won an auction? Auction orders are final — no cancellation, and no returns or
+                refunds unless the item is damaged or not as described.
+              </p>
             </div>
           </aside>
         </div>

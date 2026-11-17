@@ -2,9 +2,11 @@ import { useState } from "react";
 import {
   ArrowLeft,
   ArrowUpRight,
+  BadgeCheck,
   Check,
   Clock3,
   CreditCard,
+  Gavel,
   MapPin,
   Package,
   RotateCcw,
@@ -47,6 +49,7 @@ export function OrderDetailPage() {
     requestReturn,
     addReview,
     advanceShipment,
+    reportProduct,
   } = useStore();
   const orderId = route.path.split("/")[2] || "";
   const order = db.orders.find((item) => item.id === orderId);
@@ -85,6 +88,7 @@ export function OrderDetailPage() {
   const isBuyer = order.buyerId === user.id;
   const isSeller = order.sellerId === user.id;
   const isAdmin = user.role === "admin";
+  const isAuction = order.source === "auction";
   if (!isBuyer && !isSeller && !isAdmin) {
     return (
       <main className="page-shell">
@@ -103,11 +107,17 @@ export function OrderDetailPage() {
   const buyer = db.users.find((item) => item.id === order.buyerId);
   const existingReview = db.reviews.find((review) => review.orderId === order.id);
   const activeIndex = order.shipment ? shipmentSteps.indexOf(order.shipment.status) : -1;
+  const pickedUp = Boolean(
+    order.shipment &&
+      ["picked_up", "in_transit", "out_for_delivery", "delivered", "returned"].includes(order.shipment.status),
+  );
   const canPay = isBuyer && order.status === "pending_payment";
   const canCancel =
+    !isAuction &&
     (isBuyer || isSeller || isAdmin) &&
-    ["pending_payment", "paid", "processing", "awaiting_pickup"].includes(order.status);
-  const canReturn = isBuyer && order.status === "delivered";
+    ["pending_payment", "paid", "processing", "awaiting_pickup"].includes(order.status) &&
+    !pickedUp;
+  const canReturn = isBuyer && !isAuction && order.status === "delivered";
   const canReview = isBuyer && order.status === "delivered" && !existingReview;
 
   return (
@@ -173,6 +183,17 @@ export function OrderDetailPage() {
             <span>
               Payment is due by {formatDateTime(order.paymentDeadline)}. The item stays reserved
               until then.
+            </span>
+          </div>
+        )}
+
+        {order.status === "paid" && (
+          <div className="order-callout is-success">
+            <BadgeCheck size={17} />
+            <span>
+              {isAuction
+                ? "Payment confirmed for your auction win. We've asked the seller to arrange pickup — auction orders are final and can't be cancelled."
+                : `Payment confirmed. We've asked ${seller?.name ?? "the seller"} to arrange pickup. You can cancel free of charge any time before the parcel is picked up.`}
             </span>
           </div>
         )}
@@ -405,18 +426,55 @@ export function OrderDetailPage() {
               )}
 
               {canCancel && (
-                <button
-                  type="button"
-                  className="button button-ghost summary-cta"
-                  onClick={() => {
-                    if (!window.confirm("Cancel this order?")) return;
-                    const result = cancelOrder(order.id);
-                    if (result.ok) toast("Order cancelled.");
-                    else toast(result.error, "error");
-                  }}
-                >
-                  <X size={14} /> Cancel order
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className="button button-ghost summary-cta"
+                    onClick={() => {
+                      if (!window.confirm("Cancel this order?")) return;
+                      const result = cancelOrder(order.id);
+                      if (result.ok) toast("Order cancelled.");
+                      else toast(result.error, "error");
+                    }}
+                  >
+                    <X size={14} /> Cancel order
+                  </button>
+                  <p className="cancel-window-note">
+                    You can cancel free of charge until the parcel is picked up. Once it&apos;s with
+                    the courier, the order can&apos;t be cancelled.
+                  </p>
+                </>
+              )}
+
+              {isAuction && isBuyer && (
+                <div className="auction-policy">
+                  <h3>
+                    <Gavel size={14} /> Auction win — final sale
+                  </h3>
+                  <p>
+                    Bids are binding commitments, so auction orders can&apos;t be cancelled,
+                    returned or refunded.
+                  </p>
+                  <p>
+                    The one exception: if the item arrives damaged, is materially not as described,
+                    or isn&apos;t what you bid on, report it and our team will review the case.
+                  </p>
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => {
+                      const result = reportProduct(
+                        order.items[0].productId,
+                        "Item not as described",
+                        `Auction order ${order.number}: the item did not match the listing.`,
+                      );
+                      if (result.ok) toast("Report sent. Our team will review it.", "success");
+                      else toast(result.error, "error");
+                    }}
+                  >
+                    Report an issue
+                  </button>
+                </div>
               )}
 
               <p className="payment-demo-note">
@@ -458,7 +516,8 @@ export function OrderDetailPage() {
           <ShieldCheck size={15} />
           <span>
             Keep the delivery address accurate. Auctions and accepted offers have a limited payment
-            window.
+            window. Auction wins are final — no cancellation, return or refund unless the item is
+            genuinely damaged or not as described.
           </span>
           <button
             type="button"
