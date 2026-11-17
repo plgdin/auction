@@ -194,9 +194,14 @@ function Hero({
               <button
                 type="button"
                 onClick={() => navigate("#/products")}
-                className="home-hero-secondary-cta inline-flex items-center justify-center gap-2 rounded-[10px] border-2 border-[#493022]/55 bg-[#FAF7F2] px-6 py-3.5 text-base font-medium text-[#493022] shadow-[0_5px_16px_rgba(73,48,34,0.12)] transition-colors duration-200 hover:bg-white"
+                style={{
+                  background: "linear-gradient(145deg, #5c3b24 0%, #442a17 50%, #341f10 100%)",
+                  color: "#FAF7F2",
+                  boxShadow: "0 8px 22px rgba(52, 31, 16, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15)",
+                }}
+                className="home-hero-secondary-cta inline-flex items-center justify-center gap-2.5 rounded-[10px] border border-[#301c0f] px-6 py-3.5 sm:py-4 text-base sm:text-lg font-medium transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
               >
-                <ShoppingBag className="h-4 w-4" />
+                <ShoppingBag className="h-[18px] w-[18px] text-[#FAF7F2]" />
                 <span>Buy Now</span>
               </button>
             </div>

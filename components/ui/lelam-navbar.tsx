@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  ArrowRight,
   Bell,
   Gavel,
   Heart,
@@ -94,10 +95,10 @@ export function LelamNavbar({
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
-      {/* Top Paper Craft Torn Edge — sits above the bookmark anchors, seamlessly tucking them into the top edge */}
+      {/* Top Paper Craft Torn Edge — sits as the topmost layer above the header and bookmark anchors */}
       <div
         className="paper-craft-top absolute top-0 left-0 right-0 w-full pointer-events-none select-none overflow-hidden"
-        style={{ height: "32px", zIndex: 35 }}
+        style={{ height: "32px", zIndex: 45 }}
         aria-hidden="true"
       >
         <img
@@ -118,7 +119,7 @@ export function LelamNavbar({
         />
       </div>
 
-      <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-none z-40">
+      <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-none z-35">
         <a
           href="#top"
           className="flex items-center text-[#493022] brand-logo no-underline shrink-0 pointer-events-auto"
@@ -272,30 +273,41 @@ export function LelamNavbar({
                 ) : (
                   <>
                     <div className="account-menu-head">
-                      <span className="account-avatar">?</span>
+                      <span className="account-avatar">
+                        <UserRound size={17} strokeWidth={2.2} />
+                      </span>
                       <div>
                         <strong>Not signed in</strong>
                         <span>Sign in to buy, bid, and sell.</span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAccountOpen(false);
-                        navigate("#/login");
-                      }}
-                    >
-                      <UserRound size={16} /> Sign in
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAccountOpen(false);
-                        navigate("#/register");
-                      }}
-                    >
-                      <Store size={16} /> Create account
-                    </button>
+                    <div className="account-menu-guest-actions">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAccountOpen(false);
+                          navigate("#/login");
+                        }}
+                        className="account-menu-signin-btn"
+                      >
+                        <span className="account-btn-inner">
+                          <UserRound size={15} />
+                          <span>Sign in</span>
+                        </span>
+                        <ArrowRight size={14} className="account-btn-arrow" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAccountOpen(false);
+                          navigate("#/register");
+                        }}
+                        className="account-menu-register-btn"
+                      >
+                        <Store size={15} />
+                        <span>Create account</span>
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
