@@ -98,7 +98,13 @@ function loadDatabase(): Database {
     if (raw) {
       const parsed = JSON.parse(raw) as Database;
       if (parsed.version === 1 || parsed.version === 2) {
-        // Older demo saves may miss newer settings keys.
+        // Upgrade all non-admin users to full client tier (buyer & seller)
+        for (const u of parsed.users) {
+          if (u.role !== "admin") {
+            u.isSeller = true;
+            if (!u.sellerTier) u.sellerTier = "normal";
+          }
+        }
         return { ...parsed, settings: { ...seeded.settings, ...parsed.settings } };
       }
     }

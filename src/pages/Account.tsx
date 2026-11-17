@@ -25,8 +25,12 @@ import { formatDate, formatDateTime, formatMoney, timeAgo } from "../lib/format"
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
+import { InventoryTab } from "./seller/InventoryTab";
+import { OrdersTab as SellerOrdersTab } from "./seller/OrdersTab";
+import { OffersTab as SellerOffersTab } from "./seller/OffersTab";
+import { MoneyTab as EarningsTab } from "./seller/MoneyTab";
 
-export function AccountPage() {
+export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
   const {
     db,
     user,
@@ -43,7 +47,7 @@ export function AccountPage() {
     markAllNotificationsRead,
   } = useStore();
   const route = useRoute();
-  const [tab, setTab] = useState(route.query.get("tab") || "orders");
+  const [tab, setTab] = useState(route.query.get("tab") || defaultTab || "orders");
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [profile, setProfile] = useState({ name: "", phone: "", bio: "", location: "" });
   const [reviewOrder, setReviewOrder] = useState("");
@@ -55,8 +59,8 @@ export function AccountPage() {
   const [copiedAffiliate, setCopiedAffiliate] = useState(false);
 
   useEffect(() => {
-    setTab(route.query.get("tab") || "orders");
-  }, [route.query]);
+    setTab(route.query.get("tab") || defaultTab || "orders");
+  }, [route.query, defaultTab]);
 
   useEffect(() => {
     if (user) {
@@ -101,6 +105,17 @@ export function AccountPage() {
   const openOrders = myOrders.filter(
     (order) => !["delivered", "cancelled", "expired", "returned"].includes(order.status),
   );
+
+  const mySales = db.orders.filter((order) => order.sellerId === user.id);
+  const myListings = db.products.filter((product) => product.sellerId === user.id);
+  const sellerOffers = db.offers.filter((offer) => offer.sellerId === user.id);
+  const pendingSellerOffers = sellerOffers.filter((offer) => ["pending", "counter_offered"].includes(offer.status));
+  const mySettlements = db.settlements.filter((s) => s.sellerId === user.id);
+  const lifetimeEarnings = mySettlements
+    .filter((s) => s.status === "paid")
+    .reduce((sum, s) => sum + s.sellerPayout, 0);
+  const pendingSalesCount = mySales.filter((o) => ["paid", "processing", "awaiting_pickup"].includes(o.status)).length;
+
   const affiliateAccount = accountForUser(user, db.affiliates) ?? previewAccount(user, db.settings);
   const affiliate = summariseAffiliate(affiliateAccount, db);
   const commissionRatePct = Math.round(affiliateAccount.commissionRate * 1000) / 10;
@@ -140,31 +155,55 @@ export function AccountPage() {
               <div className="eyebrow">MY ACCOUNT</div>
               <h1>{user.name}</h1>
               <p>
-                {user.email} · Joined {formatDate(user.joinedAt)} · {user.role === "admin" ? "Admin" : "Member"}
+                {user.email} · {user.sellerTier === "verified" ? "Verified Big Seller (5% fee)" : "Normal Seller (10% fee)"} · Joined {formatDate(user.joinedAt)}
               </p>
             </div>
           </div>
           <div className="account-header-actions">
-            {user.isSeller && (
-              <Link href="#/seller" className="button button-ghost">
-                Seller dashboard
-              </Link>
-            )}
+            <Link href="#/sell?start=1" className="button button-olive">
+              <Plus size={15} /> List an item
+            </Link>
             {user.role === "admin" && (
               <Link href="#/admin" className="button button-ghost">
                 Admin panel
               </Link>
             )}
-            <Link href="#/products" className="button button-olive">
+            <Link href="#/products" className="button button-ghost">
               Keep shopping <ArrowUpRight size={15} />
             </Link>
           </div>
         </div>
 
+        <div className="stat-grid" style={{ marginBottom: "2rem" }}>
+          <div className="stat-card">
+            <span><Package size={15} /> My Listings</span>
+            <strong>{myListings.length}</strong>
+            <em>{myListings.filter(p => p.status === "active").length} live for buyers</em>
+          </div>
+          <div className="stat-card">
+            <span><Truck size={15} /> Sales to Ship</span>
+            <strong>{pendingSalesCount}</strong>
+            <em>{mySales.length} total orders received</em>
+          </div>
+          <div className="stat-card">
+            <span><Tag size={15} /> Purchases</span>
+            <strong>{myOrders.length}</strong>
+            <em>{openOrders.length} in progress</em>
+          </div>
+          <div className="stat-card">
+            <span><Wallet size={15} /> Paid Out</span>
+            <strong>{formatMoney(lifetimeEarnings)}</strong>
+            <em>{user.sellerTier === "verified" ? "5% platform commission" : "10% platform commission"}</em>
+          </div>
+        </div>
+
         <Tabs
           tabs={[
-            { id: "orders", label: "Orders", count: myOrders.length },
-            { id: "offers", label: "Offers", count: pendingOffers.length },
+            { id: "orders", label: "Purchases", count: myOrders.length },
+            { id: "sales", label: "My Sales", count: pendingSalesCount > 0 ? pendingSalesCount : undefined },
+            { id: "listings", label: "My Listings", count: myListings.length },
+            { id: "offers", label: "Offers", count: pendingOffers.length + pendingSellerOffers.length > 0 ? pendingOffers.length + pendingSellerOffers.length : undefined },
+            { id: "earnings", label: "Earnings" },
             { id: "saved", label: "Saved", count: savedProducts.length },
             { id: "addresses", label: "Addresses", count: user.addresses.length },
             { id: "notifications", label: "Notifications", count: unreadCount },
@@ -276,11 +315,44 @@ export function AccountPage() {
           </div>
         )}
 
-        {tab === "offers" && (
+        {tab === "sales" && (
           <div className="account-section">
             <div className="account-section-head">
-              <h2>Your private offers</h2>
-              <span>Offers are never visible to other buyers.</span>
+              <h2>Orders to Fulfill</h2>
+              <span>When a buyer purchases one of your pieces, pack it and confirm rider pickup here.</span>
+            </div>
+            <SellerOrdersTab />
+          </div>
+        )}
+
+        {tab === "listings" && (
+          <div className="account-section">
+            <div className="account-section-head" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <div>
+                <h2>My Listings</h2>
+                <span>Pieces you put up for sale on the shop.</span>
+              </div>
+              <Link href="#/sell?start=1" className="button button-olive">
+                <Plus size={15} /> List an item
+              </Link>
+            </div>
+            <InventoryTab />
+          </div>
+        )}
+
+        {tab === "offers" && (
+          <div className="account-section">
+            <div style={{ marginBottom: "2rem" }}>
+              <div className="account-section-head">
+                <h2>Offers received on your items</h2>
+                <span>Buyers sent you these private offers. Accept, decline, or counter.</span>
+              </div>
+              <SellerOffersTab />
+            </div>
+
+            <div className="account-section-head" style={{ marginTop: "2rem" }}>
+              <h2>Offers you made to sellers</h2>
+              <span>Offers you sent to other sellers on the rail.</span>
             </div>
             {myOffers.length ? (
               <div className="offer-table">
@@ -489,6 +561,18 @@ export function AccountPage() {
                 actionHref="#/products"
               />
             )}
+          </div>
+        )}
+
+        {tab === "earnings" && (
+          <div className="account-section">
+            <div className="account-section-head">
+              <h2>Earnings & Payouts</h2>
+              <span>
+                Your sales earnings net of {user.sellerTier === "verified" ? "5% (Verified Big Seller)" : "10% (Normal Seller)"} commission.
+              </span>
+            </div>
+            <EarningsTab />
           </div>
         )}
 

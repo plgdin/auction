@@ -194,18 +194,16 @@ export function LelamNavbar({
                     >
                       <LayoutDashboard size={16} /> My account
                     </button>
-                    {user.isSeller && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setAccountOpen(false);
-                          navigate("#/seller");
-                        }}
-                      >
-                        <Store size={16} /> Seller dashboard
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAccountOpen(false);
+                        navigate("#/account?tab=listings");
+                      }}
+                    >
+                      <Store size={16} /> My Listings & Sales
+                    </button>
                     <button
                       type="button"
                       role="menuitem"
