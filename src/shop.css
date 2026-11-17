@@ -3,11 +3,11 @@
    ============================================================ */
 
 .shop-page {
-  --shop-ink: #3a2a1b;
-  --shop-muted: #756147;
-  --shop-line: #d3c0a2;
-  --shop-brown: #7b5737;
-  --shop-olive: #4d5434;
+  --shop-ink: #140a04;
+  --shop-muted: #4a3420;
+  --shop-line: #a68d6c;
+  --shop-brown: #4d2d14;
+  --shop-olive: #333a1e;
   --shop-serif: "DM Serif Display", Georgia, "Times New Roman", serif;
   --shop-paper: #f7edda;
 
@@ -22,7 +22,7 @@
 .shop-sheet {
   position: relative;
   width: 100%;
-  padding: 118px clamp(16px, 3.4vw, 52px) 56px;
+  padding: 80px clamp(16px, 3.4vw, 52px) 44px;
   background: transparent;
   box-shadow: none;
   clip-path: none;
@@ -42,15 +42,16 @@
 /* ---------- Filter rail ---------- */
 
 .shop-filters {
-  position: relative;
+  position: sticky;
+  top: 76px;
   filter: drop-shadow(0 4px 10px rgba(60, 40, 20, 0.16)) drop-shadow(0 14px 28px rgba(60, 40, 20, 0.18));
 }
 
 .shop-filter-paper {
   position: relative;
   width: 100%;
-  max-width: 280px;
-  padding: 24px 22px 64px;
+  max-width: 275px;
+  padding: 16px 18px 44px;
   background-color: #f7edda;
   background-image: 
     radial-gradient(ellipse at 50% 50%, rgba(255, 252, 245, 0.5) 0%, rgba(240, 222, 190, 0.2) 65%, rgba(175, 128, 75, 0.32) 100%),
@@ -104,27 +105,27 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(90, 63, 36, 0.18);
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(70, 42, 18, 0.22);
 }
 
 .shop-filter-title h2 {
   margin: 0;
   font-family: var(--shop-serif);
   font-style: italic;
-  font-weight: 700;
-  font-size: 26px;
+  font-weight: 800;
+  font-size: 22px;
   letter-spacing: -0.01em;
-  color: #2e1e12;
+  color: #0e0703;
 }
 
 .shop-filter-title svg {
-  color: #4c3927;
+  color: #1a0e05;
 }
 
 .shop-filter-group {
-  padding: 13px 0 12px;
-  border-bottom: 1px solid rgba(90, 63, 36, 0.16);
+  padding: 7px 0 6px;
+  border-bottom: 1px solid rgba(70, 42, 18, 0.18);
 }
 
 .shop-filter-group h3,
@@ -132,28 +133,32 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: 0 0 10px;
+  margin: 0 0 5px;
   font-family: var(--shop-serif);
-  font-size: 15px;
-  font-weight: 700;
-  color: #2e1e12;
+  font-size: 14px;
+  font-weight: 800;
+  color: #0e0703;
 }
 
 .shop-filter-group h3 svg,
 .shop-sort h3 svg {
-  color: #4c3927;
-  opacity: 0.85;
+  color: #1a0e05;
+  opacity: 0.95;
 }
 
 .shop-check {
   display: flex;
   align-items: center;
-  gap: 9px;
-  min-height: 23px;
-  margin-bottom: 4px;
-  font: 400 12.5px/1.2 "DM Sans", sans-serif;
-  color: #3d2b1a;
+  gap: 8px;
+  min-height: 20px;
+  margin-bottom: 2px;
+  font: 600 12px/1.2 "DM Sans", sans-serif;
+  color: #0e0703;
   cursor: pointer;
+}
+
+.shop-check:hover {
+  color: #000;
 }
 
 .shop-check input {
@@ -165,44 +170,44 @@
   width: 14px;
   height: 14px;
   margin: 0;
-  border: 1.2px solid #a89172;
+  border: 1.5px solid #4a2f18;
   border-radius: 3px;
-  background: rgba(255, 255, 255, 0.45);
+  background: rgba(255, 255, 255, 0.7);
   cursor: pointer;
 }
 
 .shop-check input:checked {
   background: #fbf5e8;
-  border-color: #6b4d2e;
+  border-color: #2b180a;
 }
 
 .shop-check input:checked::after {
   content: "";
   width: 9px;
   height: 9px;
-  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.6 6.3 4.6 9.2 10.4 2.9' fill='none' stroke='%233d2b1a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.6 6.3 4.6 9.2 10.4 2.9' fill='none' stroke='%230e0703' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
     center / contain no-repeat;
 }
 
 .shop-check-count {
   margin-left: auto;
-  font: 400 11px/1 "DM Sans", sans-serif;
-  color: #8a7458;
+  font: 700 11px/1 "DM Sans", sans-serif;
+  color: #3d2613;
   font-style: normal;
 }
 
 /* Price */
 
 .shop-price {
-  padding-bottom: 14px;
+  padding-bottom: 7px;
 }
 
 .shop-price-ends {
   display: flex;
   justify-content: space-between;
-  margin: 5px 1px 0;
-  font: 500 10.5px/1 "DM Sans", sans-serif;
-  color: #7a634e;
+  margin: 3px 1px 0;
+  font: 700 11px/1 "DM Sans", sans-serif;
+  color: #0e0703;
 }
 
 .shop-range {
@@ -210,8 +215,8 @@
   -webkit-appearance: none;
   display: block;
   width: 100%;
-  height: 18px;
-  margin: 8px 0 4px;
+  height: 16px;
+  margin: 4px 0 2px;
   background: transparent;
   cursor: pointer;
 }
@@ -219,7 +224,7 @@
 .shop-range::-webkit-slider-runnable-track {
   height: 3px;
   border-radius: 2px;
-  background: #5a3e23;
+  background: #2b180a;
 }
 
 .shop-range::-webkit-slider-thumb {
@@ -230,14 +235,14 @@
   margin-top: -5.5px;
   border: 2px solid #f6eedc;
   border-radius: 50%;
-  background: #5a3e23;
-  box-shadow: 0 1px 3px rgba(58, 38, 18, 0.35);
+  background: #2b180a;
+  box-shadow: 0 1px 3px rgba(30, 15, 5, 0.45);
 }
 
 .shop-range::-moz-range-track {
   height: 3px;
   border-radius: 2px;
-  background: #5a3e23;
+  background: #2b180a;
 }
 
 .shop-range::-moz-range-thumb {
@@ -245,7 +250,7 @@
   height: 14px;
   border: 2px solid #f6eedc;
   border-radius: 50%;
-  background: #5a3e23;
+  background: #2b180a;
 }
 
 /* Sizes */
@@ -253,17 +258,17 @@
 .shop-size-list {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
+  gap: 5px;
 }
 
 .shop-size-list button {
-  height: 26px;
+  height: 24px;
   padding: 0 4px;
-  border: 1px solid #c2ae91;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.4);
-  color: #3d2b1a;
-  font: 500 11px/1 "DM Sans", sans-serif;
+  border: 1.3px solid #826444;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #0e0703;
+  font: 700 11px/1 "DM Sans", sans-serif;
   cursor: pointer;
   transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
   display: flex;
@@ -272,30 +277,40 @@
 }
 
 .shop-size-list button:hover {
-  border-color: #7a5a3a;
-  background: rgba(255, 255, 255, 0.6);
+  border-color: #3b2210;
+  background: #fff;
 }
 
 .shop-size-list button.selected {
-  background: #493022;
-  border-color: #493022;
-  color: #fbf5e8;
+  background: #2b180a;
+  border-color: #2b180a;
+  color: #fff8ef;
 }
 
 /* Sort */
 
 .shop-sort {
-  padding-top: 13px;
+  padding-top: 7px;
 }
 
 .shop-select-wrap {
   position: relative;
   display: flex;
   align-items: center;
-  height: 32px;
-  border: 1px solid #c2ae91;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.4);
+  height: 30px;
+  border-radius: 5px;
+}
+
+.shop-select-wrap .select-menu,
+.shop-select-wrap .select-menu-trigger {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1.3px solid #826444;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #0e0703;
+  font: 600 12px/1 "DM Sans", sans-serif;
 }
 
 .shop-select-wrap select {
@@ -304,10 +319,11 @@
   width: 100%;
   height: 100%;
   padding: 0 30px 0 10px;
-  border: 0;
-  background: transparent;
-  color: #4b3927;
-  font: 400 11px/1 "DM Sans", sans-serif;
+  border: 1.3px solid #826444;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.75);
+  color: #0e0703;
+  font: 600 12px/1 "DM Sans", sans-serif;
   cursor: pointer;
   outline: none;
 }
@@ -316,7 +332,7 @@
   position: absolute;
   right: 9px;
   pointer-events: none;
-  color: #5c4630;
+  color: #1a0e05;
 }
 
 .shop-clear {
@@ -926,5 +942,65 @@
 
   .shop-grid.is-list .shop-card-title {
     font-size: 15px;
+  }
+}
+
+/* ---------- Height-aware adjustments for 100% zoom laptops ---------- */
+
+@media (min-width: 821px) and (max-height: 860px) {
+  .shop-sheet {
+    padding-top: 68px;
+  }
+
+  .shop-filters {
+    top: 68px;
+  }
+
+  .shop-filter-paper {
+    padding: 12px 16px 36px;
+  }
+
+  .shop-filter-title {
+    padding-bottom: 5px;
+  }
+
+  .shop-filter-title h2 {
+    font-size: 20px;
+  }
+
+  .shop-filter-group {
+    padding: 5px 0 4px;
+  }
+
+  .shop-filter-group h3,
+  .shop-sort h3 {
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .shop-check {
+    min-height: 18px;
+    margin-bottom: 1px;
+    font-size: 11.5px;
+  }
+
+  .shop-check input {
+    width: 13px;
+    height: 13px;
+  }
+
+  .shop-size-list button {
+    height: 22px;
+    font-size: 10.5px;
+  }
+}
+
+@media (min-width: 821px) and (max-height: 740px) {
+  .shop-filter-content {
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(90, 60, 30, 0.4) transparent;
   }
 }
