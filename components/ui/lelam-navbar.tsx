@@ -218,35 +218,37 @@ export function LelamNavbar({
                       {unreadCount > 0 && <em>{unreadCount}</em>}
                     </button>
                     {user.role === "admin" && (
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setAccountOpen(false);
-                          navigate("#/admin");
-                        }}
-                      >
-                        <Shield size={16} /> Admin panel
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => {
+                            setAccountOpen(false);
+                            navigate("#/admin");
+                          }}
+                        >
+                          <Shield size={16} /> Admin panel
+                        </button>
+                        <div className="account-menu-sep" />
+                        <span className="account-menu-label">Demo accounts</span>
+                        {demoUsers.map((demo) => (
+                          <button
+                            key={demo.id}
+                            type="button"
+                            role="menuitem"
+                            className={demo.id === user.id ? "is-active" : ""}
+                            onClick={() => {
+                              switchAccount(demo.id);
+                              setAccountOpen(false);
+                              navigate("#/");
+                            }}
+                          >
+                            <span className="demo-dot" /> {demo.name}
+                            <em>{demo.role}</em>
+                          </button>
+                        ))}
+                      </>
                     )}
-                    <div className="account-menu-sep" />
-                    <span className="account-menu-label">Demo accounts</span>
-                    {demoUsers.map((demo) => (
-                      <button
-                        key={demo.id}
-                        type="button"
-                        role="menuitem"
-                        className={demo.id === user.id ? "is-active" : ""}
-                        onClick={() => {
-                          switchAccount(demo.id);
-                          setAccountOpen(false);
-                          navigate("#/");
-                        }}
-                      >
-                        <span className="demo-dot" /> {demo.name}
-                        <em>{demo.role}</em>
-                      </button>
-                    ))}
                     <div className="account-menu-sep" />
                     <button
                       type="button"
