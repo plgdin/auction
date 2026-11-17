@@ -389,8 +389,8 @@
 
 .shop-found {
   margin: 9px 0 0 2px;
-  font: 400 11.5px/1 "DM Sans", sans-serif;
-  color: #6f5b45;
+  font: 500 12px/1 "DM Sans", sans-serif;
+  color: #261608;
 }
 
 .shop-view {
@@ -402,21 +402,38 @@
 
 .shop-view span {
   margin-right: 2px;
-  font: 400 10.5px/1 "DM Sans", sans-serif;
-  color: #4c3a28;
+  font: 600 11.5px/1 "DM Sans", sans-serif;
+  color: #140a04;
+  letter-spacing: 0.01em;
 }
 
 .shop-view button {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 3px;
-  color: #6d5841;
+  width: 25px;
+  height: 25px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  color: #3d2612;
+  background: transparent;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease, border-color 150ms ease, transform 120ms ease;
+}
+
+.shop-view button svg {
+  stroke-width: 2.1px;
+}
+
+.shop-view button:hover {
+  color: #0c0602;
+  background: rgba(77, 45, 20, 0.09);
+  transform: translateY(-1px);
 }
 
 .shop-view button.is-active {
-  color: #2f2115;
+  color: #0c0602;
+  background: rgba(77, 45, 20, 0.12);
+  border-color: rgba(77, 45, 20, 0.28);
 }
 
 /* ---------- Cards ---------- */
