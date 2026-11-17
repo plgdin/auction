@@ -152,7 +152,7 @@ export function SelectMenu({
   };
 
   return (
-    <div className={`select-menu ${className}`} ref={root}>
+    <div className={`select-menu ${className} ${open ? "is-open" : ""}`} ref={root}>
       <button
         ref={trigger}
         type="button"

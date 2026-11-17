@@ -20,7 +20,6 @@ export const config = {
   pgliteDir: required("PGLITE_DIR", path.resolve(process.cwd(), ".data", "pglite")),
   uploadsDir: required("UPLOADS_DIR", path.resolve(process.cwd(), "uploads")),
   appUrl: required("APP_URL", "http://localhost:5173"),
-  serviceablePrefixes: ["695"],
   demoSeed: process.env.SEED_DEMO !== "false",
 };
 

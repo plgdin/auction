@@ -7,14 +7,12 @@ import {
   ImagePlus,
   Info,
   LockKeyhole,
-  PackageCheck,
   Plus,
   Search,
   ShieldCheck,
   Store,
   Truck,
   Upload,
-  Wallet,
   X,
 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -25,6 +23,7 @@ import { promptAuth, withNext } from "../lib/authGate";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
+import { SELLER_COMMISSION_PERCENT, sellerNetPayout } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import type { Condition } from "../lib/types";
 
@@ -250,7 +249,6 @@ const emptyForm = {
   size: "",
   quantity: "1",
   location: "Trivandrum, Kerala",
-  shipping: "49",
   allowOffers: true,
   auctionConsent: false,
 };
@@ -292,7 +290,6 @@ export function SellPage() {
         size: editing.size || "",
         quantity: String(editing.quantity),
         location: editing.location,
-        shipping: String(editing.shippingFee / 100),
         allowOffers: editing.allowOffers,
         auctionConsent: editing.auctionConsent,
       });
@@ -384,7 +381,7 @@ export function SellPage() {
       size: form.size,
       quantity: Math.max(1, Number(form.quantity) || 1),
       location: form.location,
-      shippingFee: Math.round(Number(form.shipping) * 100),
+      shippingFee: 0,
       allowOffers: form.allowOffers,
       auctionConsent: form.auctionConsent,
     };
@@ -399,33 +396,56 @@ export function SellPage() {
 
   // Promo / landing section first (not the form). CTA right at top.
   const promo = !editing && !showForm ? (
-    <section className="sell-hero">
-      <div className="sell-hero-copy">
-        <div className="eyebrow">SELL ANYTHING · WE HANDLE SHIPPING</div>
-        <h1>Sell anything you want. We handle shipping & delivery.</h1>
-        <p>Clothes, shoes, electronics, furniture, collectibles, toys, books, sports gear — list what you have. We pack, ship, deliver and help you get paid. No courier runs for you.</p>
-        <div className="sell-hero-actions">
-          <button type="button" className="button button-olive" onClick={startSelling}>
-            Start selling now <ArrowRight size={16} />
-          </button>
-          {!user && (
-            <Link href={withNext("#/register", "#/sell?start=1")} className="button button-ghost">Create account — it&apos;s free</Link>
-          )}
-          {user && <Link href="#/seller" className="button button-ghost">Seller dashboard <ArrowUpRight size={15} /></Link>}
+    <>
+      <section className="sell-hero">
+        <div className="sell-hero-copy">
+          <div className="eyebrow">SELL ANYTHING · WE HANDLE SHIPPING</div>
+          <h1>
+            Sell <span className="sell-highlight">anything</span> you want. We handle shipping &amp; delivery.
+          </h1>
+          <p>Clothes, shoes, electronics, furniture, collectibles, toys, books, sports gear — list what you have. We pack, ship, deliver and help you get paid. No courier runs for you.</p>
+          <div className="sell-hero-actions">
+            <button type="button" className="button button-olive" onClick={startSelling}>
+              Start selling now <ArrowRight size={16} />
+            </button>
+            {!user && (
+              <Link href={withNext("#/register", "#/sell?start=1")} className="button button-ghost">Create account — it&apos;s free</Link>
+            )}
+            {user && <Link href="#/seller" className="button button-ghost">Seller dashboard <ArrowUpRight size={15} /></Link>}
+          </div>
+          <div className="sell-hand-note">
+            <span className="sell-tape" aria-hidden="true" />
+            <p>List it today — we do the rest.</p>
+          </div>
+          {!user && <p className="sell-auth-note">Need an account to list. Buyers can browse and add to cart without signing up — you&apos;ll be prompted to sign in at checkout. Selling needs an account so you can get paid.</p>}
+          {user && <p className="sell-auth-note">You&apos;re signed in as {user.name}. Listing takes about a minute.</p>}
         </div>
-        {!user && <p className="sell-auth-note">Need an account to list. Buyers can browse and add to cart without signing up — you&apos;ll be prompted to sign in at checkout. Selling needs an account so you can get paid.</p>}
-        {user && <p className="sell-auth-note">You&apos;re signed in as {user.name}. Listing takes about a minute.</p>}
-      </div>
-      <div className="sell-how">
+        <div className="sell-collage" aria-hidden="true">
+          <figure className="sell-polaroid is-a"><span className="sell-tape" /><img src="/images/leather.jpg" alt="" /></figure>
+          <figure className="sell-polaroid is-b"><span className="sell-tape" /><img src="/images/knit.jpg" alt="" /></figure>
+          <figure className="sell-polaroid is-c"><span className="sell-tape" /><img src="/images/bag.jpg" alt="" /></figure>
+          <div className="sell-stamp">We pack<br />·<br />We ship</div>
+        </div>
+      </section>
+      <section className="sell-how">
         <h2>How it works</h2>
         <ol>
-          <li><span><PackageCheck size={20} /></span><div><strong>1. List it</strong><p>Pick a category, add photos and your price. Takes about a minute.</p></div></li>
-          <li><span><Truck size={20} /></span><div><strong>2. We ship for you</strong><p>We handle pickup, packing, courier and delivery. You don&apos;t ship anything yourself.</p></div></li>
-          <li><span><Wallet size={20} /></span><div><strong>3. Get paid</strong><p>When it&apos;s delivered, your payout is ready in your seller dashboard.</p></div></li>
+          <li>
+            <div className="sell-how-photo"><span className="sell-tape" aria-hidden="true" /><img src="/images/denim.jpg" alt="" /><span className="sell-step-number">1</span></div>
+            <div><strong>List it</strong><p>Pick a category, add photos and your price. Takes about a minute.</p></div>
+          </li>
+          <li>
+            <div className="sell-how-photo"><span className="sell-tape" aria-hidden="true" /><img src="/images/editorial.jpg" alt="" /><span className="sell-step-number">2</span></div>
+            <div><strong>We ship for you</strong><p>We handle pickup, packing, courier and delivery. You don&apos;t ship anything yourself.</p></div>
+          </li>
+          <li>
+            <div className="sell-how-photo"><span className="sell-tape" aria-hidden="true" /><img src="/images/detail.jpg" alt="" /><span className="sell-step-number">3</span></div>
+            <div><strong>Get paid</strong><p>When it&apos;s delivered, your payout is ready in your seller dashboard.</p></div>
+          </li>
         </ol>
-        <p className="sell-how-note">You set the price. Buyers can buy instantly or send a private offer. Optional live auctions only if you opt in.</p>
-      </div>
-    </section>
+        <p className="sell-how-note">You set the price. Buyers can buy instantly or send a private offer. Optional live auctions only if you opt in — auction sales are final, so bids are binding.</p>
+      </section>
+    </>
   ) : null;
 
   const formSection = (editing || showForm) ? (
@@ -536,14 +556,11 @@ export function SellPage() {
           <div className="sell-block-head"><span className="step-number">03</span><div><h2>Price & options</h2><p>Set the asking price. Buyers can buy instantly or send a private offer.</p></div></div>
           <div className="field-row two">
             <Field label="Asking price (₹) *" hint="Buyers pay this for Buy now, or bid in auctions."><input type="number" min={1} inputMode="numeric" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="1450" /></Field>
-            <Field label="You receive" hint="The full asking price comes to you. Shipping is collected separately at checkout."><div className="sell-payout">{formatMoney(Math.round((Number(form.price) || 0) * 100))}</div></Field>
-          </div>
-          <div className="field-row two">
-            <Field label="Shipping fee (₹)" hint="We handle delivery; you can cover it or leave it free."><input type="number" min={0} inputMode="numeric" value={form.shipping} onChange={(e) => update("shipping", e.target.value)} /></Field>
+            <Field label="You receive" hint={`${SELLER_COMMISSION_PERCENT}% commission is deducted from each completed sale.`}><div className="sell-payout">{formatMoney(sellerNetPayout(Math.round((Number(form.price) || 0) * 100)))}</div></Field>
           </div>
           <div className="sell-options">
             <label><input type="checkbox" checked={form.allowOffers} onChange={(e) => update("allowOffers", e.target.checked)} /><span><strong>Allow private offers</strong><em>Buyers can send a price privately. You choose whether to accept — an offer you ignore expires on its own.</em></span></label>
-            <label><input type="checkbox" checked={form.auctionConsent} onChange={(e) => update("auctionConsent", e.target.checked)} /><span><strong>Opt in to random live auctions</strong><em>Your listing may be picked for a short live auction that starts at {db.settings.auctionStartPct}% of your asking price, so buyers have room to win. If bids go higher, you keep the winning bid.</em></span></label>
+            <label><input type="checkbox" checked={form.auctionConsent} onChange={(e) => update("auctionConsent", e.target.checked)} /><span><strong>Opt in to random live auctions</strong><em>Your listing may be picked for a short live auction. Your payout is 90% of the final winning bid, whether it lands above or below your asking price. Auction sales are final — the winning bid is binding, so the buyer can&apos;t cancel, return or refund unless the item is genuinely damaged or not as described.</em></span></label>
           </div>
         </section>
       </div>
@@ -565,7 +582,7 @@ export function SellPage() {
           <button type="button" className="button button-olive summary-cta" onClick={submit}>{editing ? "Save changes" : "Publish listing"} <ArrowUpRight size={15} /></button>
           <Link href="#/seller" className="button button-ghost summary-cta">Seller dashboard</Link>
         </div>
-        <div className="sell-tips"><h3><Info size={14} /> Good to know</h3><ul><li>Every piece is one seller&apos;s own item.</li><li>We handle shipping & delivery for you.</li><li>Auctions are optional and only run if you opt in.</li><li>Offers are private. No public bidding on normal listings.</li></ul><div className="sell-trust"><ShieldCheck size={15} /> You keep any bid above your asking price</div></div>
+        <div className="sell-tips"><h3><Info size={14} /> Good to know</h3><ul><li>Every piece is one seller&apos;s own item.</li><li>We handle shipping & delivery for you.</li><li>Auctions are optional and only run if you opt in. Auction sales are final — no buyer cancellations or returns unless the item is genuinely not as described.</li><li>Offers are private. No public bidding on normal listings.</li></ul><div className="sell-trust"><ShieldCheck size={15} /> You receive 90% of the completed sale price</div></div>
       </aside>
     </div>
   ) : null;

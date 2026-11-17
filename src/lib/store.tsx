@@ -26,6 +26,12 @@ import type {
   Review,
   User,
 } from "./types";
+import {
+  BUYER_PLATFORM_FEE_PAISE,
+  sellerCommission,
+  sellerNetPayout,
+} from "./sellerMath";
+import { isValidIndianPincode } from "./delivery";
 
 const STORAGE_KEY = "lelam-marketplace-v1";
 
@@ -65,26 +71,15 @@ function futureIso(hours: number) {
 }
 
 export function computeAuctionSettlement(
-  askingPrice: number,
+  _askingPrice: number,
   winningBid: number,
   _commissionPct: number,
 ): Pick<AuctionFinancial, "sellerPayout" | "platformSubsidy" | "platformCommission"> {
-  const platformCharge = 1_000;
-  if (winningBid < askingPrice) {
-    return {
-      sellerPayout: Math.max(0, askingPrice - platformCharge),
-      platformSubsidy: askingPrice - winningBid,
-      platformCommission: platformCharge,
-    };
-  }
-  const commission = winningBid > askingPrice * 1.3
-    ? Math.floor((winningBid - askingPrice) * 0.1)
-    : 0;
-  const totalCharge = commission + platformCharge;
+  const commission = sellerCommission(winningBid);
   return {
-    sellerPayout: Math.max(0, winningBid - totalCharge),
+    sellerPayout: sellerNetPayout(winningBid),
     platformSubsidy: 0,
-    platformCommission: totalCharge,
+    platformCommission: commission,
   };
 }
 
@@ -112,15 +107,6 @@ function orderNumber(next: Database) {
   return `LEL-${24200 + next.orders.length + Math.floor(Math.random() * 40)}`;
 }
 
-function shippingFor(
-  items: { product: Product; quantity: number }[],
-  settings: PlatformSettings,
-): number {
-  const subtotal = items.reduce((total, item) => total + item.product.askingPrice * item.quantity, 0);
-  if (subtotal >= settings.freeShippingThreshold) return 0;
-  return Math.max(...items.map((item) => item.product.shippingFee ?? settings.shippingFee));
-}
-
 function createOrder(
   next: Database,
   input: {
@@ -132,13 +118,14 @@ function createOrder(
     offerId?: string;
     auctionId?: string;
     checkoutGroupId?: string;
+    platformFee?: number;
   },
 ): Order {
   const subtotal = input.items.reduce(
     (total, item) => total + (item.unitPrice ?? item.product.askingPrice) * item.quantity,
     0,
   );
-  const shipping = shippingFor(input.items, next.settings);
+  const platformFee = input.platformFee ?? 0;
   const order: Order = {
     id: uid("o"),
     number: orderNumber(next),
@@ -156,8 +143,9 @@ function createOrder(
       sellerName: item.product.sellerName,
     })),
     subtotal,
-    shipping,
-    total: subtotal + shipping,
+    shipping: 0,
+    platformFee,
+    total: subtotal + platformFee,
     status: "pending_payment",
     paymentStatus: "pending",
     source: input.source,
@@ -274,8 +262,8 @@ function settleDueAuctions(next: Database, now: number): boolean {
           name: buyer.name,
           phone: buyer.phone ?? "",
           line1: "",
-          city: "Trivandrum",
-          state: "Kerala",
+          city: "",
+          state: "",
           pincode: "",
         };
         if (address) {
@@ -286,6 +274,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
             address,
             source: "auction",
             auctionId: auction.id,
+            platformFee: BUYER_PLATFORM_FEE_PAISE,
           });
           auction.orderId = order.id;
           markProductsReserved(next, [product.id]);
@@ -457,7 +446,7 @@ interface StoreValue {
   setCartQuantity: (productId: string, quantity: number) => void;
   clearCart: () => void;
   toggleFavorite: (productId: string) => void;
-  makeOffer: (productId: string, amount: number, message?: string) => ActionResult;
+  makeOffer: (productId: string, amount: number) => ActionResult;
   respondToOffer: (offerId: string, accept: boolean) => ActionResult;
   cancelOffer: (offerId: string) => ActionResult;
   createOrders: (input: {
@@ -737,7 +726,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const makeOffer = useCallback(
-    (productId: string, amount: number, message?: string): ActionResult => {
+    (productId: string, amount: number): ActionResult => {
       const current = dbRef.current;
       const activeUser = current.users.find((item) => item.id === current.sessionUserId);
       if (!activeUser) return { ok: false, error: "Sign in to make an offer." };
@@ -765,7 +754,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         buyerId: activeUser.id,
         sellerId: product.sellerId,
         amount,
-        message: message?.trim() || undefined,
+        message: undefined,
         status: "pending",
         createdAt: nowIso(),
         expiresAt: futureIso(next.settings.offerValidityHours),
@@ -880,13 +869,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!activeUser) return { ok: false as const, error: "Sign in to check out." };
       const address = activeUser.addresses.find((item) => item.id === input.addressId);
       if (!address) return { ok: false as const, error: "Choose a delivery address." };
-      const serviceable = current.settings.serviceablePrefixes.some((prefix) =>
-        address.pincode.startsWith(prefix),
-      );
-      if (!serviceable) {
+      if (!isValidIndianPincode(address.pincode)) {
         return {
           ok: false as const,
-          error: `We do not deliver to ${address.pincode} yet. Service area: ${current.settings.serviceablePrefixes.map((prefix) => `${prefix}xxx`).join(", ")}.`,
+          error: "Enter a valid six-digit Indian PIN code.",
         };
       }
 
@@ -952,7 +938,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const next = clone(current);
       const checkoutGroupId = uid("cg");
       const orderIds: string[] = [];
-      for (const group of groups) {
+      for (const [index, group] of groups.entries()) {
         const order = createOrder(next, {
           buyerId: activeUser.id,
           sellerId: group.sellerId,
@@ -961,6 +947,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           source,
           offerId: offer?.id,
           checkoutGroupId,
+          platformFee: index === 0 ? BUYER_PLATFORM_FEE_PAISE : 0,
         });
         orderIds.push(order.id);
         pushNotification(
@@ -1047,22 +1034,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               sellerPayout: auction.financial.sellerPayout,
               platformSubsidy: auction.financial.platformSubsidy,
               platformCommission: auction.financial.platformCommission,
+              buyerPlatformFee: target.platformFee ?? 0,
               paymentFee: 0,
               status: "pending",
               createdAt: nowIso(),
             });
           }
         } else {
-          const platformCharge = target.items.length * 1_000;
+          const commission = sellerCommission(target.subtotal);
           next.settlements.unshift({
             id: uid("s"),
             sellerId: target.sellerId,
             orderId: target.id,
             source: target.source === "offer" ? "offer" : "marketplace",
             askingPrice: target.subtotal,
-            sellerPayout: Math.max(0, target.subtotal - platformCharge),
+            sellerPayout: sellerNetPayout(target.subtotal),
             platformSubsidy: 0,
-            platformCommission: platformCharge,
+            platformCommission: commission,
+            buyerPlatformFee: target.platformFee ?? 0,
             paymentFee: 0,
             status: "pending",
             createdAt: nowIso(),
@@ -1100,8 +1089,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (order.buyerId !== activeUser.id && order.sellerId !== activeUser.id && activeUser.role !== "admin") {
         return { ok: false, error: "Not your order." };
       }
+      if (activeUser.role !== "admin" && order.source === "auction") {
+        return { ok: false, error: "Auction wins are final. Auction orders can't be cancelled." };
+      }
       if (["shipped", "delivered", "cancelled", "returned"].includes(order.status)) {
         return { ok: false, error: "This order can no longer be cancelled." };
+      }
+      if (
+        order.shipment &&
+        ["picked_up", "in_transit", "out_for_delivery", "delivered", "returned"].includes(order.shipment.status)
+      ) {
+        return { ok: false, error: "The parcel has been picked up. Orders can only be cancelled before pickup." };
       }
       const next = clone(current);
       const target = next.orders.find((item) => item.id === orderId)!;
@@ -1133,6 +1131,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!order) return { ok: false, error: "Order not found." };
       if (order.buyerId !== current.sessionUserId) return { ok: false, error: "Not your order." };
       if (order.status !== "delivered") return { ok: false, error: "Only delivered orders can be returned." };
+      if (order.source === "auction") {
+        return {
+          ok: false,
+          error: "Auction wins are final. If the item is damaged or not as described, report the issue and our team will review it.",
+        };
+      }
       const next = clone(current);
       const target = next.orders.find((item) => item.id === orderId)!;
       target.status = "returned";
@@ -1544,8 +1548,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!address.line1.trim() || !address.pincode.trim()) {
         return { ok: false, error: "Address line and pincode are required." };
       }
-      if (!/^\d{6}$/.test(address.pincode.trim())) {
-        return { ok: false, error: "Enter a 6-digit pincode." };
+      if (!isValidIndianPincode(address.pincode.trim())) {
+        return { ok: false, error: "Enter a valid six-digit Indian PIN code." };
       }
       const next = clone(current);
       const user = next.users.find((item) => item.id === activeUser.id)!;

@@ -97,7 +97,7 @@ export function SellerDashboardPage() {
           <h2>You are not selling yet.</h2>
           <p>Open a seller account from your profile, then list your first piece.</p>
           <div className="modal-actions center">
-            <Link href="#/sell" className="button button-olive">
+            <Link href="#/sell?start=1" className="button button-olive">
               Try listing
             </Link>
             <Link href="#/account?tab=profile" className="button button-ghost">
@@ -201,7 +201,7 @@ export function SellerDashboardPage() {
               {user.name} · {myProducts.length} listings · {liveAuctions.length} live auctions
             </p>
           </div>
-          <Link href="#/sell" className="button button-olive">
+          <Link href="#/sell?start=1" className="button button-olive">
             <Plus size={15} /> New listing
           </Link>
         </div>
@@ -397,7 +397,7 @@ export function SellerDashboardPage() {
           <div className="dashboard-section">
             <div className="panel-head">
               <h2>All listings</h2>
-              <Link href="#/sell" className="text-link">
+              <Link href="#/sell?start=1" className="text-link">
                 <Plus size={14} /> Add listing
               </Link>
             </div>
@@ -478,7 +478,7 @@ export function SellerDashboardPage() {
                 title="No listings yet."
                 body="Add the first piece and it will appear on the rail."
                 action="Create a listing"
-                actionHref="#/sell"
+                actionHref="#/sell?start=1"
               />
             )}
           </div>
@@ -524,7 +524,6 @@ export function SellerDashboardPage() {
                               : timeAgo(offer.createdAt)}
                         </span>
                       </div>
-                      {offer.message && <p className="offer-message">“{offer.message}”</p>}
                       {offer.status === "pending" ? (
                         <div className="offer-actions">
                           <button
@@ -746,8 +745,8 @@ export function SellerDashboardPage() {
             <div className="seller-explain">
               <p>
                 How an auction pays you: bidding opens at {db.settings.auctionStartPct}% of your asking
-                price, so buyers have room to win. If the winning bid goes above your asking price, you
-                receive the winning bid and a small commission comes off the surplus.
+                price, so buyers have room to win. Your payout is 90% of the final winning bid,
+                whether it lands above or below your asking price.
               </p>
             </div>
 
@@ -755,8 +754,8 @@ export function SellerDashboardPage() {
               <h3>Schedule an auction</h3>
               <p>
                 Pick one of your active listings and a start time. Bidding opens at{" "}
-                {db.settings.auctionStartPct}% of the asking price, and no matter where bids land, you
-                never receive less than your asking price.
+                {db.settings.auctionStartPct}% of the asking price. A 10% commission applies to the
+                full winning bid.
               </p>
               <div className="auction-schedule-form">
                 <label>
@@ -823,7 +822,7 @@ export function SellerDashboardPage() {
                           )}
                           {auction.status === "live" && (
                             <span className="auction-state">
-                              Highest bid wins. Commission applies only on the amount above your asking price.
+                              Highest bid wins. A 10% commission applies to the full winning bid.
                             </span>
                           )}
                           {auction.status === "completed" && (

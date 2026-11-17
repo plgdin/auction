@@ -125,7 +125,7 @@ export function AuctionDetailPage() {
             </div>
             <p className="auction-detail-description">{product.description}</p>
             <div className="auction-trust-line">
-              <ShieldCheck size={15} /> Delivery across Trivandrum pincodes starting with 695.
+              <ShieldCheck size={15} /> Doorstep delivery across India.
             </div>
           </div>
 
@@ -172,8 +172,8 @@ export function AuctionDetailPage() {
             <div className="auction-guarantee">
               <Info size={16} />
               <p>
-                Sellers receive their full winning bid. A small platform commission applies only to
-                the amount above the asking price.
+                Seller commission is 10% of the final winning bid, whether it falls above or below the
+                asking price.
               </p>
             </div>
 
@@ -268,13 +268,12 @@ export function AuctionDetailPage() {
                 </div>
                 <div>
                   <span>Seller payout</span>
-                  <strong>{formatMoney(auction.financial?.sellerPayout ?? auction.askingPrice)}</strong>
+                  <strong>{formatMoney(auction.financial?.sellerPayout ?? 0)}</strong>
                 </div>
                 {auction.financial && auction.financial.platformCommission > 0 && (
                   <p>
-                    Platform charges: {formatMoney(auction.financial.platformCommission)}. This
-                    includes ₹10 per product sold; when bids clear 130% of base, 10% of the amount
-                    above base is also charged.
+                    10% seller commission: {formatMoney(auction.financial.platformCommission)} of the
+                    full winning bid.
                   </p>
                 )}
               </div>
@@ -336,4 +335,3 @@ export function AuctionDetailPage() {
     </main>
   );
 }
-
