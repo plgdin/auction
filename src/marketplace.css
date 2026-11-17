@@ -5459,10 +5459,10 @@ html { scroll-behavior: smooth; }
 .product-purchase-panel {
   margin-top: 16px;
   padding: 20px 22px;
-  border: 1px solid rgba(73, 48, 34, 0.16);
+  border: 1px solid rgba(73, 48, 34, 0.13);
   border-radius: 14px;
-  background: #FAF7F2;
-  box-shadow: 0 4px 20px -4px rgba(60, 36, 18, 0.08);
+  background: rgba(250, 247, 242, 0.7);
+  box-shadow: 0 4px 20px -4px rgba(60, 36, 18, 0.05);
 }
 
 .product-detail-price {
@@ -5534,8 +5534,8 @@ html { scroll-behavior: smooth; }
   min-height: 44px;
   padding-inline: 12px;
   border-radius: 10px;
-  background: #F3EBDD;
-  border: 1px solid rgba(73, 48, 34, 0.22);
+  background: rgba(250, 247, 242, 0.85);
+  border: 1px solid rgba(73, 48, 34, 0.2);
   color: #382413;
   font-size: 13px;
   font-weight: 600;
@@ -5544,7 +5544,7 @@ html { scroll-behavior: smooth; }
 }
 
 .product-secondary-actions .button.button-ghost:hover {
-  background: #ebe0ce;
+  background: #FAF7F2;
   border-color: #382413;
   color: #170d06;
   transform: translateY(-1px);
@@ -5571,8 +5571,8 @@ html { scroll-behavior: smooth; }
   gap: 8px;
   margin-top: 14px;
   padding: 14px 16px;
-  background: rgba(250, 247, 242, 0.85);
-  border: 1px solid rgba(73, 48, 34, 0.13);
+  background: rgba(250, 247, 242, 0.7);
+  border: 1px solid rgba(73, 48, 34, 0.12);
   border-radius: 12px;
 }
 
@@ -5669,8 +5669,8 @@ html { scroll-behavior: smooth; }
   margin-top: 18px;
   padding: 14px 16px;
   border-radius: 12px;
-  background: #FAF7F2;
-  border: 1px solid rgba(73, 48, 34, 0.14);
+  background: rgba(250, 247, 242, 0.7);
+  border: 1px solid rgba(73, 48, 34, 0.12);
 }
 
 .product-seller-card .seller-avatar {
