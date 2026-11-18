@@ -47,6 +47,8 @@ import { isValidIndianPincode } from "./delivery";
 
 const STORAGE_KEY = "lelam-marketplace-v1";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const UI_TO_CONDITION_MAP: Record<Product["condition"], string> = {
   New: "new",
   "Like new": "like_new",
@@ -673,6 +675,7 @@ interface StoreValue {
   updateProfile: (patch: { name?: string; phone?: string; bio?: string; location?: string; auctionConsent?: boolean }) => ActionResult;
   approveProduct: (productId: string) => void;
   rejectProduct: (productId: string, reason: string) => void;
+  adminDeleteProduct: (productId: string) => Promise<ActionResult>;
   setUserBlocked: (userId: string, blocked: boolean) => void;
   updateSellerTier: (userId: string, tier: SellerTier) => ActionResult;
   updateSettings: (patch: Partial<PlatformSettings>) => void;
@@ -809,7 +812,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        if (active && Array.isArray(rows) && rows.length > 0) {
+        if (active && Array.isArray(rows)) {
           const CONDITION_TO_UI: Record<string, Product["condition"]> = {
             new: "New",
             like_new: "Like new",
@@ -2155,7 +2158,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user?.id) {
               const uploadedImages = await uploadListingImages(session.user.id, input.images);
-              await supabase.rpc("save_listing", {
+              const { data: savedId } = await supabase.rpc("save_listing", {
                 p_payload: {
                   title: input.title.trim(),
                   description: input.description.trim(),
@@ -2173,6 +2176,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 },
                 p_images: uploadedImages,
               });
+              // Align the local row with its server UUID so admin actions
+              // (delete/approve) hit the real record without a refresh.
+              if (savedId && typeof savedId === "string" && UUID_RE.test(savedId)) {
+                const remap = clone(dbRef.current);
+                const target = remap.products.find((item) => item.id === product.id);
+                if (target) {
+                  target.id = savedId;
+                  commit(remap);
+                }
+              }
             }
           } catch (err) {
             console.warn("[Supabase save_listing error]:", err);
@@ -2513,6 +2526,75 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         createdAt: nowIso(),
       });
       commit(next);
+    },
+    [commit],
+  );
+
+  const adminDeleteProduct = useCallback(
+    async (productId: string): Promise<ActionResult> => {
+      const current = dbRef.current;
+      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
+      if (!activeUser || activeUser.role !== "admin") {
+        return { ok: false, error: "Admin access required." };
+      }
+      const product = current.products.find((item) => item.id === productId);
+      if (!product) return { ok: false, error: "Listing not found." };
+
+      // Server-backed listings have UUID ids. Seed rows (prod-…) only exist in
+      // the browser catalog, so there is nothing remote to delete for those.
+      if (UUID_RE.test(productId)) {
+        const { error } = await supabase.rpc("admin_delete_product", { p_product_id: productId });
+        if (error) {
+          return {
+            ok: false,
+            error: /find the function|does not exist/i.test(error.message)
+              ? "Delete function is not installed yet. Run the latest Supabase migration."
+              : error.message || "Could not delete the listing.",
+          };
+        }
+      }
+
+      const next = clone(dbRef.current);
+      next.products = next.products.filter((item) => item.id !== productId);
+      next.auctions = next.auctions.filter((auction) => auction.productId !== productId);
+      next.offers = next.offers.filter((offer) => offer.productId !== productId);
+      next.reports = next.reports.filter((report) => report.productId !== productId);
+      if (next.secondChanceOffers) {
+        next.secondChanceOffers = next.secondChanceOffers.filter(
+          (offer) => offer.productId !== productId,
+        );
+      }
+      next.carts = Object.fromEntries(
+        Object.entries(next.carts).map(([userId, lines]) => [
+          userId,
+          lines.filter((line) => line.productId !== productId),
+        ]),
+      );
+      next.favorites = Object.fromEntries(
+        Object.entries(next.favorites).map(([userId, ids]) => [
+          userId,
+          ids.filter((id) => id !== productId),
+        ]),
+      );
+      pushNotification(
+        next,
+        product.sellerId,
+        "listing_deleted",
+        "Listing removed by admin",
+        `${product.title} was permanently removed from the shop.`,
+        "/seller?tab=listings",
+      );
+      next.auditLogs.unshift({
+        id: uid("al"),
+        actorId: next.sessionUserId ?? "",
+        action: "listing.delete",
+        entityType: "product",
+        entityId: productId,
+        detail: `Deleted ${product.title}.`,
+        createdAt: nowIso(),
+      });
+      commit(next);
+      return { ok: true };
     },
     [commit],
   );
@@ -3015,6 +3097,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     updateProfile,
     approveProduct,
     rejectProduct,
+    adminDeleteProduct,
     setUserBlocked,
     updateSellerTier,
     updateSettings,

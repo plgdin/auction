@@ -7262,3 +7262,62 @@ button.button:active {
     transform: none;
   }
 }
+
+/* Admin: permanent listing deletion */
+.admin-all-listings { margin-top: 22px; }
+.dashboard-page .listing-table.admin-delete-table .table-head,
+.dashboard-page .listing-table.admin-delete-table .table-row {
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 0.7fr) 0.6fr 0.5fr minmax(120px, 0.7fr);
+}
+.admin-delete-seller { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.admin-delete-actions { display: flex; justify-content: flex-end; }
+.button-danger-ghost {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 38px; padding: 7px 13px; border-radius: 999px;
+  border: 1px solid rgba(163, 58, 44, 0.35); background: #fff; color: #a33a2c;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.button-danger-ghost:hover { background: #fbeeea; border-color: #a33a2c; }
+.button-danger {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 44px; padding: 10px 18px; border-radius: 999px;
+  border: 1px solid #8f3225; background: #a33a2c; color: #fff;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: background 0.18s ease;
+}
+.button-danger:hover { background: #8f3225; }
+.button-danger:disabled,
+.button-danger-ghost:disabled { opacity: 0.6; cursor: not-allowed; }
+.delete-listing { display: grid; gap: 16px; padding: 6px 2px 2px; }
+.delete-listing-item {
+  display: flex; align-items: center; gap: 12px; padding: 12px;
+  border: 1px solid var(--mkt-line); border-radius: 12px; background: var(--mkt-cream);
+}
+.delete-listing-item img {
+  width: 52px; height: 64px; object-fit: cover; border-radius: 8px; flex-shrink: 0;
+}
+.delete-listing-item > div { display: grid; gap: 3px; min-width: 0; }
+.delete-listing-item strong {
+  font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.delete-listing-item span { font-size: 12px; color: var(--mkt-muted); }
+.delete-listing-note { margin: 0; font-size: 13px; line-height: 1.65; color: #5c5a52; }
+.delete-listing-note strong { color: #a33a2c; font-weight: 600; }
+
+@media (max-width: 900px) {
+  .dashboard-page .listing-table.admin-delete-table .table-head { display: none; }
+  .dashboard-page .listing-table.admin-delete-table .table-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px 14px;
+    padding: 14px;
+  }
+  .dashboard-page .listing-table.admin-delete-table .table-row > .table-product { grid-column: 1 / -1; }
+  .dashboard-page .listing-table.admin-delete-table .table-row > .admin-delete-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+@media (max-width: 560px) {
+  .admin-delete-seller { display: none; }
+}

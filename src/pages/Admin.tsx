@@ -12,11 +12,13 @@ import {
   Shield,
   Sparkles,
   Tag,
+  Trash2,
   Wallet,
   X,
 } from "lucide-react";
 import { Link, navigate } from "../components/Link";
 import { Countdown } from "../components/Countdown";
+import { Modal } from "../components/Modal";
 import { EmptyState, Field, StatusPill, Tabs } from "../components/Ui";
 import { formatDate, formatMoney, timeAgo } from "../lib/format";
 import { affiliateUrl, summariseAffiliate } from "../lib/affiliate";
@@ -31,6 +33,7 @@ export function AdminPage() {
     user,
     approveProduct,
     rejectProduct,
+    adminDeleteProduct,
     setUserBlocked,
     updateSellerTier,
     generateAuctions,
@@ -48,6 +51,8 @@ export function AdminPage() {
   const [tab, setTab] = useState(route.query.get("tab") || "overview");
   const [rejectId, setRejectId] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const [deleteId, setDeleteId] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const [settings, setSettings] = useState(db.settings);
   const [affiliateForm, setAffiliateForm] = useState({
     name: "",
@@ -170,6 +175,21 @@ export function AdminPage() {
       delete copy[account.id];
       return copy;
     });
+  };
+
+  const deleteTarget = db.products.find((product) => product.id === deleteId) ?? null;
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    const result = await adminDeleteProduct(deleteTarget.id);
+    setDeleting(false);
+    if (!result.ok) {
+      toast(result.error, "error");
+      return;
+    }
+    toast("Listing deleted permanently.", "success");
+    setDeleteId("");
   };
 
   return (
@@ -438,6 +458,101 @@ export function AdminPage() {
                   </button>
                 </div>
               </div>
+            )}
+
+            <section className="panel admin-all-listings">
+              <div className="panel-head">
+                <h2>All listings</h2>
+                <span>
+                  {db.products.length} item{db.products.length === 1 ? "" : "s"} in the shop
+                </span>
+              </div>
+              {db.products.length ? (
+                <div className="listing-table admin-delete-table">
+                  <div className="table-head">
+                    <span>Item</span>
+                    <span>Seller</span>
+                    <span>Price</span>
+                    <span>Status</span>
+                    <span>Action</span>
+                  </div>
+                  {db.products.map((product) => (
+                    <div key={product.id} className="table-row">
+                      <div className="table-product">
+                        <img src={product.images[0]} alt={product.title} />
+                        <div>
+                          <strong>{product.title}</strong>
+                          <span>
+                            {product.category} · listed {timeAgo(product.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="admin-delete-seller">{product.sellerName}</span>
+                      <strong>{formatMoney(product.askingPrice)}</strong>
+                      <StatusPill status={product.status} />
+                      <div className="table-actions admin-delete-actions">
+                        <button
+                          type="button"
+                          className="button button-danger-ghost admin-delete-button"
+                          onClick={() => setDeleteId(product.id)}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<Tag size={34} />}
+                  title="Shop is empty."
+                  body="No listings exist right now. New submissions will appear here."
+                />
+              )}
+            </section>
+
+            {deleteTarget && (
+              <Modal
+                title="Delete listing"
+                onClose={() => {
+                  if (!deleting) setDeleteId("");
+                }}
+              >
+                <div className="delete-listing">
+                  <div className="delete-listing-item">
+                    <img src={deleteTarget.images[0]} alt={deleteTarget.title} />
+                    <div>
+                      <strong>{deleteTarget.title}</strong>
+                      <span>
+                        {deleteTarget.sellerName} · {formatMoney(deleteTarget.askingPrice)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="delete-listing-note">
+                    This permanently removes the listing from the shop, along with its auctions,
+                    bids, offers and saved references. Order history is kept.{" "}
+                    <strong>This cannot be undone.</strong>
+                  </p>
+                  <div className="modal-actions">
+                    <button
+                      type="button"
+                      className="button button-danger"
+                      onClick={confirmDelete}
+                      disabled={deleting}
+                    >
+                      {deleting ? "Deleting…" : "Delete permanently"}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-ghost"
+                      onClick={() => setDeleteId("")}
+                      disabled={deleting}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </Modal>
             )}
           </div>
         )}
