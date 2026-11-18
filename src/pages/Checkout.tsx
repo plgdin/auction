@@ -15,7 +15,7 @@ import { Link, navigate } from "../components/Link";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import { BUYER_PLATFORM_FEE_PAISE } from "../lib/sellerMath";
+import { BUYER_PLATFORM_FEE_PAISE, platformFeeGst } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import { isValidIndianPincode } from "../lib/delivery";
 
@@ -60,7 +60,8 @@ export function CheckoutPage() {
   const subtotal = lines.reduce((total, line) => total + line.unitPrice * line.quantity, 0);
   const sellerIds = [...new Set(lines.map((line) => line.product.sellerId))];
   const platformFee = BUYER_PLATFORM_FEE_PAISE;
-  const total = subtotal + platformFee;
+  const gst = platformFeeGst(platformFee);
+  const total = subtotal + platformFee + gst;
   const address = user?.addresses.find((item) => item.id === selectedAddress);
   const serviceable = address
     ? isValidIndianPincode(address.pincode)
@@ -333,8 +334,12 @@ export function CheckoutPage() {
                 <strong>{formatMoney(subtotal)}</strong>
               </div>
               <div className="summary-row">
-                <span>Platform fee <small>(plus applicable GST)</small></span>
+                <span>Platform fee</span>
                 <strong>{formatMoney(platformFee)}</strong>
+              </div>
+              <div className="summary-row">
+                <span>GST on platform fee (18%)</span>
+                <strong>{formatMoney(gst)}</strong>
               </div>
               {offer && (
                 <div className="summary-row offer-savings">

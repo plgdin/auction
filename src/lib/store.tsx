@@ -39,6 +39,7 @@ import type {
 } from "./types";
 import {
   BUYER_PLATFORM_FEE_PAISE,
+  platformFeeGst,
   sellerCommission,
   sellerNetPayout,
 } from "./sellerMath";
@@ -97,18 +98,41 @@ function loadDatabase(): Database {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Database;
-      if (parsed.version === 1 || parsed.version === 2) {
-        // Upgrade all non-admin users to full client tier (buyer & seller)
-        for (const u of parsed.users) {
-          if (u.role !== "admin") {
-            u.isSeller = true;
-            if (!u.sellerTier) u.sellerTier = "normal";
+      if (parsed.version === 1 || parsed.version === 2 || parsed.version === 3) {
+        const previousVersion = parsed.version;
+        if (previousVersion < 3) {
+          parsed.settings = {
+            ...parsed.settings,
+            auctionAntiSnipeSeconds: 30,
+            auctionAntiSnipeTriggerSeconds: 30,
+            auctionPaymentDeadlineMinutes: 5,
+          };
+          for (const auction of parsed.auctions ?? []) {
+            if (auction.antiSnipeSeconds === 10) auction.antiSnipeSeconds = 30;
+          }
+          parsed.version = 3;
+        }
+        if (previousVersion <= 2) {
+          // Upgrade all non-admin users to full client tier (buyer & seller)
+          for (const u of parsed.users) {
+            if (u.role !== "admin") {
+              u.isSeller = true;
+              if (!u.sellerTier) u.sellerTier = "normal";
+            }
+          }
+          if (parsed.sessionUserId === "u-buyer" || parsed.sessionUserId === "u-seller") {
+            parsed.sessionUserId = null;
           }
         }
-        if (parsed.sessionUserId === "u-buyer" || parsed.sessionUserId === "u-seller") {
-          parsed.sessionUserId = null;
+        const migrated = { ...parsed, settings: { ...seeded.settings, ...parsed.settings } };
+        if (previousVersion < seeded.version) {
+          try {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+          } catch {
+            /* private mode */
+          }
         }
-        return { ...parsed, settings: { ...seeded.settings, ...parsed.settings } };
+        return migrated;
       }
     }
   } catch {
@@ -191,6 +215,7 @@ function createOrder(
     0,
   );
   const platformFee = input.platformFee ?? 0;
+  const gst = platformFeeGst(platformFee);
   const order: Order = {
     id: uid("o"),
     number: orderNumber(next),
@@ -210,7 +235,8 @@ function createOrder(
     subtotal,
     shipping: 0,
     platformFee,
-    total: subtotal + platformFee,
+    platformFeeGst: gst,
+    total: subtotal + platformFee + gst,
     status: "pending_payment",
     paymentStatus: "pending",
     source: input.source,
@@ -743,7 +769,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (event.key !== STORAGE_KEY || !event.newValue) return;
       try {
         const parsed = JSON.parse(event.newValue) as Database;
-        if (parsed.version === 1 || parsed.version === 2) {
+        if (parsed.version === 1 || parsed.version === 2 || parsed.version === 3) {
           dbRef.current = parsed;
           setDb(parsed);
         }

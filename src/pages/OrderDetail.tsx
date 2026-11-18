@@ -240,6 +240,12 @@ export function OrderDetailPage() {
                     <strong>{formatMoney(order.platformFee)}</strong>
                   </div>
                 ) : null}
+                {order.platformFeeGst ? (
+                  <div>
+                    <span>GST on platform fee (18%)</span>
+                    <strong>{formatMoney(order.platformFeeGst)}</strong>
+                  </div>
+                ) : null}
                 <div className="is-total">
                   <span>Total</span>
                   <strong>{formatMoney(order.total)}</strong>
@@ -390,6 +396,12 @@ export function OrderDetailPage() {
                 <div className="summary-row">
                   <span>Platform fee</span>
                   <strong>{formatMoney(order.platformFee)}</strong>
+                </div>
+              ) : null}
+              {order.platformFeeGst ? (
+                <div className="summary-row">
+                  <span>GST on platform fee (18%)</span>
+                  <strong>{formatMoney(order.platformFeeGst)}</strong>
                 </div>
               ) : null}
               <div className="summary-row summary-total">

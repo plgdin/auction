@@ -1,12 +1,12 @@
 import { ArrowRight, LockKeyhole, ShoppingBag, Truck, X } from "lucide-react";
 import { useStore } from "../lib/store";
 import { formatMoney } from "../lib/format";
-import { BUYER_PLATFORM_FEE_PAISE } from "../lib/sellerMath";
+import { BUYER_PLATFORM_FEE_PAISE, platformFeeGst } from "../lib/sellerMath";
 import { Link } from "./Link";
 
 export function CartOverlayCard({ onClose }: { onClose?: () => void }) {
   const { cart, cartSubtotal } = useStore();
-  const total = cartSubtotal + BUYER_PLATFORM_FEE_PAISE;
+  const total = cartSubtotal + BUYER_PLATFORM_FEE_PAISE + platformFeeGst(BUYER_PLATFORM_FEE_PAISE);
 
   return (
     <section className="cart-genie-card" aria-label="Cart preview">
@@ -44,6 +44,7 @@ export function CartOverlayCard({ onClose }: { onClose?: () => void }) {
           <div className="cart-genie-bill">
             <div><span>Subtotal</span><strong>{formatMoney(cartSubtotal)}</strong></div>
             <div><span>Platform fee</span><strong>{formatMoney(BUYER_PLATFORM_FEE_PAISE)}</strong></div>
+            <div><span>GST on platform fee (18%)</span><strong>{formatMoney(platformFeeGst(BUYER_PLATFORM_FEE_PAISE))}</strong></div>
             <div className="cart-genie-total"><span>Total</span><strong>{formatMoney(total)}</strong></div>
           </div>
           <p className="cart-genie-delivery"><Truck size={15} /> Doorstep delivery across India</p>

@@ -11,6 +11,17 @@ import type { Offer, SellerTier } from "./types";
 export const SELLER_COMMISSION_PERCENT = 10;
 export const SELLER_COMMISSION_PERCENT_NORMAL = 10;
 export const BUYER_PLATFORM_FEE_PAISE = 1_000;
+export const PLATFORM_FEE_GST_PERCENT = 18;
+
+/** GST charged on the buyer platform fee, rounded to the nearest paise. */
+export function platformFeeGst(platformFeePaise: number): number {
+  return Math.round(Math.max(0, platformFeePaise) * (PLATFORM_FEE_GST_PERCENT / 100));
+}
+
+/** Platform fee plus its GST. */
+export function buyerPlatformFeeTotal(platformFeePaise: number): number {
+  return Math.max(0, platformFeePaise) + platformFeeGst(platformFeePaise);
+}
 
 export function sellerCommissionPercent(_tier?: SellerTier): number {
   return SELLER_COMMISSION_PERCENT;

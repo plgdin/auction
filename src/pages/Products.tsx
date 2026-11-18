@@ -424,10 +424,13 @@ export function ProductsPage() {
                           id="shop-max-price"
                           type="number"
                           min={0}
-                          max={highestPrice}
-                          step={5000}
-                          value={Math.min(maxPrice, highestPrice)}
-                          onChange={(event) => setMaxPrice(Math.max(0, Number(event.target.value) || 0))}
+                          max={Math.round(highestPrice / 100)}
+                          step={500}
+                          value={Math.round(Math.min(maxPrice, highestPrice) / 100)}
+                          onChange={(event) => {
+                            const rupees = Math.max(0, Number(event.target.value) || 0);
+                            setMaxPrice(rupees * 100);
+                          }}
                           aria-label="Maximum price"
                         />
                       </div>

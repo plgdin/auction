@@ -2,7 +2,7 @@ import { ArrowRight, LockKeyhole, Minus, Plus, ShoppingBag, Trash2, Truck } from
 import { Link, navigate } from "../components/Link";
 import { formatMoney } from "../lib/format";
 import { useStore } from "../lib/store";
-import { BUYER_PLATFORM_FEE_PAISE } from "../lib/sellerMath";
+import { BUYER_PLATFORM_FEE_PAISE, platformFeeGst } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 
 export function CartPage() {
@@ -132,9 +132,17 @@ export function CartPage() {
                 <span>Platform fee</span>
                 <strong>{formatMoney(BUYER_PLATFORM_FEE_PAISE)}</strong>
               </div>
+              <div className="summary-row">
+                <span>GST on platform fee (18%)</span>
+                <strong>{formatMoney(platformFeeGst(BUYER_PLATFORM_FEE_PAISE))}</strong>
+              </div>
               <div className="summary-row summary-total">
                 <span>Total</span>
-                <strong>{formatMoney(cartSubtotal + BUYER_PLATFORM_FEE_PAISE)}</strong>
+                <strong>
+                  {formatMoney(
+                    cartSubtotal + BUYER_PLATFORM_FEE_PAISE + platformFeeGst(BUYER_PLATFORM_FEE_PAISE),
+                  )}
+                </strong>
               </div>
               <p className="summary-note">
                 {sellers.length > 1

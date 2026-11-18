@@ -39,7 +39,7 @@ export function AddressForm({
       pincode: initial?.pincode || "",
       isDefault: initial?.isDefault ?? true,
     });
-  }, [initial]);
+  }, [initial?.id]);
 
   const update = (key: keyof typeof form, value: string | boolean) =>
     setForm((previous) => ({ ...previous, [key]: value }));
@@ -68,6 +68,9 @@ export function AddressForm({
             <option value="Home">Home</option>
             <option value="Work">Work</option>
             <option value="Other">Other</option>
+            {!["Home", "Work", "Other"].includes(form.label) && (
+              <option value={form.label}>{form.label}</option>
+            )}
           </select>
         </Field>
         <Field label="Recipient name">

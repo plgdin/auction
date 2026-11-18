@@ -4,7 +4,6 @@ import { AuctionCard } from "../components/AuctionCard";
 import { navigate } from "../components/Link";
 import { PageHeader, Tabs, EmptyState } from "../components/Ui";
 import { OriginButton } from "@/components/ui/origin-button";
-import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 
@@ -37,7 +36,7 @@ export function AuctionsPage() {
               A few pieces go <em>live.</em>
             </>
           }
-          description="Every day a small, random selection of opted-in listings runs as a short live auction. Anonymous bidding, anti-snipe protection, and a clear 10% seller commission."
+          description="Every day a small, random selection of opted-in listings runs as a short live auction. Anonymous bidding, binding bids, and anti-snipe protection."
           action={
             live.length ? (
               <div className="auction-stat-block">
@@ -106,36 +105,48 @@ export function AuctionsPage() {
 
         <section className="auction-finance section-wrap-inner">
           <div className="auction-finance-copy">
-            <div className="eyebrow">HOW THE MONEY WORKS</div>
-            <h2>Seller commission is 10% of the winning bid.</h2>
+            <div className="eyebrow">HOW AUCTIONS WORK</div>
+            <h2>A fair shot at a better price.</h2>
             <p>
-              The commission applies to the full winning bid, whether it lands above or below the
-              asking price.
+              Every day a small set of opted-in pieces goes live. Bidding is anonymous — aliases
+              only. Every bid is binding and must meet the minimum increment shown on the listing.
+              A bid in the final 30 seconds adds 30 more seconds, so nobody wins by luck. The
+              highest valid bid when the clock runs out wins and pays within 5 minutes.
+            </p>
+            <p>
+              One flat 10% seller commission applies to every sale, GST included — sell for
+              ₹1,000 and you keep ₹900.
             </p>
             <div className="mt-5">
               <OriginButton
-                onClick={() => navigate("#/seller")}
+                onClick={() => {
+                  navigate("#/auctions?tab=live");
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                }}
                 className="bg-[#FAF7F2] text-[#493022] border-[#493022]/20 hover:border-[#493022]"
               >
-                <span>Sell and opt in</span>
+                <span>See live auctions</span>
                 <ArrowUpRight size={16} />
               </OriginButton>
             </div>
           </div>
           <div className="auction-finance-example">
             <div>
-              <span>Asking price</span>
-              <strong>{formatMoney(145000)}</strong>
+              <span>Bidding</span>
+              <strong>Anonymous aliases only</strong>
             </div>
             <div>
-              <span>Winning bid</span>
-              <strong>{formatMoney(160000)}</strong>
+              <span>Closing</span>
+              <strong>Final 30s adds 30s</strong>
+            </div>
+            <div>
+              <span>Winner</span>
+              <strong>Highest valid bid</strong>
             </div>
             <div className="is-highlight">
-              <span>Seller payout</span>
-              <strong>{formatMoney(144000)}</strong>
+              <span>Payment</span>
+              <strong>Within 5 minutes</strong>
             </div>
-            <p>10% seller commission {formatMoney(16000)}</p>
           </div>
         </section>
       </div>

@@ -130,7 +130,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
               <ShieldCheck size={16} /> Private offers, never public bidding
             </li>
             <li>
-              <Store size={16} /> You keep any bid above your asking price in auctions
+              <Store size={16} /> Anonymous auction bids, protected by anti-snipe
             </li>
             <li>
               <LockKeyhole size={16} /> Doorstep delivery across India

@@ -448,7 +448,7 @@ export function SellFormPage() {
                     <strong>{formatMoney(sellerNetPayout(Math.round(Number(form.price) * 100), user?.sellerTier))}</strong>
                   </div>
                   <p>
-                    After a 10% seller commission, inclusive of GST. Settlement starts after the 3-day buyer return-request window closes.
+                    10% seller commission, GST included — sell for ₹1,000 and you receive ₹900. Settlement starts after the 3-day buyer return-request window closes.
                   </p>
                 </div>
               )}
@@ -474,8 +474,8 @@ export function SellFormPage() {
                   <span>
                     <strong>Open my listing to the twist</strong>
                     <em>
-                      It may be picked at random for a short live auction. You receive 90% of the
-                      final winning bid, whether it falls above or below your asking price.
+                      It may be picked at random for a short live auction. The winning bid decides
+                      the sale, above or below your asking price.
                     </em>
                   </span>
                 </label>
@@ -537,11 +537,11 @@ export function SellFormPage() {
               </h3>
               <ul>
                 <li>Doorstep delivery is available across India.</li>
-                <li>10% seller commission, inclusive of GST, is deducted from the sale price.</li>
+                <li>10% seller commission, GST included — sell for ₹1,000 and you receive ₹900.</li>
                 <li>Offers stay private; there is no public haggling.</li>
               </ul>
               <div className="sell-trust">
-                <ShieldCheck size={16} /> You receive 90% of the completed sale price
+                <ShieldCheck size={16} /> Payout lands after the 3-day return-request window
               </div>
             </div>
           </aside>

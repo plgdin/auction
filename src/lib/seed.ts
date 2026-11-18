@@ -1281,7 +1281,8 @@ const orders: Order[] = [
     subtotal: p(450),
     shipping: 0,
     platformFee: p(10),
-    total: p(460),
+    platformFeeGst: p(1.8),
+    total: p(461.8),
     status: "delivered",
     paymentStatus: "paid",
     source: "buy_now",
@@ -1311,7 +1312,8 @@ const orders: Order[] = [
     subtotal: p(980),
     shipping: 0,
     platformFee: p(10),
-    total: p(990),
+    platformFeeGst: p(1.8),
+    total: p(991.8),
     status: "shipped",
     paymentStatus: "paid",
     source: "cart",
@@ -1366,7 +1368,8 @@ const orders: Order[] = [
     subtotal: p(820),
     shipping: 0,
     platformFee: p(10),
-    total: p(830),
+    platformFeeGst: p(1.8),
+    total: p(831.8),
     status: "delivered",
     paymentStatus: "paid",
     source: "auction",
@@ -1435,7 +1438,7 @@ const notifications: Notification[] = [
 ];
 export function createSeedDatabase(): Database {
   return {
-    version: 2,
+    version: 3,
     users,
     products,
     offers: [

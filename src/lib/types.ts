@@ -237,6 +237,7 @@ export interface Order {
   subtotal: number;
   shipping: number;
   platformFee?: number;
+  platformFeeGst?: number;
   total: number;
   status: OrderStatus;
   paymentStatus: PaymentStatus;

@@ -556,11 +556,11 @@ export function SellPage() {
           <div className="sell-block-head"><span className="step-number">03</span><div><h2>Price & options</h2><p>Set the asking price. Buyers can buy instantly or send a private offer.</p></div></div>
           <div className="field-row two">
             <Field label="Asking price (₹) *" hint="Buyers pay this for Buy now, or bid in auctions."><input type="number" min={1} inputMode="numeric" value={form.price} onChange={(e) => update("price", e.target.value)} placeholder="1450" /></Field>
-            <Field label="You receive" hint="10% seller commission is deducted; that amount is inclusive of GST."><div className="sell-payout">{formatMoney(sellerNetPayout(Math.round((Number(form.price) || 0) * 100), user?.sellerTier))}</div></Field>
+            <Field label="You receive" hint="10% seller commission, GST included — sell for ₹1,000 and you receive ₹900."><div className="sell-payout">{formatMoney(sellerNetPayout(Math.round((Number(form.price) || 0) * 100), user?.sellerTier))}</div></Field>
           </div>
           <div className="sell-options">
             <label><input type="checkbox" checked={form.allowOffers} onChange={(e) => update("allowOffers", e.target.checked)} /><span><strong>Allow private offers</strong><em>Buyers can send a price privately. You choose whether to accept — an offer you ignore expires on its own.</em></span></label>
-            <label><input type="checkbox" checked={form.auctionConsent} onChange={(e) => update("auctionConsent", e.target.checked)} /><span><strong>Opt in to random live auctions</strong><em>Your listing may be picked for a short live auction. Your payout is 90% of the final winning bid, whether it lands above or below your asking price. Auction sales are final — the winning bid is binding, so the buyer can&apos;t cancel, return or refund unless the item is genuinely damaged or not as described.</em></span></label>
+            <label><input type="checkbox" checked={form.auctionConsent} onChange={(e) => update("auctionConsent", e.target.checked)} /><span><strong>Opt in to random live auctions</strong><em>Your listing may be picked for a short live auction. Auction sales are final — the winning bid is binding, so the buyer can&apos;t cancel, return or refund unless the item is genuinely damaged or not as described.</em></span></label>
           </div>
         </section>
       </div>
@@ -582,7 +582,7 @@ export function SellPage() {
           <button type="button" className="button button-olive summary-cta" onClick={submit}>{editing ? "Save changes" : "Publish listing"} <ArrowUpRight size={15} /></button>
           <Link href="#/seller" className="button button-ghost summary-cta">Seller dashboard</Link>
         </div>
-        <div className="sell-tips"><h3><Info size={14} /> Good to know</h3><ul><li>Every piece is one seller&apos;s own item.</li><li>We handle shipping & delivery for you.</li><li>Auctions are optional and only run if you opt in. Auction sales are final — no buyer cancellations or returns unless the item is genuinely not as described.</li><li>Offers are private. No public bidding on normal listings.</li></ul><div className="sell-trust"><ShieldCheck size={15} /> You receive 90% of the completed sale price</div></div>
+        <div className="sell-tips"><h3><Info size={14} /> Good to know</h3><ul><li>Every piece is one seller&apos;s own item.</li><li>We handle shipping & delivery for you.</li><li>Auctions are optional and only run if you opt in. Auction sales are final — no buyer cancellations or returns unless the item is genuinely not as described.</li><li>Offers are private. No public bidding on normal listings.</li></ul><div className="sell-trust"><ShieldCheck size={15} /> Payout lands after the 3-day return-request window</div></div>
       </aside>
     </div>
   ) : null;
