@@ -422,7 +422,11 @@ export function OrderDetailPage() {
                     }
                     try {
                       await payWithRazorpay(
-                        order.source === "auction" ? { orderId: order.id } : { checkoutGroupId: order.checkoutGroupId },
+                        {
+                          ...(order.source === "auction" ? { orderId: order.id } : { checkoutGroupId: order.checkoutGroupId }),
+                          amountPaise: Math.round(order.total),
+                          orderNumber: order.number || order.id.slice(0, 8),
+                        },
                         { name: user.name, email: user.email, contact: user.phone },
                       );
                       await refreshRemoteCommerce();

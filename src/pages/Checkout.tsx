@@ -223,7 +223,7 @@ export function CheckoutPage() {
             {
               checkoutGroupId,
               orderId: createdOrderIds[0],
-              amountPaise: Math.round(total * 100),
+              amountPaise: Math.round(total),
               orderNumber: createdOrderIds[0]?.slice(0, 8),
             },
             { name: user.name, email: user.email, contact: user.phone },
