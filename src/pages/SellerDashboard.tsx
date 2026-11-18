@@ -116,6 +116,8 @@ export function SellerDashboardPage() {
       key: "listed",
       title: "List it",
       done: myProducts.length > 0,
+      tab: myProducts.length > 0 ? "listings" : undefined,
+      action: myProducts.length === 0 ? "#/sell?start=1" : undefined,
       line:
         myProducts.length > 0
           ? `${myProducts.length} listing${myProducts.length === 1 ? "" : "s"} saved`
@@ -125,6 +127,8 @@ export function SellerDashboardPage() {
       key: "live",
       title: "Live in the shop",
       done: activeListings.length > 0,
+      tab: "listings",
+      action: undefined,
       line:
         activeListings.length > 0
           ? `${activeListings.length} visible to buyers${pendingListings.length ? ` · ${pendingListings.length} waiting on review` : ""}`
@@ -136,6 +140,8 @@ export function SellerDashboardPage() {
       key: "sold",
       title: "Sold",
       done: paidOrders.length > 0,
+      tab: paidOrders.length > 0 ? "orders" : "offers",
+      action: undefined,
       line:
         paidOrders.length > 0
           ? `${paidOrders.length} paid order${paidOrders.length === 1 ? "" : "s"} to hand over`
@@ -145,6 +151,8 @@ export function SellerDashboardPage() {
       key: "delivered",
       title: "Delivered",
       done: deliveredCount > 0,
+      tab: "orders",
+      action: undefined,
       line:
         deliveredCount > 0
           ? `${deliveredCount} piece${deliveredCount === 1 ? "" : "s"} in their hands`
@@ -154,6 +162,8 @@ export function SellerDashboardPage() {
       key: "paid",
       title: "Paid out",
       done: revenue > 0,
+      tab: "earnings",
+      action: undefined,
       line:
         revenue > 0
           ? `${formatMoney(revenue)} marked paid`
@@ -163,6 +173,8 @@ export function SellerDashboardPage() {
     },
   ];
   const firstTodo = journeySteps.findIndex((step) => !step.done);
+  const completedCount = journeySteps.filter((step) => step.done).length;
+  const progressPercent = Math.round((completedCount / journeySteps.length) * 100);
 
   const setTabAndHash = (next: string) => {
     setTab(next);
@@ -188,23 +200,68 @@ export function SellerDashboardPage() {
 
         <section className="journey-panel">
           <div className="panel-head">
-            <h2>Selling, end to end</h2>
-            <span>Every listing follows this path</span>
+            <div>
+              <h2>Selling, end to end</h2>
+              <p className="journey-summary">
+                {completedCount === 0
+                  ? "Start by adding your first piece to the shop"
+                  : completedCount === 5
+                    ? "All 5 milestones achieved! Your shop is fully active"
+                    : `Next step (${firstTodo + 1} of 5): ${journeySteps[firstTodo]?.title}`}
+              </p>
+            </div>
+            <div className="journey-progress-wrap">
+              <span className="journey-progress-label">
+                {completedCount} of {journeySteps.length} complete
+              </span>
+              <div className="journey-progress-bar">
+                <div
+                  className="journey-progress-fill"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
           </div>
-          <ol className="seller-journey">
-            {journeySteps.map((step, index) => (
-              <li
-                key={step.key}
-                className={`journey-step ${step.done ? "is-done" : index === firstTodo ? "is-current" : "is-todo"}`}
-              >
-                <span className="journey-dot">{step.done ? <Check size={13} /> : index + 1}</span>
-                <div className="journey-copy">
-                  <strong>{step.title}</strong>
-                  <span>{step.line}</span>
+          <div className="seller-journey-grid">
+            {journeySteps.map((step, index) => {
+              const isDone = step.done;
+              const isCurrent = index === firstTodo;
+              const statusLabel = isDone
+                ? "Completed"
+                : isCurrent
+                  ? "In Progress"
+                  : "Upcoming";
+              const statusTone = isDone
+                ? "good"
+                : isCurrent
+                  ? "warm"
+                  : "neutral";
+
+              return (
+                <div
+                  key={step.key}
+                  className={`journey-card ${isDone ? "is-done" : isCurrent ? "is-current" : "is-todo"}`}
+                  onClick={() => {
+                    if (step.tab) setTabAndHash(step.tab);
+                    else if (step.action) navigate(step.action);
+                  }}
+                  role={step.tab || step.action ? "button" : undefined}
+                  tabIndex={step.tab || step.action ? 0 : undefined}
+                >
+                  <div className="journey-card-top">
+                    <span className="journey-dot">
+                      {isDone ? <Check size={14} /> : index + 1}
+                    </span>
+                    <StatusPill status={statusLabel} tone={statusTone} />
+                  </div>
+                  <div className="journey-copy">
+                    <strong>{step.title}</strong>
+                    <span>{step.line}</span>
+                  </div>
                 </div>
-              </li>
-            ))}
-          </ol>
+              );
+            })}
+          </div>
         </section>
 
         <div className="stat-grid">
