@@ -25,10 +25,10 @@ GET /auctions     ─┤                          │
 GET /<unknown>    ─┘                          ├─ api/lib/data.ts     (Supabase anon, seed fallback)
                                               ├─ api/lib/meta.ts     (mirror of src/lib/seo.ts)
                                               ├─ api/lib/html.ts     (strip defaults, inject head)
-                                              └─ api/_shell.generated.ts (built dist/index.html)
+                                              └─ api/lib/shell.generated.ts (built dist/index.html)
 ```
 
-- `api/_shell.generated.ts` is generated from `dist/index.html` by a Vite `closeBundle` plugin. Vite emits stable `/assets/app.js` and `/assets/index.css` names so the committed shell stays valid even if a platform bundles functions before running the build.
+- `api/lib/shell.generated.ts` is generated from `dist/index.html` by a Vite `closeBundle` plugin. Vite emits stable `/assets/app.js` and `/assets/index.css` names so the committed shell stays valid even if a platform bundles functions before running the build.
 - `src/lib/seo.ts` is preserved unchanged. Pure builders moved to `src/lib/seo-meta.ts`, shared by server and client so hydration never strips server JSON-LD.
 - `vite.config.ts` includes a dev middleware that calls the exact same `renderRoute()` / `buildSitemap()` functions, so local tests exercise production-equivalent HTML.
 - Metadata parity: title, description, canonical, robots, `og:type/url/site_name/title/description/image/image:alt`, `twitter:card/title/description/image`, JSON-LD. Auction pages gain JSON-LD that the client did not previously emit.
@@ -77,7 +77,7 @@ Created:
 - `src/lib/seo-meta.ts`
 - `api/render.ts`, `api/sitemap.ts`
 - `api/lib/meta.ts`, `api/lib/html.ts`, `api/lib/data.ts`, `api/lib/render.ts`, `api/lib/sitemap.ts`
-- `api/_shell.generated.ts` (generated; committed for build-order safety)
+- `api/lib/shell.generated.ts` (generated; committed for build-order safety)
 - `tests/seo-server.spec.ts`
 - `supabase/migrations/20261119000000_notification_href_compat.sql`
 - `SEO_MIGRATION.md`

@@ -39,7 +39,7 @@ function generateShellPlugin(): Plugin {
     apply: "build",
     closeBundle() {
       const html = fs.readFileSync(path.resolve(process.cwd(), "dist/index.html"), "utf8");
-      const target = path.resolve(process.cwd(), "api/_shell.generated.ts");
+      const target = path.resolve(process.cwd(), "api/lib/shell.generated.ts");
       fs.writeFileSync(
         target,
         `// Generated from dist/index.html by vite.config.ts. Do not edit.\nexport const SHELL_HTML = ${JSON.stringify(html)};\n`,

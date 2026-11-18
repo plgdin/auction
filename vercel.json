@@ -31,8 +31,24 @@
       "destination": "/api/sitemap?type=auctions"
     },
     {
-      "source": "/:path((?!api/|ws$|assets/|images/|fonts/|ass/|\\.well-known/|favicon[^/]*$|android-chrome[^/]*$|apple-touch-icon[^/]*$|robots\\.txt$|llms\\.txt$|site\\.webmanifest$|index\\.html$|[^/]*\\.png$|[^/]*\\.ico$|[^/]*\\.svg$|[^/]*\\.jpg$|[^/]*\\.jpeg$|[^/]*\\.webp$|[^/]*\\.avif$|[^/]*\\.woff2?$|[^/]*\\.map$|[^/]*\\.json$|[^/]*\\.txt$|[^/]*\\.xml$).*)",
-      "destination": "/api/render?path=/:path"
+      "source": "/products",
+      "destination": "/api/render?path=/products"
+    },
+    {
+      "source": "/product/:id",
+      "destination": "/api/render?path=/product/:id"
+    },
+    {
+      "source": "/auctions",
+      "destination": "/api/render?path=/auctions"
+    },
+    {
+      "source": "/auction/:id",
+      "destination": "/api/render?path=/auction/:id"
+    },
+    {
+      "source": "/((?!api/|ws$|assets/|images/|fonts/|ass/|\\.well-known/|favicon[^/]*$|android-chrome[^/]*$|apple-touch-icon[^/]*$|robots\\.txt$|llms\\.txt$|site\\.webmanifest$|index\\.html$|[^/]*\\.[a-zA-Z0-9]+$).*)",
+      "destination": "/index.html"
     }
   ]
 }

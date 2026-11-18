@@ -6,7 +6,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import path from "node:path";
-import { createSeedDatabase } from "../../src/lib/seed";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
@@ -18,7 +17,14 @@ let client: SupabaseClient | null = null;
 function getClient(): SupabaseClient | null {
   if (!url || !anonKey) return null;
   if (!client) {
-    client = createClient(url, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
+    try {
+      client = createClient(url, anonKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+    } catch (error) {
+      console.warn("[api/lib/data] Supabase client unavailable:", error);
+      return null;
+    }
   }
   return client;
 }
@@ -58,39 +64,49 @@ function isPublicStatus(status?: string | null): boolean {
   return status === "active" || status === "reserved";
 }
 
-function seedProductRow(id: string): PublicProductRow | null {
-  const product = createSeedDatabase().products.find(
-    (item) => item.id === id && isPublicStatus(item.status),
-  );
-  if (!product) return null;
-  return {
-    id: product.id,
-    title: product.title,
-    description: product.description,
-    brand: product.brand ?? null,
-    condition: product.condition ?? null,
-    size: product.size ?? null,
-    seller_name: product.sellerName ?? null,
-    asking_price: product.askingPrice,
-    images: product.images,
-    status: product.status,
-    category: product.category,
-    created_at: product.createdAt,
-  };
+async function seedProductRow(id: string): Promise<PublicProductRow | null> {
+  try {
+    const { createSeedDatabase } = await import("../../src/lib/seed");
+    const product = createSeedDatabase().products.find(
+      (item) => item.id === id && isPublicStatus(item.status),
+    );
+    if (!product) return null;
+    return {
+      id: product.id,
+      title: product.title,
+      description: product.description,
+      brand: product.brand ?? null,
+      condition: product.condition ?? null,
+      size: product.size ?? null,
+      seller_name: product.sellerName ?? null,
+      asking_price: product.askingPrice,
+      images: product.images,
+      status: product.status,
+      category: product.category,
+      created_at: product.createdAt,
+    };
+  } catch {
+    return null;
+  }
 }
 
-function seedAuctionRow(id: string): PublicAuctionRow | null {
-  const auction = createSeedDatabase().auctions.find((item) => item.id === id);
-  if (!auction) return null;
-  return {
-    id: auction.id,
-    product_id: auction.productId,
-    status: auction.status,
-    starting_price_paise: auction.startingPrice,
-    current_bid_paise: auction.currentBid ?? null,
-    created_at: auction.createdAt,
-    ends_at: auction.endsAt,
-  };
+async function seedAuctionRow(id: string): Promise<PublicAuctionRow | null> {
+  try {
+    const { createSeedDatabase } = await import("../../src/lib/seed");
+    const auction = createSeedDatabase().auctions.find((item) => item.id === id);
+    if (!auction) return null;
+    return {
+      id: auction.id,
+      product_id: auction.productId,
+      status: auction.status,
+      starting_price_paise: auction.startingPrice,
+      current_bid_paise: auction.currentBid ?? null,
+      created_at: auction.createdAt,
+      ends_at: auction.endsAt,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export async function getPublicProduct(id: string): Promise<PublicProductRow | null> {
@@ -160,12 +176,17 @@ export async function listPublicProducts(): Promise<SitemapProduct[]> {
       // Fall through to seed data.
     }
   }
-  return createSeedDatabase()
-    .products.filter((product) => isPublicStatus(product.status))
-    .map((product) => ({
-      id: product.id,
-      created_at: product.createdAt,
-    }));
+  try {
+    const { createSeedDatabase } = await import("../../src/lib/seed");
+    return createSeedDatabase()
+      .products.filter((product) => isPublicStatus(product.status))
+      .map((product) => ({
+        id: product.id,
+        created_at: product.createdAt,
+      }));
+  } catch {
+    return [];
+  }
 }
 
 export async function listPublicAuctions(): Promise<SitemapAuction[]> {
@@ -189,11 +210,16 @@ export async function listPublicAuctions(): Promise<SitemapAuction[]> {
       // Fall through to seed data.
     }
   }
-  return createSeedDatabase()
-    .auctions.filter((auction) => auction.status === "live" || auction.status === "scheduled")
-    .map((auction) => ({
-      id: auction.id,
-      ends_at: auction.endsAt,
-      created_at: auction.createdAt,
-    }));
+  try {
+    const { createSeedDatabase } = await import("../../src/lib/seed");
+    return createSeedDatabase()
+      .auctions.filter((auction) => auction.status === "live" || auction.status === "scheduled")
+      .map((auction) => ({
+        id: auction.id,
+        ends_at: auction.endsAt,
+        created_at: auction.createdAt,
+      }));
+  } catch {
+    return [];
+  }
 }
