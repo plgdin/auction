@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test("saved overlay opens with vintage scrapbook drawer styling", async ({ page }) => {
-  await page.goto("http://localhost:5173/#/");
+  await page.goto("http://localhost:5173/");
   await page.waitForTimeout(500);
 
   // Click saved (heart) button

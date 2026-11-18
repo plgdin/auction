@@ -15,7 +15,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { Link } from "../components/Link";
+import { Link, navigate } from "../components/Link";
 import { Countdown } from "../components/Countdown";
 import { EmptyState, Field, StatusPill, Tabs } from "../components/Ui";
 import { formatDate, formatMoney, timeAgo } from "../lib/format";
@@ -73,7 +73,7 @@ export function AdminPage() {
           <Shield size={38} />
           <h2>Admin only.</h2>
           <p>Switch to the admin demo account to open this panel.</p>
-          <Link href="#/login" className="button button-olive">
+          <Link href="/login" className="button button-olive">
             Sign in as admin
           </Link>
         </div>
@@ -83,7 +83,7 @@ export function AdminPage() {
 
   const setTabAndHash = (next: string) => {
     setTab(next);
-    window.location.hash = `#/admin?tab=${next}`;
+    navigate(`/admin?tab=${next}`);
   };
 
   const pending = db.products.filter((product) => product.status === "pending");
@@ -195,7 +195,7 @@ export function AdminPage() {
             >
               <Sparkles size={15} /> Generate auctions
             </button>
-            <Link href="#/products" className="button button-olive">
+            <Link href="/products" className="button button-olive">
               Marketplace <ArrowUpRight size={15} />
             </Link>
           </div>
@@ -650,7 +650,7 @@ export function AdminPage() {
                               Cancel
                             </button>
                           )}
-                          <Link href={`#/auction/${auction.id}`} className="text-link">
+                          <Link href={`/auction/${auction.id}`} className="text-link">
                             View
                           </Link>
                         </div>
@@ -1314,7 +1314,7 @@ export function AdminPage() {
         <div className="dashboard-footnote">
           <Shield size={15} />
           Admin actions affect the browser demo only. No real listings, payouts, or auctions exist.
-          <Link href="#/products" className="text-link">
+          <Link href="/products" className="text-link">
             Back to marketplace
           </Link>
         </div>

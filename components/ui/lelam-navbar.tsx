@@ -64,9 +64,9 @@ export function LelamNavbar({
   }, [accountOpen]);
 
   const navItems: BookmarkNavItem[] = [
-    { label: "Home", icon: Home, href: "#/" },
-    { label: "Shop", icon: ShoppingBag, href: "#/products" },
-    { label: "Auctions", icon: Gavel, href: "#/auctions" },
+    { label: "Home", icon: Home, href: "/" },
+    { label: "Shop", icon: ShoppingBag, href: "/products" },
+    { label: "Auctions", icon: Gavel, href: "/auctions" },
   ];
 
   const activeIndex =
@@ -130,7 +130,7 @@ export function LelamNavbar({
           aria-label="lelam.co home"
           onClick={(event) => {
             event.preventDefault();
-            navigate("#/");
+            navigate("/");
           }}
         >
           <span
@@ -226,7 +226,7 @@ export function LelamNavbar({
                       type="button"
                       onClick={() => {
                         setAccountOpen(false);
-                        navigate("#/account");
+                        navigate("/account");
                       }}
                     >
                       <LayoutDashboard size={16} /> My account
@@ -236,7 +236,7 @@ export function LelamNavbar({
                       role="menuitem"
                       onClick={() => {
                         setAccountOpen(false);
-                        navigate("#/seller");
+                        navigate("/seller");
                       }}
                     >
                       <Store size={16} /> Seller dashboard
@@ -245,7 +245,7 @@ export function LelamNavbar({
                       type="button"
                       onClick={() => {
                         setAccountOpen(false);
-                        navigate("#/account?tab=notifications");
+                        navigate("/account?tab=notifications");
                       }}
                     >
                       <Bell size={16} /> Notifications
@@ -256,7 +256,7 @@ export function LelamNavbar({
                         type="button"
                         onClick={() => {
                           setAccountOpen(false);
-                          navigate("#/admin");
+                          navigate("/admin");
                         }}
                       >
                         <Shield size={16} /> Admin panel
@@ -268,7 +268,7 @@ export function LelamNavbar({
                       onClick={() => {
                         logout();
                         setAccountOpen(false);
-                        navigate("#/login");
+                        navigate("/login");
                       }}
                     >
                       <LogOut size={16} /> Sign out
@@ -290,7 +290,7 @@ export function LelamNavbar({
                         type="button"
                         onClick={() => {
                           setAccountOpen(false);
-                          navigate("#/login");
+                          navigate("/login");
                         }}
                         className="account-menu-signin-btn"
                       >
@@ -304,7 +304,7 @@ export function LelamNavbar({
                         type="button"
                         onClick={() => {
                           setAccountOpen(false);
-                          navigate("#/register");
+                          navigate("/register");
                         }}
                         className="account-menu-register-btn"
                       >

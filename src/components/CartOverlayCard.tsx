@@ -25,7 +25,7 @@ export function CartOverlayCard({ onClose }: { onClose?: () => void }) {
             {cart.slice(0, 3).map(({ product, line }) => (
               <Link
                 key={product.id}
-                href={`#/product/${product.id}`}
+                href={`/product/${product.id}`}
                 className="cart-genie-line"
                 onClick={onClose}
               >
@@ -49,8 +49,8 @@ export function CartOverlayCard({ onClose }: { onClose?: () => void }) {
           </div>
           <p className="cart-genie-delivery"><Truck size={15} /> Doorstep delivery across India</p>
           <div className="cart-genie-actions">
-            <Link href="#/cart" className="button button-ghost" onClick={onClose}>View cart</Link>
-            <Link href="#/checkout" className="button button-olive" onClick={onClose}>
+            <Link href="/cart" className="button button-ghost" onClick={onClose}>View cart</Link>
+            <Link href="/checkout" className="button button-olive" onClick={onClose}>
               <LockKeyhole size={15} /> Checkout <ArrowRight size={15} />
             </Link>
           </div>
@@ -59,7 +59,7 @@ export function CartOverlayCard({ onClose }: { onClose?: () => void }) {
         <div className="cart-genie-empty">
           <ShoppingBag size={28} />
           <p>Your cart is empty. Find a piece to make it yours.</p>
-          <Link href="#/products" className="button button-olive" onClick={onClose}>Browse pieces</Link>
+          <Link href="/products" className="button button-olive" onClick={onClose}>Browse pieces</Link>
         </div>
       )}
     </section>

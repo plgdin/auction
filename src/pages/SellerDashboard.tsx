@@ -81,7 +81,7 @@ export function SellerDashboardPage() {
         <div className="section-wrap empty-state page-empty">
           <Store size={38} />
           <h2>Sign in to your seller dashboard.</h2>
-          <Link href="#/login" className="button button-olive">
+          <Link href="/login" className="button button-olive">
             Sign in
           </Link>
         </div>
@@ -165,7 +165,7 @@ export function SellerDashboardPage() {
 
   const setTabAndHash = (next: string) => {
     setTab(next);
-    window.location.hash = `#/seller?tab=${next}`;
+    navigate(`/seller?tab=${next}`);
   };
 
   return (
@@ -181,7 +181,7 @@ export function SellerDashboardPage() {
               {user.name} · {myProducts.length} listings · {liveAuctions.length} live auctions
             </p>
           </div>
-          <Link href="#/sell?start=1" className="button button-olive">
+          <Link href="/sell?start=1" className="button button-olive">
             <Plus size={15} /> New listing
           </Link>
         </div>
@@ -340,7 +340,7 @@ export function SellerDashboardPage() {
             <section className="panel">
               <div className="panel-head">
                 <h2>Your live auctions</h2>
-                <Link href="#/auctions" className="text-link">
+                <Link href="/auctions" className="text-link">
                   Marketplace <ArrowUpRight size={14} />
                 </Link>
               </div>
@@ -350,7 +350,7 @@ export function SellerDashboardPage() {
                     const product = db.products.find((item) => item.id === auction.productId);
                     if (!product) return null;
                     return (
-                      <Link key={auction.id} href={`#/auction/${auction.id}`} className="mini-auction">
+                      <Link key={auction.id} href={`/auction/${auction.id}`} className="mini-auction">
                         <img src={product.images[0]} alt={product.title} />
                         <div>
                           <strong>{product.title}</strong>
@@ -377,7 +377,7 @@ export function SellerDashboardPage() {
           <div className="dashboard-section">
             <div className="panel-head">
               <h2>All listings</h2>
-              <Link href="#/sell?start=1" className="text-link">
+              <Link href="/sell?start=1" className="text-link">
                 <Plus size={14} /> Add listing
               </Link>
             </div>
@@ -416,10 +416,10 @@ export function SellerDashboardPage() {
                     </div>
                     <span>{product.views}</span>
                     <div className="table-actions">
-                      <Link href={`#/product/${product.id}`} className="text-link">
+                      <Link href={`/product/${product.id}`} className="text-link">
                         View
                       </Link>
-                      <Link href={`#/sell?edit=${product.id}`} className="text-link">
+                      <Link href={`/sell?edit=${product.id}`} className="text-link">
                         Edit
                       </Link>
                       {["active", "draft"].includes(product.status) && (
@@ -458,7 +458,7 @@ export function SellerDashboardPage() {
                 title="No listings yet."
                 body="Add the first piece and it will appear on the rail."
                 action="Create a listing"
-                actionHref="#/sell?start=1"
+                actionHref="/sell?start=1"
               />
             )}
           </div>
@@ -544,7 +544,7 @@ export function SellerDashboardPage() {
                 title="No offers yet."
                 body="When a buyer sends a private offer, it lands here."
                 action="View listings"
-                actionHref="#/seller?tab=listings"
+                actionHref="/seller?tab=listings"
               />
             )}
           </div>
@@ -577,7 +577,7 @@ export function SellerDashboardPage() {
                         </div>
                         <StatusPill status={order.status} />
                         <StatusPill status={order.paymentStatus} tone={order.paymentStatus === "paid" ? "good" : "warm"} />
-                        <Link href={`#/orders/${order.id}`} className="text-link">
+                        <Link href={`/orders/${order.id}`} className="text-link">
                           Details
                         </Link>
                       </div>
@@ -709,7 +709,7 @@ export function SellerDashboardPage() {
                 title="No orders yet."
                 body="Paid orders appear here with the buyer's delivery address."
                 action="View marketplace"
-                actionHref="#/products"
+                actionHref="/products"
               />
             )}
           </div>
@@ -858,7 +858,7 @@ export function SellerDashboardPage() {
                             Cancel
                           </button>
                         )}
-                        <Link href={`#/auction/${auction.id}`} className="text-link">
+                        <Link href={`/auction/${auction.id}`} className="text-link">
                           View lot
                         </Link>
                       </div>
@@ -886,7 +886,7 @@ export function SellerDashboardPage() {
                 title="No auctions yet."
                 body="Opt in when listing, or schedule one from an active listing above."
                 action="Manage listings"
-                actionHref="#/seller?tab=listings"
+                actionHref="/seller?tab=listings"
               />
             )}
           </div>
@@ -976,7 +976,7 @@ export function SellerDashboardPage() {
         <div className="dashboard-footnote">
           <BadgeCheck size={15} />
           Demo dashboard. No real payouts, courier bookings, or payment captures happen here.
-          <button type="button" className="text-link" onClick={() => navigate("#/products")}>
+          <button type="button" className="text-link" onClick={() => navigate("/products")}>
             Back to shop
           </button>
         </div>

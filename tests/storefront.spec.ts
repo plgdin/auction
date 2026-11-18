@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("a one-of-one piece can be saved and added to a persistent cart", async ({
   page,
 }) => {
-  await page.goto("/#/products");
+  await page.goto("/products");
   const jacket = page.locator(".shop-card").filter({
     has: page.getByRole("link", { name: "The worn-in denim jacket" }),
   });
@@ -18,7 +18,7 @@ test("a one-of-one piece can be saved and added to a persistent cart", async ({
     .getByRole("button", { name: "Add The worn-in denim jacket to cart" })
     .click();
 
-  await page.goto("/#/cart");
+  await page.goto("/cart");
   await expect(page.locator(".cart-item")).toHaveCount(1);
   await expect(page.locator(".cart-item")).toContainText(
     "The worn-in denim jacket",
@@ -43,7 +43,7 @@ test("search finds products, handles empty results, and opens product details", 
   await expect(result).toBeVisible();
   await result.click();
 
-  await expect(page).toHaveURL(/#\/product\/p-1$/);
+  await expect(page).toHaveURL(/\/product\/[^/]+$/);
   await expect(
     page.getByRole("heading", { name: "The worn-in denim jacket" }),
   ).toBeVisible();
@@ -63,7 +63,7 @@ test("Shop shows a two-column mobile grid and an accessible filter dialog", asyn
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto("/#/products");
+  await page.goto("/products");
 
   const grid = page.locator(".shop-grid");
   await expect(grid).toHaveClass(/is-grid/);
@@ -101,16 +101,16 @@ test("mobile navigation, product and cart flows work without horizontal overflow
   });
   await expect(mobileNav).toBeVisible();
   await mobileNav.getByRole("button", { name: "Shop" }).click();
-  await expect(page).toHaveURL(/#\/products$/);
+  await expect(page).toHaveURL(/\/products$/);
 
   const firstCard = page.locator(".shop-card").first();
   await firstCard.getByRole("link", { name: /^View / }).click();
-  await expect(page).toHaveURL(/#\/product\/p-\d+$/);
+  await expect(page).toHaveURL(/\/product\/[^/]+$/);
   await page
     .getByRole("region", { name: "Purchase options" })
     .getByRole("button", { name: "Add to cart" })
     .click();
-  await page.goto("/#/cart");
+  await page.goto("/cart");
   await expect(page.locator(".cart-item")).toHaveCount(1);
 
   for (const width of [320, 390, 640, 768, 1024, 1440]) {

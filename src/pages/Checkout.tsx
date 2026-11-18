@@ -81,10 +81,10 @@ export function CheckoutPage() {
           <h2>Sign in to check out.</h2>
           <p>Your cart is saved. Sign in or create an account to continue.</p>
           <div className="modal-actions center">
-            <Link href="#/login" className="button button-olive">
+            <Link href="/login" className="button button-olive">
               Sign in
             </Link>
-            <Link href="#/register" className="button button-ghost">
+            <Link href="/register" className="button button-ghost">
               Create account
             </Link>
           </div>
@@ -100,7 +100,7 @@ export function CheckoutPage() {
           <Truck size={38} />
           <h2>Nothing to check out.</h2>
           <p>Your cart is empty right now.</p>
-          <Link href="#/products" className="button button-olive">
+          <Link href="/products" className="button button-olive">
             Browse listings
           </Link>
         </div>
@@ -114,7 +114,7 @@ export function CheckoutPage() {
         <div className="section-wrap empty-state page-empty">
           <LockKeyhole size={38} />
           <h2>This offer is not yours.</h2>
-          <Link href="#/account?tab=offers" className="button button-olive">
+          <Link href="/account?tab=offers" className="button button-olive">
             My offers
           </Link>
         </div>
@@ -129,7 +129,7 @@ export function CheckoutPage() {
           <LockKeyhole size={38} />
           <h2>This offer is not ready for checkout.</h2>
           <p>The seller may not have accepted it, or the payment window has passed.</p>
-          <Link href="#/account?tab=offers" className="button button-olive">
+          <Link href="/account?tab=offers" className="button button-olive">
             Back to my offers
           </Link>
         </div>
@@ -245,7 +245,7 @@ export function CheckoutPage() {
         } catch (payErr: any) {
           if (createdOrderIds[0]) {
             await refreshRemoteCommerce();
-            navigate(`#/payment-failed/${createdOrderIds[0]}`);
+            navigate(`/payment-failed/${createdOrderIds[0]}`);
             return;
           }
           throw payErr;
@@ -258,7 +258,7 @@ export function CheckoutPage() {
       }
 
       await refreshRemoteCommerce();
-      navigate(`#/order-confirmed/${createdOrderIds[0]}`);
+      navigate(`/order-confirmed/${createdOrderIds[0]}`);
     } catch (error) {
       toast(error instanceof Error ? error.message : "Could not complete checkout.", "error");
     } finally {
@@ -275,7 +275,7 @@ export function CheckoutPage() {
             <h1>Complete your order.</h1>
             <p>Review delivery, payment, and your final total.</p>
           </div>
-          <Link href={offer ? "#/account?tab=offers" : "#/cart"} className="text-link">
+          <Link href={offer ? "/account?tab=offers" : "/cart"} className="text-link">
             Back
           </Link>
         </div>

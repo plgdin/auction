@@ -15,13 +15,13 @@ test("an affiliate link is captured and credits the new signup", async ({ page }
   });
 
   const email = `referred-${Date.now()}@example.com`;
-  await page.goto("/#/register");
+  await page.goto("/register");
   await page.getByPlaceholder("Your name").fill("Referred Buyer");
   await page.getByPlaceholder("you@example.com").fill(email);
   await page.getByPlaceholder("••••••••").fill("password123");
   await page.getByRole("button", { name: /Create account/i }).click();
 
-  await expect(page).toHaveURL(/#\/account/);
+  await expect(page).toHaveURL(/\/account/);
 
   const state = await page.evaluate(() => {
     const raw = localStorage.getItem("lelam-marketplace-v1");
@@ -41,7 +41,7 @@ test("an affiliate link is captured and credits the new signup", async ({ page }
 });
 
 test("the account affiliate tab shows a shareable link and stats", async ({ page }) => {
-  await page.goto("/#/account?tab=affiliate");
+  await page.goto("/account?tab=affiliate");
 
   await expect(
     page.getByRole("heading", { name: "Share the rail. Earn 5%" }),
@@ -54,7 +54,7 @@ test("the account affiliate tab shows a shareable link and stats", async ({ page
 });
 
 test("earnings unlock only after the return window ends", async ({ page }) => {
-  await page.goto("/#/account?tab=affiliate");
+  await page.goto("/account?tab=affiliate");
   await expect(page.locator("#affiliate-link")).toHaveValue(/\?ref=ubuyer$/);
 
   await page.evaluate(() => {
@@ -117,7 +117,7 @@ test("an admin can create a college link and change its commission", async ({ pa
     localStorage.setItem("lelam-marketplace-v1", JSON.stringify(state));
   });
   await page.reload();
-  await page.goto("/#/admin?tab=affiliates");
+  await page.goto("/admin?tab=affiliates");
 
   await page.getByPlaceholder("Campus Finds Club").fill("Campus Finds");
   await page.getByPlaceholder("hello@college.edu").fill("club@college.edu");

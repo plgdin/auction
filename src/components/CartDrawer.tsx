@@ -72,7 +72,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     className="flex items-center gap-3 p-2.5 rounded-xl bg-white/85 border border-[#e8dfd3] shadow-[0_1px_3px_rgba(73,48,34,0.04)]"
                   >
                     <Link
-                      href={`#/product/${product.id}`}
+                      href={`/product/${product.id}`}
                       onClick={onClose}
                       className="shrink-0"
                     >
@@ -84,7 +84,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
                     </Link>
                     <div className="flex-1 min-w-0">
                       <Link
-                        href={`#/product/${product.id}`}
+                        href={`/product/${product.id}`}
                         onClick={onClose}
                         style={{ fontFamily: SANS_FONT }}
                         className="font-medium text-xs sm:text-sm text-[#2e1c12] truncate block hover:underline"
@@ -213,7 +213,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
             className="grid grid-cols-2 gap-2.5 border-t border-[#ebdcca] px-5 py-3.5 bg-[#FAF7F2]"
           >
             <Link
-              href="#/cart"
+              href="/cart"
               style={{ fontFamily: SANS_FONT }}
               className="inline-flex items-center justify-center rounded-xl border border-[#493022]/30 bg-transparent px-3 py-2.5 text-xs sm:text-sm font-semibold text-[#493022] hover:bg-[#ede3d4] transition-colors"
               onClick={onClose}
@@ -221,7 +221,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
               View cart
             </Link>
             <Link
-              href="#/checkout"
+              href="/checkout"
               style={{
                 fontFamily: SANS_FONT,
                 background: "linear-gradient(145deg, #5c3b24 0%, #442a17 50%, #341f10 100%)",

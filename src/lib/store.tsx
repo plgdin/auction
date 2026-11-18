@@ -378,7 +378,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
         "auction_live",
         "Your auction is live",
         `${product.title} just went live. Bidding is now open.`,
-        `#/auction/${auction.id}`,
+        `/auction/${auction.id}`,
       );
       for (const [userId, favorites] of Object.entries(next.favorites)) {
         if (favorites.includes(product.id) && userId !== auction.sellerId) {
@@ -388,7 +388,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
             "auction_started",
             "An auction you saved is live",
             `${product.title} is now open for bidding.`,
-            `#/auction/${auction.id}`,
+            `/auction/${auction.id}`,
           );
         }
       }
@@ -414,7 +414,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
           "auction_ended",
           "Auction ended without bids",
           `${product.title} is back in your listings. You can relist it any time.`,
-          "#/seller?tab=auctions",
+          "/seller?tab=auctions",
         );
         next.auditLogs.unshift({
           id: uid("al"),
@@ -476,7 +476,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
             "auction_won",
             "You won the auction",
             `You won ${product.title} for ${(winnerBid.amount / 100).toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 })}. Complete payment within ${next.settings.auctionPaymentDeadlineMinutes} minutes.`,
-            `#/orders/${order.id}`,
+            `/orders/${order.id}`,
           );
         }
         pushNotification(
@@ -485,7 +485,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
           "auction_sold",
           "Your auction has a winner",
           `${product.title} ended at a winning bid. Check your payout in the seller dashboard.`,
-          "#/seller?tab=auctions",
+          "/seller?tab=auctions",
         );
       }
       next.auditLogs.unshift({
@@ -526,7 +526,7 @@ function settleDueOrders(next: Database, now: number): boolean {
         "payment_expired",
         "Payment window expired",
         `Order ${order.number} was released. The item is available again.`,
-        `#/orders/${order.id}`,
+        `/orders/${order.id}`,
       );
       pushNotification(
         next,
@@ -534,7 +534,7 @@ function settleDueOrders(next: Database, now: number): boolean {
         "order_expired",
         "An order expired",
         `Order ${order.number} was not paid and the item is available again.`,
-        "#/seller?tab=orders",
+        "/seller?tab=orders",
       );
     }
   }
@@ -553,7 +553,7 @@ function settleDueOffers(next: Database, now: number): boolean {
         "offer_expired",
         "Offer expired",
         "The seller did not respond in time. The listing is still available.",
-        "#/account?tab=offers",
+        "/account?tab=offers",
       );
     }
     if (
@@ -570,7 +570,7 @@ function settleDueOffers(next: Database, now: number): boolean {
         "offer_checkout_expired",
         "Offer checkout expired",
         "The agreed price is no longer reserved. You can make a new offer.",
-        "#/account?tab=offers",
+        "/account?tab=offers",
       );
       pushNotification(
         next,
@@ -578,7 +578,7 @@ function settleDueOffers(next: Database, now: number): boolean {
         "offer_expired",
         "Accepted offer expired",
         "The buyer did not complete payment. The listing is active again.",
-        "#/seller?tab=offers",
+        "/seller?tab=offers",
       );
     }
   }
@@ -741,7 +741,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (captured?.firstSeen) {
       void supabase.rpc("affiliate_track_click", {
         p_code: captured.code,
-        p_path: window.location.hash || "/",
+        p_path: `${window.location.pathname}${window.location.search}` || "/",
         p_referrer: document.referrer || null,
         p_user_agent: navigator.userAgent,
         p_ip_hash: null,
@@ -755,7 +755,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             id: uid("ac"),
             code: account.code,
             affiliateId: account.id,
-            path: window.location.hash || "/",
+            path: `${window.location.pathname}${window.location.search}` || "/",
             createdAt: nowIso(),
           },
           ...(next.affiliateClicks ?? []),
@@ -1252,7 +1252,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const { error } = await supabase.auth.signInWithOAuth({
             provider: "google",
             options: {
-              redirectTo: `${window.location.origin}${window.location.pathname}#/account`,
+              redirectTo: `${window.location.origin}/account`,
             },
           });
           if (error) throw error;
@@ -1408,7 +1408,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "offer_received",
         `New offer on ${product.title}`,
         `${activeUser.name} offered a private price. Review it in your seller dashboard.`,
-        "#/seller?tab=offers",
+        "/seller?tab=offers",
       );
       commit(next);
       return { ok: true };
@@ -1465,7 +1465,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               "offer_rejected",
               "Offer not accepted",
               `The seller accepted another offer for ${product.title}.`,
-              "#/account?tab=offers",
+              "/account?tab=offers",
             );
           }
         }
@@ -1480,7 +1480,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             "offer_accepted",
             "Your offer was accepted",
             `${activeUser.name} accepted your offer on ${product.title}. Complete payment within ${next.settings.offerCheckoutHours} hours.`,
-            "#/account?tab=offers",
+            "/account?tab=offers",
           );
         } else {
           pushNotification(
@@ -1489,7 +1489,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             "offer_accepted",
             "Counter-offer accepted",
             `${activeUser.name} accepted your counter-offer on ${product.title}. Item reserved for checkout.`,
-            "#/seller?tab=offers",
+            "/seller?tab=offers",
           );
         }
 
@@ -1512,7 +1512,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             "offer_rejected",
             "Offer not accepted",
             `The seller passed on your offer for ${product.title}. The listing is still available.`,
-            "#/account?tab=offers",
+            "/account?tab=offers",
           );
         } else {
           pushNotification(
@@ -1521,7 +1521,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             "offer_rejected",
             "Counter-offer declined",
             `The buyer declined your counter-offer for ${product.title}.`,
-            "#/seller?tab=offers",
+            "/seller?tab=offers",
           );
         }
       }
@@ -1569,7 +1569,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "offer_countered",
           "Counter-offer received",
           `The seller countered with ₹${(counterAmount / 100).toLocaleString("en-IN")} on ${product.title}.`,
-          "#/account?tab=offers",
+          "/account?tab=offers",
         );
       } else {
         target.status = "pending";
@@ -1586,7 +1586,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "offer_countered",
           "Buyer counter-offer received",
           `The buyer sent a counter-offer of ₹${(counterAmount / 100).toLocaleString("en-IN")} on ${product.title}.`,
-          "#/seller?tab=offers",
+          "/seller?tab=offers",
         );
       }
 
@@ -1716,7 +1716,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "order_created",
           "New order received",
           `${activeUser.name} placed order ${order.number}. Payment is pending.`,
-          "#/seller?tab=orders",
+          "/seller?tab=orders",
         );
       }
       markProductsReserved(
@@ -1842,7 +1842,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "payment_confirmed",
           "Payment confirmed",
           `Order ${target.number} is confirmed. The seller will arrange pickup.`,
-          `#/orders/${target.id}`,
+          `/orders/${target.id}`,
         );
         pushNotification(
           next,
@@ -1850,7 +1850,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "order_paid",
           "Order paid",
           `Order ${target.number} is paid. Arrange pickup for the buyer.`,
-          "#/seller?tab=orders",
+          "/seller?tab=orders",
         );
       }
       commit(next);
@@ -1897,7 +1897,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "order_cancelled",
         "Order cancelled",
         `Order ${target.number} was cancelled.`,
-        `#/orders/${target.id}`,
+        `/orders/${target.id}`,
       );
       commit(next);
       return { ok: true };
@@ -1936,7 +1936,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "return_requested",
         "Return requested",
         `The buyer requested a return for order ${target.number}.`,
-        "#/seller?tab=orders",
+        "/seller?tab=orders",
       );
       commit(next);
       return { ok: true };
@@ -1973,7 +1973,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "review_received",
         "New review",
         `${activeUser.name} left a ${rating}-star review.`,
-        "#/seller?tab=overview",
+        "/seller?tab=overview",
       );
       commit(next);
       return { ok: true };
@@ -2029,7 +2029,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "delivery_confirmed",
           "Delivered",
           `Order ${target.number} was delivered. Leave a review for the seller.`,
-          `#/orders/${target.id}`,
+          `/orders/${target.id}`,
         );
       } else {
         pushNotification(
@@ -2038,7 +2038,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "shipment_update",
           "Delivery update",
           `Order ${target.number}: ${status.replaceAll("_", " ")}.`,
-          `#/orders/${target.id}`,
+          `/orders/${target.id}`,
         );
       }
       commit(next);
@@ -2101,7 +2101,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         product.status === "active"
           ? `${product.title} is now visible on the marketplace.`
           : `${product.title} will go live after an admin review.`,
-        "#/seller?tab=listings",
+        "/seller?tab=listings",
       );
       if (product.status === "pending") {
         for (const admin of next.users.filter((candidate) => candidate.role === "admin")) {
@@ -2111,7 +2111,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             "product_pending",
             "A listing needs review",
             `${product.title} from ${seller.name} is waiting for approval.`,
-            "#/admin?tab=listings",
+            "/admin?tab=listings",
           );
         }
       }
@@ -2243,7 +2243,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "report_created",
           "New listing report",
           `A buyer reported a listing: ${reason}.`,
-          "#/admin?tab=reports",
+          "/admin?tab=reports",
         );
       }
       commit(next);
@@ -2438,7 +2438,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "listing_approved",
         "Your listing is live",
         `${product.title} was approved and is now visible.`,
-        "#/seller?tab=listings",
+        "/seller?tab=listings",
       );
       next.auditLogs.unshift({
         id: uid("al"),
@@ -2468,7 +2468,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "listing_rejected",
         "Listing needs changes",
         `${product.title} was not approved. Reason: ${reason}`,
-        "#/seller?tab=listings",
+        "/seller?tab=listings",
       );
       next.auditLogs.unshift({
         id: uid("al"),
@@ -2597,7 +2597,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "auction_selected",
         "Your item was selected for auction",
         `${product.title} is scheduled at ${new Date(startsAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}.`,
-        "#/seller?tab=auctions",
+        "/seller?tab=auctions",
       );
       created += 1;
     }
@@ -2649,7 +2649,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "auction_selected",
         "Your item was scheduled for auction",
         `${product.title} is scheduled for auction.`,
-        "#/seller?tab=auctions",
+        "/seller?tab=auctions",
       );
       next.auditLogs.unshift({
         id: uid("al"),
@@ -2706,7 +2706,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "auction_cancelled",
         "Auction cancelled",
         `An auction was cancelled. Reason: ${reason}`,
-        "#/seller?tab=auctions",
+        "/seller?tab=auctions",
       );
       next.auditLogs.unshift({
         id: uid("al"),
@@ -2737,7 +2737,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "settlement_paid",
         "Payout sent",
         `Your payout of ₹${(settlement.sellerPayout / 100).toLocaleString("en-IN")} was marked paid.`,
-        "#/seller?tab=earnings",
+        "/seller?tab=earnings",
       );
       commit(next);
       return { ok: true };

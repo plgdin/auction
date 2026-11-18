@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   AlertTriangle,
   CreditCard,
@@ -16,7 +17,8 @@ import type { Order } from "../lib/types";
 export function PaymentFailedPage() {
   const route = useRoute();
   const { db, user, refreshRemoteCommerce, payOrders } = useStore();
-  const orderId = route.path.split("/")[2] || route.query.get("order") || "";
+  const params = useParams();
+  const orderId = params.orderId || route.query.get("order") || "";
 
   const [remoteOrder, setRemoteOrder] = useState<Order | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -111,7 +113,7 @@ export function PaymentFailedPage() {
       payOrders([order.id]);
       await refreshRemoteCommerce();
       toast("Payment confirmed!", "success");
-      navigate(`#/order-confirmed/${order.id}`);
+      navigate(`/order-confirmed/${order.id}`);
     } catch (err: any) {
       toast(err?.message || "Payment was not completed.", "error");
     } finally {
@@ -323,7 +325,7 @@ export function PaymentFailedPage() {
 
           {order && (
             <Link
-              href={`#/orders/${order.id}`}
+              href={`/orders/${order.id}`}
               className="button button-ghost"
               style={{ minHeight: 48, padding: "0 22px", fontSize: 15 }}
             >
@@ -332,7 +334,7 @@ export function PaymentFailedPage() {
           )}
 
           <Link
-            href="#/products"
+            href="/products"
             className="button button-ghost"
             style={{ minHeight: 48, padding: "0 22px", fontSize: 15 }}
           >

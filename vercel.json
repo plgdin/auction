@@ -1,0 +1,38 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "redirects": [
+    {
+      "source": "/order/:id",
+      "destination": "/orders/:id",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/sitemap.xml",
+      "destination": "/api/sitemap?type=index"
+    },
+    {
+      "source": "/sitemap-static.xml",
+      "destination": "/api/sitemap?type=static"
+    },
+    {
+      "source": "/sitemap-categories.xml",
+      "destination": "/api/sitemap?type=categories"
+    },
+    {
+      "source": "/sitemap-products.xml",
+      "destination": "/api/sitemap?type=products"
+    },
+    {
+      "source": "/sitemap-auctions.xml",
+      "destination": "/api/sitemap?type=auctions"
+    },
+    {
+      "source": "/((?!api/|ws$|assets/|images/|fonts/|ass/|\\.well-known/|favicon[^/]*$|android-chrome[^/]*$|apple-touch-icon[^/]*$|robots\\.txt$|llms\\.txt$|site\\.webmanifest$|index\\.html$|[^/]*\\.(png|ico|svg|jpg|jpeg|webp|avif|woff2?|map|json|txt|xml)$).*)",
+      "destination": "/api/render?path=/$1"
+    }
+  ]
+}

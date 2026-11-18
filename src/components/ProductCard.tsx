@@ -20,7 +20,7 @@ export function ProductCard({ product, compact = false }: { product: Product; co
   return (
     <article className={`product-card ${compact ? "is-compact" : ""} ${available ? "" : "is-unavailable"}`}>
       <div className="product-image" style={{ backgroundColor: product.color }}>
-        <Link href={`#/product/${product.id}`} className="product-image-link" aria-label={`View ${product.title}`}>
+        <Link href={`/product/${product.id}`} className="product-image-link" aria-label={`View ${product.title}`}>
           <img src={product.images[0]} alt={product.title} loading="lazy" />
         </Link>
         {product.tag && <span className="product-tag">{product.tag}</span>}
@@ -37,7 +37,7 @@ export function ProductCard({ product, compact = false }: { product: Product; co
           <Heart size={17} fill={saved ? "currentColor" : "none"} />
         </button>
         {auction ? (
-          <Link href={`#/auction/${auction.id}`} className="card-availability is-auction">
+          <Link href={`/auction/${auction.id}`} className="card-availability is-auction">
             {auction.status === "live" ? "LIVE AUCTION" : "UPCOMING AUCTION"} <ArrowUpRight size={12} />
           </Link>
         ) : (
@@ -53,7 +53,7 @@ export function ProductCard({ product, compact = false }: { product: Product; co
             className="quick-add"
             onClick={() => {
               if (inCart) {
-                navigate("#/cart");
+                navigate("/cart");
                 return;
               }
               const result = addToCart(product.id);
@@ -75,7 +75,7 @@ export function ProductCard({ product, compact = false }: { product: Product; co
         <span>{product.size || "One size"}</span>
       </div>
       <div className="product-name-row">
-        <Link href={`#/product/${product.id}`}>{product.title}</Link>
+        <Link href={`/product/${product.id}`}>{product.title}</Link>
         <span className="product-price">{formatMoney(product.askingPrice)}</span>
       </div>
       <div className="card-meta">
@@ -83,7 +83,7 @@ export function ProductCard({ product, compact = false }: { product: Product; co
         <span>{product.location.split(",")[0]}</span>
       </div>
       {product.allowOffers && available && (
-        <Link href={`#/product/${product.id}?offer=1`} className="offer-hint">
+        <Link href={`/product/${product.id}?offer=1`} className="offer-hint">
           <Tag size={12} /> Make an offer
         </Link>
       )}

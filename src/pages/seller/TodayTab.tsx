@@ -129,7 +129,7 @@ export function TodayTab({ onGoToTab }: { onGoToTab: (tab: string) => void }) {
                       {action.label}
                     </button>
                   )}
-                  <Link href={`#/orders/${order.id}`} className="text-link">
+                  <Link href={`/orders/${order.id}`} className="text-link">
                     Open
                   </Link>
                 </div>
@@ -142,7 +142,7 @@ export function TodayTab({ onGoToTab }: { onGoToTab: (tab: string) => void }) {
       <section className="panel sd-today-rail">
         <div className="panel-head">
           <h2>On the rail, live</h2>
-          <Link href="#/auctions" className="text-link">
+          <Link href="/auctions" className="text-link">
             Auction hall
           </Link>
         </div>
@@ -182,7 +182,7 @@ export function TodayTab({ onGoToTab }: { onGoToTab: (tab: string) => void }) {
                   {order.number} · {timeAgo(order.createdAt)}
                 </span>
               </div>
-              <Link href={`#/orders/${order.id}`} className="text-link">
+              <Link href={`/orders/${order.id}`} className="text-link">
                 Details
               </Link>
             </li>

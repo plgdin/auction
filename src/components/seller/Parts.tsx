@@ -229,11 +229,11 @@ export function AuctionRailCard({
   if (!product) return null;
   return (
     <article className="auction-rail-card">
-      <Link href={`#/auction/${auction.id}`} className="auction-rail-thumb">
+      <Link href={`/auction/${auction.id}`} className="auction-rail-thumb">
         <img src={product.images[0]} alt={product.title} />
       </Link>
       <div className="auction-rail-body">
-        <Link href={`#/auction/${auction.id}`} className="auction-rail-title">
+        <Link href={`/auction/${auction.id}`} className="auction-rail-title">
           {product.title}
         </Link>
         <span>
@@ -252,7 +252,7 @@ export function AuctionRailCard({
         ) : (
           <span className="auction-rail-scheduled">opens soon</span>
         )}
-        <Link href={`#/auction/${auction.id}`} className="text-link" aria-label={`View lot ${product.title}`}>
+        <Link href={`/auction/${auction.id}`} className="text-link" aria-label={`View lot ${product.title}`}>
           <ArrowUpRight size={14} />
         </Link>
       </div>
@@ -314,7 +314,7 @@ export function NoListingsYet() {
         Your shelf wants <em>back.</em>
       </h2>
       <p>Two minutes and one photo is enough to hang the first piece on the rail.</p>
-      <Link href="#/sell" className="button button-olive">
+      <Link href="/sell" className="button button-olive">
         List the first piece
       </Link>
     </div>

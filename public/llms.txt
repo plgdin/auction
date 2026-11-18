@@ -1,18 +1,41 @@
 # lelam.co
 
-> lelam.co is a demo pre-loved clothing marketplace for Trivandrum, Kerala. Sellers list gently used pieces, buyers browse the rail, make private offers, and bid in optional live auctions. This is a demo build — no real payments, listings, or accounts.
+> lelam.co is an online curated peer-to-peer pre-loved fashion and thrift clothing marketplace with live daily auctions across India.
 
-## Pages
+## About Lelam
+"Lelam" means Auction in Malayalam. Lelam connects people across India to buy and sell unique pre-owned fashion, vintage pieces, streetwear, and designer thrift with door-to-door courier tracking and safe escrow payments.
 
-- [Home](https://lelam.co/): the marketplace front page, selling pitch, and latest finds.
-- [Shop](https://lelam.co/products): browse every live listing by category, condition, price, and size.
-- [Auctions](https://lelam.co/auctions): optional live, upcoming, and completed auctions with anonymous bidding.
-- [Sell](https://lelam.co/sell): list a pre-loved piece in two minutes.
-- [Cart](https://lelam.co/cart): review saved pieces before checkout.
-- [Account](https://lelam.co/account): buyer orders, private offers, saved finds, addresses, and notifications.
+## Core Features
 
-## Notes
+### 1. Buying
+- **Buy Now**: Purchase instantly at the listed asking price.
+- **Private Offers**: Buyers can make confidential price offers directly to sellers; sellers can accept, decline, or counter without public haggling.
+- **Daily Live Auctions**:
+  - Curated listings enter timed daily auctions.
+  - Bidding is live and anonymous (using pseudonyms).
+  - Anti-sniping protection: Any bid placed in the final 30 seconds automatically extends the auction clock by 30 seconds.
+  - Winning bids are binding commitments with a 10-minute payment window.
 
-- Demo accounts: buyer@lelam.co, seller@lelam.co, admin@lelam.co (demo data, not real people).
-- Data lives in the browser only; no backend calls are made.
-- Content and product photography are demo assets for the lelam.co design system.
+### 2. Transparent Pricing & Fees
+- **Buyer Fees**:
+  - Item price + delivery fee.
+  - Platform fee: Flat ₹10 + 18% GST (₹11.80 total platform fee).
+  - Payment methods: UPI (Google Pay, PhonePe, Paytm), Credit/Debit Cards, Netbanking, and Cash on Delivery (COD).
+- **Seller Fees**:
+  - Flat 10% commission on the final selling price (GST inclusive).
+  - Sellers keep 90% of their sale.
+  - Free doorstep courier pickup across India.
+
+### 3. Trust, Safety & Escrow Protection
+- **Doorstep Delivery**: Tracked couriers across Indian postal PIN codes with automated address verification.
+- **3-Day Inspection Window**: Buyer payments are safely held in escrow until doorstep delivery and a 3-day inspection window closes.
+- **Buyer Protection**: Full refunds if items arrive damaged, counterfeit, or materially not as described.
+
+## Public Navigation & URLs
+- Home: https://lelam.co/
+- Shop / Products: https://lelam.co/products
+- Live & Upcoming Auctions: https://lelam.co/auctions
+- Sell an Item: https://lelam.co/sell
+- Sign In: https://lelam.co/login
+- Create Account: https://lelam.co/register
+- Sitemap: https://lelam.co/sitemap.xml

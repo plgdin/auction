@@ -25,9 +25,9 @@ export interface BookmarkNavProps {
 }
 
 const DEFAULT_ITEMS: BookmarkNavItem[] = [
-  { label: "Home", href: "#/", icon: Home },
-  { label: "Shop", href: "#/products", icon: ShoppingBag },
-  { label: "Auctions", href: "#/auctions", icon: Gavel },
+  { label: "Home", href: "/", icon: Home },
+  { label: "Shop", href: "/products", icon: ShoppingBag },
+  { label: "Auctions", href: "/auctions", icon: Gavel },
 ];
 
 /**

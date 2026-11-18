@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -19,7 +20,6 @@ import { Link, navigate } from "../components/Link";
 import { Modal } from "../components/Modal";
 import { Field, SelectMenu, StatusPill } from "../components/Ui";
 import { formatDate, formatDateTime, formatMoney } from "../lib/format";
-import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
 import type { Order } from "../lib/types";
@@ -45,7 +45,7 @@ const sellerShipmentOptions: { value: NonNullable<Order["shipment"]>["status"]; 
 ];
 
 export function OrderDetailPage() {
-  const route = useRoute();
+  const { orderId = "" } = useParams();
   const {
     db,
     user,
@@ -58,7 +58,6 @@ export function OrderDetailPage() {
     reportProduct,
     updateOrderAddress,
   } = useStore();
-  const orderId = route.path.split("/")[2] || "";
   const storeOrder = db.orders.find((item) => item.id === orderId);
   const [remoteOrder, setRemoteOrder] = useState<Order | null>(null);
   const order = storeOrder || remoteOrder;
@@ -145,7 +144,7 @@ export function OrderDetailPage() {
         <div className="section-wrap empty-state page-empty">
           <Package size={38} />
           <h2>Order not found.</h2>
-          <Link href="#/account?tab=orders" className="button button-olive">
+          <Link href="/account?tab=orders" className="button button-olive">
             My orders
           </Link>
         </div>
@@ -159,7 +158,7 @@ export function OrderDetailPage() {
         <div className="section-wrap empty-state page-empty">
           <ShieldCheck size={38} />
           <h2>Sign in to view this order.</h2>
-          <Link href="#/login" className="button button-olive">
+          <Link href="/login" className="button button-olive">
             Sign in
           </Link>
         </div>
@@ -177,7 +176,7 @@ export function OrderDetailPage() {
         <div className="section-wrap empty-state page-empty">
           <ShieldCheck size={38} />
           <h2>This order is not yours.</h2>
-          <Link href="#/account?tab=orders" className="button button-olive">
+          <Link href="/account?tab=orders" className="button button-olive">
             My orders
           </Link>
         </div>
@@ -213,7 +212,7 @@ export function OrderDetailPage() {
     <main className="page-shell order-page">
       <div className="section-wrap">
         <div className="breadcrumbs">
-          <Link href={isSeller ? "#/seller?tab=orders" : "#/account?tab=orders"}>
+          <Link href={isSeller ? "/seller?tab=orders" : "/account?tab=orders"}>
             <ArrowLeft size={14} /> {isSeller ? "Seller orders" : "My orders"}
           </Link>
           <span>/</span>
@@ -307,7 +306,7 @@ export function OrderDetailPage() {
                   <div key={item.id} className="order-item">
                     <img src={item.image} alt={item.title} />
                     <div>
-                      <Link href={`#/product/${item.productId}`}>{item.title}</Link>
+                      <Link href={`/product/${item.productId}`}>{item.title}</Link>
                       <span>
                         {item.sellerName} · Qty {item.quantity}
                       </span>
@@ -531,9 +530,9 @@ export function OrderDetailPage() {
                       payOrders([order.id]);
                       await refreshRemoteCommerce();
                       toast("Payment confirmed. Your order is in progress.", "success");
-                      navigate(`#/order-confirmed/${order.id}`);
+                      navigate(`/order-confirmed/${order.id}`);
                     } catch (error: any) {
-                      navigate(`#/payment-failed/${order.id}`);
+                      navigate(`/payment-failed/${order.id}`);
                       toast(error instanceof Error ? error.message : "Payment failed.", "error");
                     }
                   }}
@@ -695,7 +694,7 @@ export function OrderDetailPage() {
               <strong>{isSeller ? buyer?.name : seller?.name}</strong>
               <span>{isSeller ? buyer?.email : seller?.email}</span>
               {!isSeller && seller && (
-                <Link href={`#/products?q=${encodeURIComponent(seller.name)}`} className="text-link">
+                <Link href={`/products?q=${encodeURIComponent(seller.name)}`} className="text-link">
                   See their shop <ArrowUpRight size={13} />
                 </Link>
               )}
@@ -713,7 +712,7 @@ export function OrderDetailPage() {
           <button
             type="button"
             className="text-link"
-            onClick={() => navigate(isSeller ? "#/seller?tab=orders" : "#/account?tab=orders")}
+            onClick={() => navigate(isSeller ? "/seller?tab=orders" : "/account?tab=orders")}
           >
             All orders
           </button>

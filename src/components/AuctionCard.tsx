@@ -35,7 +35,7 @@ export function AuctionCard({ auction, product }: { auction: Auction; product: P
       className={`shop-card auction-tile ${isLive ? "is-live" : ""} ${isCompleted ? "is-completed" : ""}`}
     >
       <div className="shop-card-media">
-        <Link href={`#/auction/${auction.id}`} aria-label={`View auction for ${product.title}`}>
+        <Link href={`/auction/${auction.id}`} aria-label={`View auction for ${product.title}`}>
           <img src={product.images[0]} alt={product.title} loading="lazy" />
         </Link>
         <span className="shop-card-tape" aria-hidden="true" />
@@ -49,7 +49,7 @@ export function AuctionCard({ auction, product }: { auction: Auction; product: P
           {isScheduled && <Countdown to={auction.startsAt} prefix="Starts in" compact />}
           {isCompleted && <span>Ended {formatDateTime(auction.endsAt)}</span>}
         </p>
-        <Link href={`#/auction/${auction.id}`} className="shop-card-title">
+        <Link href={`/auction/${auction.id}`} className="shop-card-title">
           {product.title}
         </Link>
         <p className="shop-card-meta">
@@ -71,7 +71,7 @@ export function AuctionCard({ auction, product }: { auction: Auction; product: P
             <span>{priceLabel}</span>
             <strong>{price}</strong>
           </div>
-          <Link href={`#/auction/${auction.id}`} className="auction-tile-enter">
+          <Link href={`/auction/${auction.id}`} className="auction-tile-enter">
             {isLive ? <Gavel size={14} strokeWidth={1.8} /> : <ArrowUpRight size={14} strokeWidth={1.8} />}
             {isLive ? "Enter" : isScheduled ? "View lot" : "Result"}
           </Link>

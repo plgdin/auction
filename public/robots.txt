@@ -1,5 +1,20 @@
-# lelam.co — pre-loved marketplace demo for Trivandrum
+# https://lelam.co
 User-agent: *
 Allow: /
+Allow: /products
+Allow: /auctions
+Allow: /sell
+Allow: /llms.txt
+Allow: /sitemap.xml
+
+# Disallow private user sessions, cart, checkout and internal dashboard routes
+Disallow: /cart
+Disallow: /checkout
+Disallow: /account
+Disallow: /seller
+Disallow: /admin
+Disallow: /orders/
+Disallow: /order-confirmed/
+Disallow: /payment-failed/
 
 Sitemap: https://lelam.co/sitemap.xml

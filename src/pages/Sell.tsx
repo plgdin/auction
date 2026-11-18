@@ -327,11 +327,11 @@ export function SellPage() {
 
   const startSelling = () => {
     if (!user) {
-      promptAuth("#/sell?start=1", "Create an account to start selling. It takes a moment, and your listing goes live after.");
+      promptAuth("/sell?start=1", "Create an account to start selling. It takes a moment, and your listing goes live after.");
       return;
     }
     setShowForm(true);
-    navigate("#/sell?start=1");
+    navigate("/sell?start=1");
     window.setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   };
 
@@ -341,7 +341,7 @@ export function SellPage() {
         <div className="section-wrap empty-state page-empty">
           <LockKeyhole size={38} />
           <h2>That listing is not yours.</h2>
-          <Link href="#/seller" className="button button-olive">My listings</Link>
+          <Link href="/seller" className="button button-olive">My listings</Link>
         </div>
       </main>
     );
@@ -387,11 +387,11 @@ export function SellPage() {
     };
     if (editing) {
       const result = updateListing(editing.id, input);
-      if (result.ok) { toast("Listing updated.", "success"); navigate(`#/product/${editing.id}`); } else toast(result.error, "error");
+      if (result.ok) { toast("Listing updated.", "success"); navigate(`/product/${editing.id}`); } else toast(result.error, "error");
       return;
     }
     const result = createListing(input);
-    if (result.ok) { toast("Listing created.", "success"); navigate(`#/product/${result.productId}`); } else toast(result.error, "error");
+    if (result.ok) { toast("Listing created.", "success"); navigate(`/product/${result.productId}`); } else toast(result.error, "error");
   };
 
   // Promo / landing section first (not the form). CTA right at top.
@@ -409,9 +409,9 @@ export function SellPage() {
               Start selling now <ArrowRight size={16} />
             </button>
             {!user && (
-              <Link href={withNext("#/register", "#/sell?start=1")} className="button button-ghost">Create account — it&apos;s free</Link>
+              <Link href={withNext("/register", "/sell?start=1")} className="button button-ghost">Create account — it&apos;s free</Link>
             )}
-            {user && <Link href="#/seller" className="button button-ghost">Seller dashboard <ArrowUpRight size={15} /></Link>}
+            {user && <Link href="/seller" className="button button-ghost">Seller dashboard <ArrowUpRight size={15} /></Link>}
           </div>
           <div className="sell-hand-note">
             <span className="sell-tape" aria-hidden="true" />
@@ -580,7 +580,7 @@ export function SellPage() {
             </ol>
           </div>
           <button type="button" className="button button-olive summary-cta" onClick={submit}>{editing ? "Save changes" : "Publish listing"} <ArrowUpRight size={15} /></button>
-          <Link href="#/seller" className="button button-ghost summary-cta">Seller dashboard</Link>
+          <Link href="/seller" className="button button-ghost summary-cta">Seller dashboard</Link>
         </div>
         <div className="sell-tips"><h3><Info size={14} /> Good to know</h3><ul><li>Every piece is one seller&apos;s own item.</li><li>We handle shipping & delivery for you.</li><li>Auctions are optional and only run if you opt in. Auction sales are final — no buyer cancellations or returns unless the item is genuinely not as described.</li><li>Offers are private. No public bidding on normal listings.</li></ul><div className="sell-trust"><ShieldCheck size={15} /> Payout lands after the 3-day return-request window</div></div>
       </aside>
@@ -593,8 +593,8 @@ export function SellPage() {
       <h2>Create a free account to sell</h2>
       <p>Shopping works without an account — you can browse and add to cart. Selling, payouts and delivery tracking need an account.</p>
       <div className="sell-hero-actions">
-        <Link href="#/register" className="button button-olive">Create account</Link>
-        <Link href="#/login" className="button button-ghost">Sign in</Link>
+        <Link href="/register" className="button button-olive">Create account</Link>
+        <Link href="/login" className="button button-ghost">Sign in</Link>
       </div>
     </div>
   ) : null;
@@ -602,7 +602,7 @@ export function SellPage() {
   return (
     <main className="page-shell sell-page">
       <div className="section-wrap">
-        <PageHeader eyebrow={editing ? "EDIT LISTING" : "SELL ON LELAM"} title={editing ? <>Tidy up the <em>details.</em></> : <>Put it back <em>in circulation.</em></>} description={editing ? "Update the details below." : "Sell any item — clothes, electronics, furniture, collectibles, toys and more. We handle shipping and delivery."} action={editing ? (<button type="button" className="text-link remove-link" onClick={() => { if (!window.confirm("Remove this listing from the rail?")) return; const result = removeListing(editing.id); if (result.ok) { toast("Listing removed."); navigate("#/seller?tab=listings"); } else toast(result.error, "error"); }}>Remove listing</button>) : undefined} />
+        <PageHeader eyebrow={editing ? "EDIT LISTING" : "SELL ON LELAM"} title={editing ? <>Tidy up the <em>details.</em></> : <>Put it back <em>in circulation.</em></>} description={editing ? "Update the details below." : "Sell any item — clothes, electronics, furniture, collectibles, toys and more. We handle shipping and delivery."} action={editing ? (<button type="button" className="text-link remove-link" onClick={() => { if (!window.confirm("Remove this listing from the rail?")) return; const result = removeListing(editing.id); if (result.ok) { toast("Listing removed."); navigate("/seller?tab=listings"); } else toast(result.error, "error"); }}>Remove listing</button>) : undefined} />
         {promo}
         {formSection}
         {emptyState}

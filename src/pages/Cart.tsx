@@ -18,7 +18,7 @@ export function CartPage() {
             Your cart is <em>quiet.</em>
           </h2>
           <p>Find something one-of-one and it will wait here for you.</p>
-          <Link href="#/products" className="button button-olive">
+          <Link href="/products" className="button button-olive">
             Browse the rail <ArrowRight size={16} />
           </Link>
         </div>
@@ -37,7 +37,7 @@ export function CartPage() {
             </h1>
             <p>{cart.length} {cart.length === 1 ? "piece" : "pieces"} from independent sellers.</p>
           </div>
-          <Link href="#/products" className="text-link">
+          <Link href="/products" className="text-link">
             Keep browsing
           </Link>
         </div>
@@ -52,18 +52,18 @@ export function CartPage() {
                   <div className="cart-seller-head">
                     <span>Sold by</span>
                     <strong>{seller?.name || items[0].product.sellerName}</strong>
-                    <Link href={`#/products?q=${encodeURIComponent(seller?.name || "")}`}>
+                    <Link href={`/products?q=${encodeURIComponent(seller?.name || "")}`}>
                       View shop
                     </Link>
                   </div>
                   {items.map(({ product, line }) => (
                     <article key={product.id} className="cart-item">
-                      <Link href={`#/product/${product.id}`} className="cart-item-image">
+                      <Link href={`/product/${product.id}`} className="cart-item-image">
                         <img src={product.images[0]} alt={product.title} />
                       </Link>
                       <div className="cart-item-info">
                         <div>
-                          <Link href={`#/product/${product.id}`} className="cart-item-title">
+                          <Link href={`/product/${product.id}`} className="cart-item-title">
                             {product.title}
                           </Link>
                           <span>
@@ -155,10 +155,10 @@ export function CartPage() {
                 onClick={() => {
                   if (!user) {
                     toast("Sign in to check out.", "error");
-                    navigate("#/login");
+                    navigate("/login");
                     return;
                   }
-                  navigate("#/checkout");
+                  navigate("/checkout");
                 }}
               >
                 <LockKeyhole size={15} /> Checkout

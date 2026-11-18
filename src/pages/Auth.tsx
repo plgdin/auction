@@ -10,7 +10,8 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const { login, register, signInWithGoogle, user } = useStore();
   const route = useRoute();
   const nextPath = route.query.get("next");
-  const destination = nextPath?.startsWith("/") ? `#${nextPath}` : "#/account";
+  const destination =
+    nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//") ? nextPath : "/account";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -201,8 +202,8 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
                   required
                 />
                 <span>
-                  I agree to the <Link href="#/terms">Terms of Service</Link> and{" "}
-                  <Link href="#/privacy">Privacy Policy</Link>.
+                  I agree to the <Link href="/terms">Terms of Service</Link> and{" "}
+                  <Link href="/privacy">Privacy Policy</Link>.
                 </span>
               </label>
             )}
@@ -273,11 +274,11 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
           <div className="auth-switch">
             {mode === "login" ? (
               <>
-                New here? <Link href="#/register">Create an account</Link>
+                New here? <Link href="/register">Create an account</Link>
               </>
             ) : (
               <>
-                Already have an account? <Link href="#/login">Sign in</Link>
+                Already have an account? <Link href="/login">Sign in</Link>
               </>
             )}
           </div>

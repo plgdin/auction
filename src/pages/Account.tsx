@@ -83,10 +83,10 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
           <h2>Sign in to see your account.</h2>
           <p>Orders, offers, saved pieces, and addresses live here once you are signed in.</p>
           <div className="modal-actions center">
-            <Link href="#/login" className="button button-olive">
+            <Link href="/login" className="button button-olive">
               Sign in
             </Link>
-            <Link href="#/register" className="button button-ghost">
+            <Link href="/register" className="button button-ghost">
               Create account
             </Link>
           </div>
@@ -97,7 +97,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
 
   const setTabAndHash = (next: string) => {
     setTab(next);
-    window.location.hash = `#/account?tab=${next}`;
+    navigate(`/account?tab=${next}`);
   };
 
   const myOrders = db.orders.filter((order) => order.buyerId === user.id);
@@ -161,18 +161,18 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
             </div>
           </div>
           <div className="account-header-actions">
-            <Link href="#/sell?start=1" className="button button-olive">
+            <Link href="/sell?start=1" className="button button-olive">
               <Plus size={15} /> List an item
             </Link>
-            <Link href="#/seller" className="button button-ghost">
+            <Link href="/seller" className="button button-ghost">
               <Store size={15} /> Seller dashboard
             </Link>
             {user.role === "admin" && (
-              <Link href="#/admin" className="button button-ghost">
+              <Link href="/admin" className="button button-ghost">
                 Admin panel
               </Link>
             )}
-            <Link href="#/products" className="button button-ghost">
+            <Link href="/products" className="button button-ghost">
               Keep shopping <ArrowUpRight size={15} />
             </Link>
           </div>
@@ -283,7 +283,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                           </span>
                           <div>
                             {order.status === "pending_payment" && (
-                              <Link href={`#/orders/${order.id}`} className="text-link">
+                              <Link href={`/orders/${order.id}`} className="text-link">
                                 Complete payment
                               </Link>
                             )}
@@ -300,7 +300,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                                 Leave a review
                               </button>
                             )}
-                            <Link href={`#/orders/${order.id}`} className="text-link">
+                            <Link href={`/orders/${order.id}`} className="text-link">
                               View order <ArrowUpRight size={14} />
                             </Link>
                           </div>
@@ -315,7 +315,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                 title="No orders yet."
                 body="Buy something outright, win an auction, or accept an offer to see it here."
                 action="Browse the rail"
-                actionHref="#/products"
+                actionHref="/products"
               />
             )}
           </div>
@@ -338,7 +338,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                 <h2>My Listings</h2>
                 <span>Pieces you put up for sale on the shop.</span>
               </div>
-              <Link href="#/sell?start=1" className="button button-olive">
+              <Link href="/sell?start=1" className="button button-olive">
                 <Plus size={15} /> List an item
               </Link>
             </div>
@@ -408,7 +408,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                           <button
                             type="button"
                             className="button button-olive"
-                            onClick={() => navigate(`#/checkout?offer=${offer.id}`)}
+                            onClick={() => navigate(`/checkout?offer=${offer.id}`)}
                           >
                             Pay {formatMoney(offer.amount)}
                           </button>
@@ -464,7 +464,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                           </button>
                         )}
                         {product && (
-                          <Link href={`#/product/${product.id}`} className="text-link">
+                          <Link href={`/product/${product.id}`} className="text-link">
                             View listing
                           </Link>
                         )}
@@ -564,7 +564,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                 title="No offers yet."
                 body="Find a piece you like and send the seller a private price."
                 action="Find something"
-                actionHref="#/products"
+                actionHref="/products"
               />
             )}
           </div>
@@ -600,7 +600,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                 title="Nothing saved yet."
                 body="Tap the heart on any listing to keep it here."
                 action="Browse the rail"
-                actionHref="#/products"
+                actionHref="/products"
               />
             )}
           </div>

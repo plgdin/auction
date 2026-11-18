@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   ArrowRight,
   CheckCircle2,
@@ -12,15 +13,13 @@ import {
 } from "lucide-react";
 import { Link } from "../components/Link";
 import { formatMoney, formatDate } from "../lib/format";
-import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { supabase } from "../lib/supabase";
 import type { Order } from "../lib/types";
 
 export function OrderConfirmationPage() {
-  const route = useRoute();
   const { db, refreshRemoteCommerce } = useStore();
-  const orderId = route.path.split("/")[2] || "";
+  const { orderId = "" } = useParams();
 
   const [remoteOrder, setRemoteOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
@@ -128,10 +127,10 @@ export function OrderConfirmationPage() {
           <h2>Order Placed!</h2>
           <p>Your order reference is #{orderId.slice(0, 8)}.</p>
           <div className="modal-actions center">
-            <Link href="#/account?tab=orders" className="button button-olive">
+            <Link href="/account?tab=orders" className="button button-olive">
               View my orders
             </Link>
-            <Link href="#/products" className="button button-ghost">
+            <Link href="/products" className="button button-ghost">
               Continue shopping
             </Link>
           </div>
@@ -469,7 +468,7 @@ export function OrderConfirmationPage() {
           }}
         >
           <Link
-            href={`#/orders/${order.id}`}
+            href={`/orders/${order.id}`}
             className="button button-olive"
             style={{ minHeight: 48, padding: "0 28px", fontSize: 15 }}
           >
@@ -477,7 +476,7 @@ export function OrderConfirmationPage() {
           </Link>
 
           <Link
-            href="#/products"
+            href="/products"
             className="button button-ghost"
             style={{ minHeight: 48, padding: "0 24px", fontSize: 15 }}
           >
