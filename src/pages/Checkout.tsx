@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   Banknote,
   Check,
   CreditCard,
   LockKeyhole,
   MapPin,
+  Plus,
   ShieldCheck,
   Smartphone,
   Truck,
@@ -176,8 +178,8 @@ export function CheckoutPage() {
             <h1>Complete your order.</h1>
             <p>Review delivery, payment, and your final total.</p>
           </div>
-          <Link href={offer ? "#/account?tab=offers" : "#/cart"} className="text-link">
-            Back
+          <Link href={offer ? "#/account?tab=offers" : "#/cart"} className="checkout-back-link">
+            <ArrowLeft size={14} /> {offer ? "Back to offers" : "Back to cart"}
           </Link>
         </div>
 
@@ -190,8 +192,12 @@ export function CheckoutPage() {
                   <h2>Delivery address</h2>
                   <p>Doorstep delivery across India. Add a valid six-digit PIN code.</p>
                 </div>
-                <button type="button" className="text-link" onClick={() => setShowAddressForm((open) => !open)}>
-                  {showAddressForm ? "Cancel" : "Add new"}
+                <button
+                  type="button"
+                  className="checkout-action-btn"
+                  onClick={() => setShowAddressForm((open) => !open)}
+                >
+                  {showAddressForm ? "Cancel" : <><Plus size={13} /> Add new</>}
                 </button>
               </div>
 
@@ -351,12 +357,12 @@ export function CheckoutPage() {
                 <span>Total</span>
                 <strong>{formatMoney(total)}</strong>
               </div>
-              <div className="checkout-address-mini">
+              <div className={`checkout-address-mini ${!address ? "is-empty" : ""}`}>
                 <MapPin size={14} />
                 <span>
                   {address
                     ? `${address.line1}, ${address.city} ${address.pincode}`
-                    : "Choose a delivery address"}
+                    : "Choose a delivery address to place order"}
                 </span>
               </div>
               <label className="legal-consent checkout-consent">
@@ -376,7 +382,11 @@ export function CheckoutPage() {
                 onClick={placeOrder}
                 disabled={placing || !address || !serviceable || !acceptedPolicies}
               >
-                {placing ? "Placing order…" : "Place order"} <ArrowRight size={15} />
+                {placing
+                  ? "Placing order…"
+                  : !address
+                    ? "Add address to place order"
+                    : "Place order"} <ArrowRight size={15} />
               </button>
               <div className="summary-trust">
                 <span>

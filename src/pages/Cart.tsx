@@ -11,7 +11,7 @@ export function CartPage() {
   const sellers = [...new Set(cart.map((entry) => entry.product.sellerId))];
   if (!cart.length) {
     return (
-      <main className="page-shell">
+      <main className="page-shell cart-page">
         <div className="section-wrap empty-state page-empty">
           <ShoppingBag size={38} />
           <h2>
@@ -27,7 +27,7 @@ export function CartPage() {
   }
 
   return (
-    <main className="page-shell">
+    <main className="page-shell cart-page">
       <div className="section-wrap">
         <div className="page-header">
           <div>

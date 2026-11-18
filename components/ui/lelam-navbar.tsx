@@ -16,6 +16,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { BookmarkNav, type BookmarkNavItem } from "@/components/ui/bookmark-nav";
+import { BottomNavBar } from "@/components/ui/bottom-nav-bar";
 import { navigate } from "@/src/components/Link";
 import { useRoute } from "@/src/lib/router";
 import { useStore } from "@/src/lib/store";
@@ -95,10 +96,10 @@ export function LelamNavbar({
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 w-full select-none font-sans pointer-events-none">
-      {/* Top Paper Craft Torn Edge — sits as the topmost layer above the header and bookmark anchors */}
+      {/* Top Paper Craft Torn Edge — sits above the bookmark anchors, seamlessly tucking them into the top edge */}
       <div
         className="paper-craft-top absolute top-0 left-0 right-0 w-full pointer-events-none select-none overflow-hidden"
-        style={{ height: "32px", zIndex: 45 }}
+        style={{ height: "32px", zIndex: 40 }}
         aria-hidden="true"
       >
         <img
@@ -119,7 +120,10 @@ export function LelamNavbar({
         />
       </div>
 
-      <div className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-none z-35">
+      <div
+        className="lelam-header-bar relative flex h-20 w-full items-center justify-between px-5 sm:px-8 lg:px-12 pointer-events-none"
+        style={{ zIndex: 50 }}
+      >
         <a
           href="#top"
           className="flex items-center text-[#493022] brand-logo no-underline shrink-0 pointer-events-auto"
@@ -316,24 +320,15 @@ export function LelamNavbar({
         </div>
       </div>
 
-      <nav className="mobile-bottom-nav" aria-label="Main navigation">
-        {navItems.map((item, index) => {
-          const Icon = item.icon;
-          const isActive = mobileActiveIndex === index;
-          return (
-            <button
-              key={item.label}
-              type="button"
-              aria-current={isActive ? "page" : undefined}
-              className={isActive ? "is-active" : ""}
-              onClick={() => handleNavChange(index, item)}
-            >
-              <Icon size={20} strokeWidth={isActive ? 2.2 : 1.8} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
-      </nav>
+      <div className="mobile-bottom-nav-wrapper">
+        <BottomNavBar
+          stickyBottom
+          className="mobile-bottom-nav"
+          activeIndex={mobileActiveIndex}
+          items={navItems}
+          onChange={(index, item) => handleNavChange(index, item as BookmarkNavItem)}
+        />
+      </div>
     </header>
   );
 }

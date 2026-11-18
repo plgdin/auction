@@ -12,7 +12,7 @@ import { useRoute } from "./lib/router";
 import { StoreProvider, useStore } from "./lib/store";
 import { toast } from "./lib/toast";
 import { REDUCED_MOTION } from "./lib/motion";
-import { CartOverlayCard } from "./components/CartOverlayCard";
+import { CartDrawer } from "./components/CartDrawer";
 import { HomePage } from "./pages/Home";
 
 const ProductsPage = lazy(() => import("./pages/Products").then((module) => ({ default: module.ProductsPage })));
@@ -201,8 +201,11 @@ function SearchModalCard({
                     </span>
                   </div>
                   <strong
-                    className="font-serif text-sm font-semibold shrink-0"
-                    style={{ color: "#493022" }}
+                    className="text-sm font-semibold shrink-0 tabular-nums"
+                    style={{
+                      fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                      color: "#493022",
+                    }}
                   >
                     {formatMoney(product.askingPrice)}
                   </strong>
@@ -265,44 +268,6 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
         onClose={onClose}
       />
     </GenieSearchModal>
-  );
-}
-
-function CartOverlay({ onClose }: { onClose: () => void }) {
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    const prevOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      document.body.style.overflow = prevOverflow;
-    };
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.22, ease: "easeOut" }}
-        onClick={onClose}
-        className="fixed inset-0 bg-[#25170F]/55 backdrop-blur-sm"
-      />
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.94, y: 16 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.94, y: 16 }}
-        transition={{ type: "spring", stiffness: 380, damping: 28, mass: 0.8 }}
-        className="relative z-10 w-full max-w-[512px] flex justify-center"
-      >
-        <CartOverlayCard onClose={onClose} />
-      </motion.div>
-    </div>
   );
 }
 
@@ -470,7 +435,13 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                       </Link>
                       <p className="text-xs text-[#8C745A] mt-0.5">
                         {product.condition} ·{" "}
-                        <span className="font-serif font-semibold" style={{ color: "#493022" }}>
+                        <span
+                          className="font-semibold tabular-nums"
+                          style={{
+                            fontFamily: '"DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                            color: "#493022",
+                          }}
+                        >
                           {formatMoney(product.askingPrice)}
                         </span>
                       </p>
@@ -731,11 +702,7 @@ function Shell() {
       </Suspense>
 
       {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
-      <AnimatePresence>
-        {cartOpen && (
-          <CartOverlay onClose={() => setCartOpen(false)} />
-        )}
-      </AnimatePresence>
+      <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
       {savedOpen && <SavedOverlay onClose={() => setSavedOpen(false)} />}
       {authPrompt && <AuthPrompt detail={authPrompt} onClose={() => setAuthPrompt(null)} />}
       <ToastHost />
