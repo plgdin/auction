@@ -4,6 +4,7 @@ import {
   BadgeCheck,
   Banknote,
   Check,
+  CheckCircle2,
   Clock3,
   Gavel,
   Package,
@@ -173,7 +174,6 @@ export function SellerDashboardPage() {
       <div className="section-wrap">
         <div className="page-header">
           <div>
-            <div className="eyebrow">SELLER DASHBOARD</div>
             <h1>
               Your <em>shop.</em>
             </h1>
@@ -271,7 +271,13 @@ export function SellerDashboardPage() {
                 </div>
                 {pendingOffers.length === 0 &&
                 paidOrders.filter((order) => order.status === "paid").length === 0 ? (
-                  <p className="panel-empty">Nothing urgent. Your shop is tidy.</p>
+                  <div className="panel-empty-state">
+                    <span className="panel-empty-icon">
+                      <CheckCircle2 size={22} />
+                    </span>
+                    <strong>All caught up</strong>
+                    <span>Nothing urgent needs your attention. Your shop is tidy.</span>
+                  </div>
                 ) : (
                   <ul className="attention-list">
                     {pendingOffers.slice(0, 3).map((offer) => {
@@ -332,7 +338,15 @@ export function SellerDashboardPage() {
                         <StatusPill status={order.status} />
                       </li>
                     ))}
-                  {myOrders.length === 0 && <p className="panel-empty">No orders yet.</p>}
+                  {myOrders.length === 0 && (
+                    <div className="panel-empty-state">
+                      <span className="panel-empty-icon">
+                        <Clock3 size={22} />
+                      </span>
+                      <strong>No recent activity</strong>
+                      <span>Customer orders and status updates will appear here.</span>
+                    </div>
+                  )}
                 </ul>
               </section>
             </div>
@@ -365,9 +379,13 @@ export function SellerDashboardPage() {
                   })}
                 </div>
               ) : (
-                <p className="panel-empty">
-                  No live auction right now. Opt in to auctions when listing, or schedule one below.
-                </p>
+                <div className="panel-empty-state">
+                  <span className="panel-empty-icon">
+                    <Gavel size={22} />
+                  </span>
+                  <strong>No live auctions right now</strong>
+                  <span>Opt in to auctions when listing a piece, or schedule an auction from your listings tab.</span>
+                </div>
               )}
             </section>
           </div>
