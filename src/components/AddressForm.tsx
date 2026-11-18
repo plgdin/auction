@@ -47,8 +47,13 @@ export function AddressForm({
     setForm((previous) => ({ ...previous, [key]: value }));
 
   const handlePhoneChange = (val: string) => {
-    // Only accept numeric characters, capped at 10 digits
-    const digits = val.replace(/\D/g, "").slice(0, 10);
+    // Strip leading +91 or 91 (if 12 digits) or leading 0 (if 11 digits) from autofill
+    let cleaned = val.trim();
+    if (cleaned.startsWith("+91")) cleaned = cleaned.slice(3);
+    cleaned = cleaned.replace(/\D/g, "");
+    if (cleaned.length === 12 && cleaned.startsWith("91")) cleaned = cleaned.slice(2);
+    else if (cleaned.length === 11 && cleaned.startsWith("0")) cleaned = cleaned.slice(1);
+    const digits = cleaned.slice(0, 10);
     update("phone", digits);
   };
 

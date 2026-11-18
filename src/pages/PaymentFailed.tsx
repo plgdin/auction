@@ -130,10 +130,10 @@ export function PaymentFailedPage() {
             background: "#FAF4EB",
             border: "1px solid #D5C2A5",
             borderRadius: 24,
-            padding: "36px 32px",
+            padding: "clamp(24px, 5vw, 36px) clamp(16px, 4vw, 32px)",
             textAlign: "center",
             boxShadow: "0 12px 36px rgba(50, 36, 22, 0.08)",
-            marginBottom: 28,
+            marginBottom: 24,
           }}
         >
           <div
@@ -173,7 +173,7 @@ export function PaymentFailedPage() {
           <h1
             style={{
               fontFamily: "var(--serif, Georgia, serif)",
-              fontSize: "clamp(26px, 4vw, 36px)",
+              fontSize: "clamp(24px, 4vw, 36px)",
               color: "#28180E",
               margin: "0 0 10px",
               fontWeight: 600,
@@ -196,21 +196,23 @@ export function PaymentFailedPage() {
 
           <div
             style={{
-              display: "inline-flex",
+              display: "flex",
               alignItems: "center",
-              gap: 16,
+              justifyContent: "center",
+              flexWrap: "wrap",
+              gap: 10,
               background: "#FFF",
               border: "1px solid #E4D8C4",
               borderRadius: 12,
-              padding: "10px 20px",
-              fontSize: 14,
+              padding: "10px 16px",
+              fontSize: 13.5,
               color: "#332417",
             }}
           >
             <span>
               Order: <strong>{orderNum}</strong>
             </span>
-            <span style={{ color: "#D5C2A5" }}>|</span>
+            <span style={{ color: "#D5C2A5" }}>•</span>
             <span>
               Amount:{" "}
               <strong style={{ color: "#A65D49" }}>

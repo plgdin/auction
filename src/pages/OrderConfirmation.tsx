@@ -152,10 +152,10 @@ export function OrderConfirmationPage() {
             background: "#FAF4EB",
             border: "1px solid #D5C2A5",
             borderRadius: 24,
-            padding: "36px 32px",
+            padding: "clamp(24px, 5vw, 36px) clamp(16px, 4vw, 32px)",
             textAlign: "center",
             boxShadow: "0 12px 36px rgba(50, 36, 22, 0.08)",
-            marginBottom: 28,
+            marginBottom: 24,
           }}
         >
           <div
@@ -195,7 +195,7 @@ export function OrderConfirmationPage() {
           <h1
             style={{
               fontFamily: "var(--serif, Georgia, serif)",
-              fontSize: "clamp(28px, 4vw, 40px)",
+              fontSize: "clamp(26px, 4vw, 40px)",
               color: "#28180E",
               margin: "0 0 10px",
               fontWeight: 600,
@@ -219,25 +219,27 @@ export function OrderConfirmationPage() {
 
           <div
             style={{
-              display: "inline-flex",
+              display: "flex",
               alignItems: "center",
-              gap: 16,
+              justifyContent: "center",
+              flexWrap: "wrap",
+              gap: 10,
               background: "#FFF",
               border: "1px solid #E4D8C4",
               borderRadius: 12,
-              padding: "10px 20px",
-              fontSize: 14,
+              padding: "10px 16px",
+              fontSize: 13.5,
               color: "#332417",
             }}
           >
             <span>
               Order ID: <strong>{orderNum}</strong>
             </span>
-            <span style={{ color: "#D5C2A5" }}>|</span>
+            <span style={{ color: "#D5C2A5" }}>•</span>
             <span>
               Placed: <strong>{formatDate(order.createdAt)}</strong>
             </span>
-            <span style={{ color: "#D5C2A5" }}>|</span>
+            <span style={{ color: "#D5C2A5" }}>•</span>
             <span>
               Payment:{" "}
               <strong style={{ color: isCod ? "#8B5E3C" : "#4A5438" }}>
@@ -251,8 +253,8 @@ export function OrderConfirmationPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-            gap: 20,
+            gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 280px), 1fr))",
+            gap: 18,
             marginBottom: 24,
           }}
         >
