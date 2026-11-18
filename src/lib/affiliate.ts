@@ -22,10 +22,10 @@ export function codeForUser(userId: string): string {
   return body.length >= 4 ? body : `lelam${body}`;
 }
 
-export function affiliateUrl(code: string, path = ""): string {
-  const base = `${window.location.origin}${window.location.pathname}`;
-  const hash = path ? `#${path.startsWith("/") ? path : `/${path}`}` : "";
-  return `${base}?ref=${encodeURIComponent(code)}${hash}`;
+export function affiliateUrl(code: string, path = "/"): string {
+  const base = `${window.location.origin}${path.startsWith("/") ? path : `/${path}`}`;
+  const separator = base.includes("?") ? "&" : "?";
+  return `${base}${separator}ref=${encodeURIComponent(code)}`;
 }
 
 type StoredRef = { code: string; at: number };
@@ -59,7 +59,7 @@ export function clearStoredRef(): void {
   }
 }
 
-/** Reads ?ref= from the normal query string and from the hash route. */
+/** Reads ?ref= from the query string (legacy hash links still supported). */
 export function readRefFromUrl(): string | null {
   try {
     const search = new URLSearchParams(window.location.search).get("ref");
@@ -163,9 +163,9 @@ export function summariseAffiliate(
   return {
     code: account.code,
     link: affiliateUrl(account.code),
-    clicks: (db.affiliateClicks ?? []).filter((click) => click.affiliateId === account.id).length,
-    signups: db.users.filter((candidate) => candidate.referredBy === account.id).length,
-    orders: commissions.length,
+    clicks: account.totalClicks ?? (db.affiliateClicks ?? []).filter((click) => click.affiliateId === account.id).length,
+    signups: account.totalSignups ?? db.users.filter((candidate) => candidate.referredBy === account.id).length,
+    orders: account.totalOrders ?? commissions.length,
     pending: commissions
       .filter((entry) => entry.status === "pending")
       .reduce((total, entry) => total + entry.amount, 0),

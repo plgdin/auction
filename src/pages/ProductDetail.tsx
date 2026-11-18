@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -19,6 +20,8 @@ import { ProductCard } from "../components/ProductCard";
 import { StatusPill, Field, SelectMenu } from "../components/Ui";
 import { formatDate, formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
+import { useSeo } from "../lib/seo";
+import { productMeta } from "../lib/seo-meta";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
 import { animateCartAdded } from "../lib/cartAnimation";
@@ -26,7 +29,7 @@ import { animateCartAdded } from "../lib/cartAnimation";
 export function ProductDetailPage() {
   const route = useRoute();
   const { db, user, favorites, toggleFavorite, addToCart, makeOffer, reportProduct } = useStore();
-  const productId = route.path.split("/")[2] || "";
+  const { productId = "" } = useParams();
   const product = db.products.find((item) => item.id === productId);
   const productPath = `/product/${productId}`;
   const [imageIndex, setImageIndex] = useState(0);
@@ -41,6 +44,23 @@ export function ProductDetailPage() {
     setImageIndex(0);
   }, [productId, route.query]);
 
+  useSeo(
+    product
+      ? productMeta({
+          id: product.id,
+          title: product.title,
+          description: product.description,
+          condition: product.condition,
+          size: product.size,
+          brand: product.brand,
+          sellerName: product.sellerName,
+          askingPrice: product.askingPrice,
+          images: product.images,
+          status: product.status,
+        })
+      : null,
+  );
+
   if (!product) {
     return (
       <main className="page-shell">
@@ -48,7 +68,7 @@ export function ProductDetailPage() {
           <ShoppingBag size={36} />
           <h2>This listing is not here.</h2>
           <p>It may have been removed or sold.</p>
-          <Link href="#/products" className="button button-olive">
+          <Link href="/products" className="button button-olive">
             Back to the rail
           </Link>
         </div>
@@ -98,11 +118,11 @@ export function ProductDetailPage() {
     <main className="page-shell product-detail-page">
       <div className="section-wrap">
         <div className="breadcrumbs">
-          <Link href="#/products">
+          <Link href="/products">
             <ArrowLeft size={14} /> All pieces
           </Link>
           <span>/</span>
-          <Link href={`#/products?category=${encodeURIComponent(product.category)}`}>
+          <Link href={`/products?category=${encodeURIComponent(product.category)}`}>
             {product.category}
           </Link>
           <span>/</span>
@@ -173,14 +193,14 @@ export function ProductDetailPage() {
                         : "It can still be bought until the auction begins."}
                     </p>
                   </div>
-                  <Link href={`#/auction/${auction.id}`} className="button button-olive">
+                  <Link href={`/auction/${auction.id}`} className="button button-olive">
                     View auction <ArrowUpRight size={15} />
                   </Link>
                 </div>
               ) : (
                 <div className="product-actions">
                   {ownListing ? (
-                    <Link href={`#/sell?edit=${product.id}`} className="button button-olive">
+                    <Link href={`/sell?edit=${product.id}`} className="button button-olive">
                       Manage your listing <ArrowUpRight size={16} />
                     </Link>
                   ) : available ? (
@@ -191,10 +211,10 @@ export function ProductDetailPage() {
                         onClick={() => {
                           if (!user) {
                             toast("Sign in to buy this piece.", "error");
-                            navigate(`#/login?next=${encodeURIComponent(productPath)}`);
+                            navigate(`/login?next=${encodeURIComponent(productPath)}`);
                             return;
                           }
-                          navigate(`#/checkout?product=${product.id}`);
+                          navigate(`/checkout?product=${product.id}`);
                         }}
                       >
                         Buy now <ArrowUpRight size={16} />
@@ -223,7 +243,7 @@ export function ProductDetailPage() {
                               if (!user) {
                                 toast("Sign in to make an offer.", "error");
                                 navigate(
-                                  `#/login?next=${encodeURIComponent(`${productPath}?offer=1`)}`,
+                                  `/login?next=${encodeURIComponent(`${productPath}?offer=1`)}`,
                                 );
                                 return;
                               }
@@ -307,7 +327,7 @@ export function ProductDetailPage() {
                 onClick={() => {
                   if (!user) {
                     toast("Sign in to report a listing.", "error");
-                    navigate("#/login");
+                    navigate("/login");
                     return;
                   }
                   setReportOpen(true);
@@ -337,7 +357,7 @@ export function ProductDetailPage() {
               <div>
                 <h2>More in {product.category.toLowerCase()}.</h2>
               </div>
-              <Link href={`#/products?category=${encodeURIComponent(product.category)}`} className="text-link">
+              <Link href={`/products?category=${encodeURIComponent(product.category)}`} className="text-link">
                 See all <ArrowUpRight size={17} />
               </Link>
             </div>

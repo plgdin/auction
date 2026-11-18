@@ -5,8 +5,7 @@ export function computeAuctionSettlement(
   commissionPct = 10,
 ) {
   // Seller commission is 10% of the full winning bid (GST inclusive),
-  // rounded down to paise. Asking price is ignored, so bids below asking
-  // are no longer subsidised by the platform.
+  // rounded down to paise. Bids below asking are not subsidised by the platform.
   const commission = Math.floor((winningBidPaise * commissionPct) / 100);
   return {
     sellerPayoutPaise: winningBidPaise - commission,

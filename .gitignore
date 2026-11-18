@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 dist/
 test-results/
 playwright-report/
@@ -16,4 +16,3 @@ scratch/
 /Ogg/
 /PPEditorialNew-Free for personal use/
 /ass/
-

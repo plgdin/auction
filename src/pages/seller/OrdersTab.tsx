@@ -53,7 +53,7 @@ export function OrdersTab() {
                 {order.source === "auction" && <span className="status-pill status-neutral">Live auction win</span>}
                 {order.source === "offer" && <span className="status-pill status-neutral">Accepted offer</span>}
               </div>
-              <Link href={`#/orders/${order.id}`} className="text-link">
+              <Link href={`/orders/${order.id}`} className="text-link">
                 Full receipt <ExternalLink size={12} />
               </Link>
             </header>

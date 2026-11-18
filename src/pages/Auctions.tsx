@@ -76,7 +76,7 @@ export function AuctionsPage() {
           active={tab}
           onChange={(next) => {
             setTab(next);
-            window.location.hash = `#/auctions?tab=${next}`;
+            navigate(`/auctions?tab=${next}`);
           }}
         />
 
@@ -99,7 +99,7 @@ export function AuctionsPage() {
                 : "Check back soon. Auctions are scheduled daily from opted-in listings."
             }
             action="Shop the rail"
-            actionHref="#/products"
+            actionHref="/products"
           />
         )}
 
@@ -120,7 +120,7 @@ export function AuctionsPage() {
             <div className="mt-5">
               <OriginButton
                 onClick={() => {
-                  navigate("#/auctions?tab=live");
+                  navigate("/auctions?tab=live");
                   window.scrollTo({ top: 0, behavior: "smooth" });
                 }}
                 className="bg-[#FAF7F2] text-[#493022] border-[#493022]/20 hover:border-[#493022]"

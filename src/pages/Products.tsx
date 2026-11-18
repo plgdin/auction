@@ -10,6 +10,8 @@ import { ShopCard } from "../components/ShopCard";
 import { SelectMenu } from "../components/Ui";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
+import { useSeo } from "../lib/seo";
+import { productsMeta } from "../lib/seo-meta";
 import { useStore } from "../lib/store";
 import { CATEGORIES, findTopForLegacy, groupsFor } from "../lib/categories";
 import type { Condition, Product } from "../lib/types";
@@ -67,6 +69,8 @@ export function ProductsPage() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState(100000);
   const [page, setPage] = useState(1);
+
+  useSeo(productsMeta(category !== "all" ? category : null));
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     category: true,
     type: true,

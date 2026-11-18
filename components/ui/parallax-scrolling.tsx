@@ -1,5 +1,6 @@
 import { ArrowUpRight, Tag } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Link } from '@/src/components/Link';
 
 export interface ParallaxComponentProps {
   title?: string;
@@ -71,12 +72,12 @@ export function ParallaxComponent({
               List them on lelam, set your price, and let the right person find them.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4 mt-3">
-              <a href="#/sell" className="button button-olive inline-flex items-center gap-2">
+              <Link href="/sell" className="button button-olive inline-flex items-center gap-2">
                 Start selling <ArrowUpRight size={17} />
-              </a>
-              <a href="#/products" className="button button-ghost inline-flex items-center gap-2">
+              </Link>
+              <Link href="/products" className="button button-ghost inline-flex items-center gap-2">
                 Explore the marketplace
-              </a>
+              </Link>
             </div>
           </div>
         </section>

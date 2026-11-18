@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -15,14 +16,15 @@ import { Link, navigate } from "../components/Link";
 import { Modal } from "../components/Modal";
 import { StatusPill } from "../components/Ui";
 import { formatMoney, formatDateTime, shortDate } from "../lib/format";
-import { useRoute } from "../lib/router";
+import { useSeo } from "../lib/seo";
+import { auctionMeta } from "../lib/seo-meta";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
+import { promptAuth } from "../lib/authGate";
 
 export function AuctionDetailPage() {
-  const route = useRoute();
   const { db, user, placeBid, toggleFavorite, favorites } = useStore();
-  const auctionId = route.path.split("/")[2] || "";
+  const { auctionId = "" } = useParams();
   const auction = db.auctions.find((item) => item.id === auctionId);
   const [bidRupees, setBidRupees] = useState("");
   const [lastResult, setLastResult] = useState<string>("");
@@ -52,6 +54,32 @@ export function AuctionDetailPage() {
     setShowWinnerPayment(true);
   }, [auction, user, winnerOrder]);
 
+  useSeo(
+    auction && product
+      ? auctionMeta(
+          {
+            id: auction.id,
+            productId: auction.productId,
+            status: auction.status,
+            startingPrice: auction.startingPrice,
+            currentBid: auction.currentBid,
+          },
+          {
+            id: product.id,
+            title: product.title,
+            description: product.description,
+            condition: product.condition,
+            size: product.size,
+            brand: product.brand,
+            sellerName: product.sellerName,
+            askingPrice: product.askingPrice,
+            images: product.images,
+            status: product.status,
+          },
+        )
+      : null,
+  );
+
   if (!auction || !product) {
     return (
       <main className="page-shell">
@@ -59,7 +87,7 @@ export function AuctionDetailPage() {
           <Gavel size={38} />
           <h2>This auction is not here.</h2>
           <p>It may have ended or been cancelled.</p>
-          <Link href="#/auctions" className="button button-olive">
+          <Link href="/auctions" className="button button-olive">
             All auctions
           </Link>
         </div>
@@ -79,7 +107,7 @@ export function AuctionDetailPage() {
   const participating = Boolean(user && bids.some((bid) => bid.bidderId === user.id));
   const leading = Boolean(user && auction.highestBidderId === user.id);
 
-  const submitBid = () => {
+  const submitBid = async () => {
     if (!acceptedAuctionTerms) {
       toast("Please accept the Auction Terms before bidding.", "error");
       return;
@@ -89,7 +117,7 @@ export function AuctionDetailPage() {
       toast("Enter a bid amount.", "error");
       return;
     }
-    const result = placeBid(auction.id, amount);
+    const result = await placeBid(auction.id, amount);
     if (!result.ok) {
       toast(result.error, "error");
       return;
@@ -107,7 +135,7 @@ export function AuctionDetailPage() {
     <main className="page-shell auction-detail-page">
       <div className="section-wrap">
         <div className="breadcrumbs">
-          <Link href="#/auctions">
+          <Link href="/auctions">
             <ArrowLeft size={14} /> All auctions
           </Link>
           <span>/</span>
@@ -177,9 +205,12 @@ export function AuctionDetailPage() {
               {completed && auction.winnerId && (
                 <span className="auction-winner-line">
                   <Trophy size={14} /> Won by{" "}
-                  {auction.winnerId === user?.id ? "you" : "an anonymous bidder"}
+                  {auction.winnerId === user?.id
+                    ? "you"
+                    : bids.find((bid) => bid.amount === auction.currentBid)?.alias ?? "anonymous bidder"}
                 </span>
               )}
+              {completed && !auction.winnerId && <span className="auction-winner-line">No bids — lot did not sell</span>}
               {live && leading && (
                 <span className="auction-leading">
                   <BadgeCheck size={14} /> You are the highest bidder
@@ -190,11 +221,11 @@ export function AuctionDetailPage() {
             <div className="auction-guarantee">
               <Info size={16} />
               <p>
-                <strong>How bidding works:</strong> bids must meet the displayed minimum and increment. A bid in the final 30 seconds adds 30 seconds. The highest valid bid when the timer ends wins and must be paid within 5 minutes. <Link href="#/auction-terms">Full Auction Terms</Link>.
+                <strong>How bidding works:</strong> bids must meet the displayed minimum and increment. A bid in the final 30 seconds adds 30 seconds. The highest valid bid when the timer ends wins and must be paid within 5 minutes. <Link href="/auction-terms">Full Auction Terms</Link>.
               </p>
             </div>
 
-            {live && !ownAuction && (
+            {live && !ownAuction && user && !user.blocked && user.role !== "admin" && (
               <div className="auction-bid-form">
                 <label className="field">
                   <span className="field-label">Your bid (₹)</span>
@@ -232,7 +263,7 @@ export function AuctionDetailPage() {
                     onChange={(event) => setAcceptedAuctionTerms(event.target.checked)}
                   />
                   <span>
-                    I agree to the <Link href="#/auction-terms">Auction Terms</Link>. Verified email is required to bid.
+                    I agree to the <Link href="/auction-terms">Auction Terms</Link>. Verified email is required to bid.
                   </span>
                 </label>
                 <button type="button" className="button button-olive auction-bid-submit" onClick={submitBid} disabled={!acceptedAuctionTerms}>
@@ -251,13 +282,33 @@ export function AuctionDetailPage() {
               </div>
             )}
 
+            {live && !ownAuction && !user && (
+              <div className="auction-own-note">
+                <Gavel size={16} />
+                <div>
+                  <strong>Sign in to bid</strong>
+                  <p>Your account is required to place and track bids.</p>
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => promptAuth(`${window.location.pathname}${window.location.search}`, "place a bid")}
+                  >
+                    Sign in or create an account <ArrowUpRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {live && user?.blocked && <p className="auction-own-note">This account is blocked from bidding.</p>}
+            {live && user?.role === "admin" && <p className="auction-own-note">Administrators cannot bid.</p>}
+
             {ownAuction && (
               <div className="auction-own-note">
                 <Gavel size={16} />
                 <div>
                   <strong>This is your auction.</strong>
                   <p>You cannot bid on your own listing.</p>
-                  <Link href="#/seller?tab=auctions" className="text-link">
+                  <Link href="/seller?tab=auctions" className="text-link">
                     Manage auction <ArrowUpRight size={14} />
                   </Link>
                 </div>
@@ -333,7 +384,7 @@ export function AuctionDetailPage() {
                   <button
                     type="button"
                     className="button button-olive"
-                    onClick={() => navigate(`#/orders/${winnerOrder.id}`)}
+                    onClick={() => navigate(`/orders/${winnerOrder.id}`)}
                   >
                     Pay now
                   </button>
@@ -352,7 +403,7 @@ export function AuctionDetailPage() {
               >
                 {saved ? "Saved" : "Save this lot"}
               </button>
-              <Link href={`#/product/${product.id}`} className="text-link">
+              <Link href={`/product/${product.id}`} className="text-link">
                 Full item details <ArrowUpRight size={14} />
               </Link>
             </div>

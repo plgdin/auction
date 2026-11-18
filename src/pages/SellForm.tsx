@@ -38,7 +38,7 @@ const emptyForm = {
 };
 
 /**
- * The listing form (#/sell/new) — CTA target of the sell landing. Signed-out
+ * The listing form (/sell/new) — CTA target of the sell landing. Signed-out
  * visitors get the sign-in card; owners edit via `?edit=<productId>`.
  * A price picked in the landing's payout preview pre-fills the asking price.
  */
@@ -46,6 +46,8 @@ export function SellFormPage() {
   const { user, db, createListing, updateListing, removeListing } = useStore();
   const route = useRoute();
   const editId = route.query.get("edit") || "";
+  const nextHref = route.query.get("next") || "";
+  const adminContext = nextHref.startsWith("/admin");
   const editing = editId ? db.products.find((product) => product.id === editId) : undefined;
 
   const [form, setForm] = useState(emptyForm);
@@ -94,10 +96,10 @@ export function SellFormPage() {
               stay in your browser.
             </p>
             <div className="modal-actions center">
-              <Link href="#/login?next=%2Fsell%2Fnew" className="button button-olive">
+              <Link href="/login?next=%2Fsell%2Fnew" className="button button-olive">
                 Sign in
               </Link>
-              <Link href="#/register?next=%2Fsell%2Fnew" className="button button-ghost">
+              <Link href="/register?next=%2Fsell%2Fnew" className="button button-ghost">
                 Create free account
               </Link>
             </div>
@@ -113,7 +115,7 @@ export function SellFormPage() {
         <div className="section-wrap empty-state page-empty">
           <LockKeyhole size={38} />
           <h2>That listing is not yours.</h2>
-          <Link href="#/seller" className="button button-olive">
+          <Link href="/seller" className="button button-olive">
             Your dashboard
           </Link>
         </div>
@@ -176,7 +178,7 @@ export function SellFormPage() {
       const result = updateListing(editing.id, input);
       if (result.ok) {
         toast("Listing updated.", "success");
-        navigate(`#/product/${editing.id}`);
+        navigate(`/product/${editing.id}`);
       } else {
         toast(result.error, "error");
       }
@@ -186,7 +188,12 @@ export function SellFormPage() {
     const result = createListing(input);
     if (result.ok) {
       toast("Listing created.", "success");
-      navigate(`#/product/${result.productId}`);
+      const back = route.query.get("next");
+      if (back && back.startsWith("/")) {
+        navigate(back);
+      } else {
+        navigate(`/product/${result.productId}`);
+      }
     } else {
       toast(result.error, "error");
     }
@@ -215,7 +222,7 @@ export function SellFormPage() {
                   const result = removeListing(editing.id);
                   if (result.ok) {
                     toast("Listing removed.");
-                    navigate("#/seller?tab=inventory");
+                    navigate("/seller?tab=inventory");
                   } else {
                     toast(result.error, "error");
                   }
@@ -238,6 +245,11 @@ export function SellFormPage() {
                 from your door.
               </p>
             </div>
+            {adminContext && (
+              <Link href={nextHref} className="button button-ghost">
+                Back to admin
+              </Link>
+            )}
           </header>
         </div>
       )}
@@ -487,7 +499,7 @@ export function SellFormPage() {
                   onChange={(event) => setAcceptedSellerTerms(event.target.checked)}
                 />
                 <span>
-                  I confirm this listing is accurate and lawful, and agree to the <Link href="#/terms">Terms of Service</Link> and <Link href="#/auction-terms">Auction Terms</Link>.
+                  I confirm this listing is accurate and lawful, and agree to the <Link href="/terms">Terms of Service</Link> and <Link href="/auction-terms">Auction Terms</Link>.
                 </span>
               </label>
             </section>
@@ -517,7 +529,9 @@ export function SellFormPage() {
               </div>
               <ol className="sell-next-steps">
                 <li>
-                  {db.settings.sellerAutoApprove ? "Goes live the moment you publish." : "A quick admin review, then it's live."}
+                  {adminContext || db.settings.sellerAutoApprove
+                    ? "Goes live the moment you publish."
+                    : "A quick admin review, then it's live."}
                 </li>
                 <li>Private offers (if you allow them) land in your dashboard.</li>
                 <li>Buyer pays → rider collects from your door.</li>
@@ -526,8 +540,8 @@ export function SellFormPage() {
               <button type="button" className="button button-olive summary-cta" onClick={submit}>
                 {editing ? "Save changes" : "Hang it on the rail"} <ArrowUpRight size={15} />
               </button>
-              <Link href="#/seller" className="button button-ghost summary-cta">
-                Your dashboard
+              <Link href={adminContext ? nextHref : "/seller"} className="button button-ghost summary-cta">
+                {adminContext ? "Back to admin" : "Your dashboard"}
               </Link>
             </div>
 

@@ -195,7 +195,7 @@ export function HomePage() {
             heading="Handle the pieces directly on the rack."
             caption="Slide the hangers, brush across to swing, or click any piece to lift and inspect front and back."
             action={
-              <Link href="#/products" className="button button-olive inline-flex items-center gap-2">
+              <Link href="/products" className="button button-olive inline-flex items-center gap-2">
                 Shop the full rail <ArrowRight size={16} />
               </Link>
             }
@@ -204,7 +204,7 @@ export function HomePage() {
           <div className="section-wrap rail-empty">
             <div className="eyebrow">THE RAIL IS EMPTY</div>
             <h2>Be the first to hang something up.</h2>
-            <Link href="#/sell/new" className="button button-olive">
+            <Link href="/sell/new" className="button button-olive">
               Start selling <ArrowUpRight size={16} />
             </Link>
           </div>
@@ -502,7 +502,7 @@ export function HomePage() {
           <div>
             <button
               type="button"
-              onClick={() => navigate("#/sell/new")}
+              onClick={() => navigate("/sell/new")}
               style={{ backgroundColor: "#493022", color: "#F5EBDD" }}
               className="group relative inline-flex items-center gap-3 px-8 py-3.5 sm:px-9 sm:py-4 rounded-[10px] text-base sm:text-lg font-medium shadow-[0_8px_24px_rgba(73,48,34,0.28)] transition-all duration-200 hover:brightness-110 hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
             >

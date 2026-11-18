@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 test("search dock opens with fluid macOS Genie deformation, filters products, and navigates", async ({ page }) => {
-  await page.goto("http://localhost:5173/#/");
+  await page.goto("http://localhost:5173/");
   await page.waitForTimeout(500);
 
   // Click search button
@@ -41,5 +41,5 @@ test("search dock opens with fluid macOS Genie deformation, filters products, an
   await resultItem.click();
 
   // Check URL navigated to product
-  await expect(page).toHaveURL(/#\/product\/p-1/);
+  await expect(page).toHaveURL(/\/product\/[^/]+$/);
 });

@@ -1,4 +1,5 @@
-import type { AnchorHTMLAttributes, ReactNode } from "react";
+import { useEffect, type AnchorHTMLAttributes, type ReactNode } from "react";
+import { Link as RouterLink, useNavigate } from "react-router-dom";
 
 export function smoothScrollTo(element: HTMLElement | null) {
   if (!element) return;
@@ -28,30 +29,44 @@ export function smoothScrollTo(element: HTMLElement | null) {
   requestAnimationFrame(step);
 }
 
+/**
+ * Maps legacy notification links onto clean React Router paths:
+ * - strip a leading `#/` coming from old hash-based data
+ * - rewrite singular `/order/<id>` to the canonical `/orders/<id>`
+ * The strict `^\/order\/` pattern leaves `/order-confirmed/`, `/orders/`, etc. alone.
+ */
+export function normalizeHref(href: string): string {
+  const clean = href.startsWith("#/") ? href.slice(1) : href;
+  return clean.replace(/^\/order\//, "/orders/");
+}
+
+function isAnchorOnly(href: string): boolean {
+  return href.startsWith("#") && !href.startsWith("#/");
+}
+
+let navigateAction: ((to: string) => void) | null = null;
+
+/** Mounted once inside BrowserRouter so non-component callers can navigate. */
+export function RouterNavigationBridge() {
+  const routerNavigate = useNavigate();
+  useEffect(() => {
+    navigateAction = routerNavigate;
+    return () => {
+      navigateAction = null;
+    };
+  }, [routerNavigate]);
+  return null;
+}
+
+/** Imperative navigation. Works from event handlers and non-React modules. */
 export function navigate(to: string) {
-  if (to.startsWith("#/")) {
-    window.location.hash = to;
+  const target = normalizeHref(to);
+  if (navigateAction) {
+    navigateAction(target);
     return;
   }
-  if (to.startsWith("#")) {
-    if (window.location.hash.startsWith("#/")) {
-      window.location.hash = "";
-      window.setTimeout(() => {
-        const target = document.querySelector(to) as HTMLElement | null;
-        if (target) {
-          smoothScrollTo(target);
-        }
-      }, 90);
-    } else {
-      window.location.hash = to;
-      const target = document.querySelector(to) as HTMLElement | null;
-      if (target) {
-        smoothScrollTo(target);
-      }
-    }
-    return;
-  }
-  window.location.hash = to;
+  if (isAnchorOnly(target)) window.location.hash = target;
+  else window.location.assign(target);
 }
 
 export function Link({
@@ -66,18 +81,26 @@ export function Link({
   className?: string;
   onClick?: () => void;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "onClick">) {
+  if (isAnchorOnly(href)) {
+    return (
+      <a
+        href={href}
+        className={className}
+        onClick={(event) => {
+          event.preventDefault();
+          navigate(href);
+          onClick?.();
+        }}
+        {...rest}
+      >
+        {children}
+      </a>
+    );
+  }
+
   return (
-    <a
-      href={href}
-      className={className}
-      onClick={(event) => {
-        event.preventDefault();
-        navigate(href);
-        onClick?.();
-      }}
-      {...rest}
-    >
+    <RouterLink to={normalizeHref(href)} className={className} onClick={onClick} {...rest}>
       {children}
-    </a>
+    </RouterLink>
   );
 }

@@ -4,25 +4,38 @@ import {
   BadgeCheck,
   Ban,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
+  Eye,
   Gavel,
+  Globe,
   IndianRupee,
   Link2,
+  MapPin,
+  Plus,
+  RotateCw,
+  Search,
   Settings2,
   Shield,
   Sparkles,
   Tag,
+  Trash2,
+  UserCheck,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
-import { Link } from "../components/Link";
+import { Link, navigate } from "../components/Link";
 import { Countdown } from "../components/Countdown";
+import { Modal } from "../components/Modal";
 import { EmptyState, Field, StatusPill, Tabs } from "../components/Ui";
 import { formatDate, formatMoney, timeAgo } from "../lib/format";
 import { affiliateUrl, summariseAffiliate } from "../lib/affiliate";
+import { fetchAdminAuditLogs, formatDeviceBrowser } from "../lib/audit";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import type { AffiliateAccount } from "../lib/types";
+import type { AffiliateAccount, AuditLog, VisitorStats } from "../lib/types";
 import { toast } from "../lib/toast";
 
 export function AdminPage() {
@@ -31,6 +44,7 @@ export function AdminPage() {
     user,
     approveProduct,
     rejectProduct,
+    adminDeleteProduct,
     setUserBlocked,
     updateSellerTier,
     generateAuctions,
@@ -48,6 +62,9 @@ export function AdminPage() {
   const [tab, setTab] = useState(route.query.get("tab") || "overview");
   const [rejectId, setRejectId] = useState("");
   const [rejectReason, setRejectReason] = useState("");
+  const [deleteId, setDeleteId] = useState("");
+  const [deleting, setDeleting] = useState(false);
+  const [reviewingId, setReviewingId] = useState("");
   const [settings, setSettings] = useState(db.settings);
   const [affiliateForm, setAffiliateForm] = useState({
     name: "",
@@ -57,6 +74,50 @@ export function AdminPage() {
     commissionPct: db.settings.affiliateCommissionPct,
   });
   const [rateDrafts, setRateDrafts] = useState<Record<string, string>>({});
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditTotalCount, setAuditTotalCount] = useState(0);
+  const [auditStats, setAuditStats] = useState<VisitorStats>({
+    totalViews: 0,
+    uniqueIps: 0,
+    registeredViews: 0,
+    guestViews: 0,
+    topPages: [],
+  });
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditUserType, setAuditUserType] = useState<"all" | "registered" | "guest">("all");
+  const [auditActionFilter, setAuditActionFilter] = useState("all");
+  const [auditSearch, setAuditSearch] = useState("");
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
+  const loadAuditData = async () => {
+    setAuditLoading(true);
+    try {
+      const res = await fetchAdminAuditLogs(
+        {
+          page: auditPage,
+          limit: 25,
+          userType: auditUserType,
+          action: auditActionFilter,
+          search: auditSearch,
+        },
+        db.auditLogs,
+      );
+      setAuditLogs(res.logs);
+      setAuditTotalCount(res.totalCount);
+      setAuditStats(res.stats);
+    } catch (err) {
+      console.warn("Failed to load audit data:", err);
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "audit") {
+      void loadAuditData();
+    }
+  }, [tab, auditPage, auditUserType, auditActionFilter]);
 
   useEffect(() => {
     setTab(route.query.get("tab") || "overview");
@@ -73,7 +134,7 @@ export function AdminPage() {
           <Shield size={38} />
           <h2>Admin only.</h2>
           <p>Switch to the admin demo account to open this panel.</p>
-          <Link href="#/login" className="button button-olive">
+          <Link href="/login" className="button button-olive">
             Sign in as admin
           </Link>
         </div>
@@ -83,7 +144,33 @@ export function AdminPage() {
 
   const setTabAndHash = (next: string) => {
     setTab(next);
-    window.location.hash = `#/admin?tab=${next}`;
+    navigate(`/admin?tab=${next}`);
+  };
+
+  const handleApprove = async (productId: string) => {
+    if (reviewingId) return;
+    setReviewingId(productId);
+    const result = await approveProduct(productId);
+    setReviewingId("");
+    if (result.ok) toast("Listing approved and live in the shop.", "success");
+    else toast(result.error, "error");
+  };
+
+  const handleReject = async () => {
+    if (!rejectReason.trim()) {
+      toast("Add a reason.", "error");
+      return;
+    }
+    if (reviewingId) return;
+    setReviewingId(rejectId);
+    const result = await rejectProduct(rejectId, rejectReason.trim());
+    setReviewingId("");
+    if (!result.ok) {
+      toast(result.error, "error");
+      return;
+    }
+    toast("Listing rejected. Seller notified.", "success");
+    setRejectId("");
   };
 
   const pending = db.products.filter((product) => product.status === "pending");
@@ -127,8 +214,8 @@ export function AdminPage() {
     }
   };
 
-  const submitAffiliate = () => {
-    const result = createAffiliate({
+  const submitAffiliate = async () => {
+    const result = await createAffiliate({
       name: affiliateForm.name,
       email: affiliateForm.email,
       code: affiliateForm.code,
@@ -148,7 +235,7 @@ export function AdminPage() {
     }));
   };
 
-  const saveAffiliateRate = (account: AffiliateAccount) => {
+  const saveAffiliateRate = async (account: AffiliateAccount) => {
     const draft = rateDrafts[account.id];
     if (draft === undefined) return;
     const next = Number(draft);
@@ -162,7 +249,7 @@ export function AdminPage() {
       return;
     }
     if (next / 100 === account.commissionRate) return;
-    const result = updateAffiliate(account.id, { commissionPct: next });
+    const result = await updateAffiliate(account.id, { commissionPct: next });
     if (!result.ok) toast(result.error, "error");
     else toast(`${account.name} now earns ${next}%.`, "success");
     setRateDrafts((previous) => {
@@ -170,6 +257,21 @@ export function AdminPage() {
       delete copy[account.id];
       return copy;
     });
+  };
+
+  const deleteTarget = db.products.find((product) => product.id === deleteId) ?? null;
+
+  const confirmDelete = async () => {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    const result = await adminDeleteProduct(deleteTarget.id);
+    setDeleting(false);
+    if (!result.ok) {
+      toast(result.error, "error");
+      return;
+    }
+    toast("Listing deleted permanently.", "success");
+    setDeleteId("");
   };
 
   return (
@@ -195,7 +297,13 @@ export function AdminPage() {
             >
               <Sparkles size={15} /> Generate auctions
             </button>
-            <Link href="#/products" className="button button-olive">
+            <Link
+              href="/sell/new?next=%2Fadmin%3Ftab%3Dlistings"
+              className="button button-olive"
+            >
+              <Plus size={15} /> New listing
+            </Link>
+            <Link href="/products" className="button button-ghost">
               Marketplace <ArrowUpRight size={15} />
             </Link>
           </div>
@@ -241,6 +349,7 @@ export function AdminPage() {
             { id: "auctions", label: "Auctions", count: db.auctions.length },
             { id: "finance", label: "Finance", count: pendingSettlements.length },
             { id: "affiliates", label: "Affiliates", count: affiliatePendingCount },
+            { id: "audit", label: "Visitors & Audit" },
             { id: "settings", label: "Settings" },
           ]}
           active={tab}
@@ -269,10 +378,8 @@ export function AdminPage() {
                         <button
                           type="button"
                           className="text-link"
-                          onClick={() => {
-                            approveProduct(product.id);
-                            toast("Listing approved.", "success");
-                          }}
+                          disabled={reviewingId === product.id}
+                          onClick={() => void handleApprove(product.id)}
                         >
                           Approve
                         </button>
@@ -373,12 +480,10 @@ export function AdminPage() {
                       <button
                         type="button"
                         className="button button-olive"
-                        onClick={() => {
-                          approveProduct(product.id);
-                          toast("Listing approved.", "success");
-                        }}
+                        disabled={reviewingId === product.id}
+                        onClick={() => void handleApprove(product.id)}
                       >
-                        <Check size={14} /> Approve
+                        <Check size={14} /> {reviewingId === product.id ? "Approving…" : "Approve"}
                       </button>
                       <button
                         type="button"
@@ -417,17 +522,10 @@ export function AdminPage() {
                   <button
                     type="button"
                     className="button button-olive"
-                    onClick={() => {
-                      if (!rejectReason.trim()) {
-                        toast("Add a reason.", "error");
-                        return;
-                      }
-                      rejectProduct(rejectId, rejectReason.trim());
-                      toast("Listing rejected. Seller notified.");
-                      setRejectId("");
-                    }}
+                    disabled={reviewingId === rejectId}
+                    onClick={() => void handleReject()}
                   >
-                    Send rejection
+                    {reviewingId === rejectId ? "Sending…" : "Send rejection"}
                   </button>
                   <button
                     type="button"
@@ -438,6 +536,109 @@ export function AdminPage() {
                   </button>
                 </div>
               </div>
+            )}
+
+            <section className="panel admin-all-listings">
+              <div className="panel-head">
+                <h2>All listings</h2>
+                <div className="admin-listings-head">
+                  <span>
+                    {db.products.length} item{db.products.length === 1 ? "" : "s"} in the shop
+                  </span>
+                  <Link
+                    href="/sell/new?next=%2Fadmin%3Ftab%3Dlistings"
+                    className="button button-ghost admin-new-listing"
+                  >
+                    <Plus size={14} /> Add listing
+                  </Link>
+                </div>
+              </div>
+              {db.products.length ? (
+                <div className="listing-table admin-delete-table">
+                  <div className="table-head">
+                    <span>Item</span>
+                    <span>Seller</span>
+                    <span>Price</span>
+                    <span>Status</span>
+                    <span>Action</span>
+                  </div>
+                  {db.products.map((product) => (
+                    <div key={product.id} className="table-row">
+                      <div className="table-product">
+                        <img src={product.images[0]} alt={product.title} />
+                        <div>
+                          <strong>{product.title}</strong>
+                          <span>
+                            {product.category} · listed {timeAgo(product.createdAt)}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="admin-delete-seller">{product.sellerName}</span>
+                      <strong>{formatMoney(product.askingPrice)}</strong>
+                      <StatusPill status={product.status} />
+                      <div className="table-actions admin-delete-actions">
+                        <button
+                          type="button"
+                          className="button button-danger-ghost admin-delete-button"
+                          onClick={() => setDeleteId(product.id)}
+                        >
+                          <Trash2 size={14} /> Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<Tag size={34} />}
+                  title="Shop is empty."
+                  body="No listings exist right now. New submissions will appear here."
+                />
+              )}
+            </section>
+
+            {deleteTarget && (
+              <Modal
+                title="Delete listing"
+                onClose={() => {
+                  if (!deleting) setDeleteId("");
+                }}
+              >
+                <div className="delete-listing">
+                  <div className="delete-listing-item">
+                    <img src={deleteTarget.images[0]} alt={deleteTarget.title} />
+                    <div>
+                      <strong>{deleteTarget.title}</strong>
+                      <span>
+                        {deleteTarget.sellerName} · {formatMoney(deleteTarget.askingPrice)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="delete-listing-note">
+                    This permanently removes the listing from the shop, along with its auctions,
+                    bids, offers and saved references. Order history is kept.{" "}
+                    <strong>This cannot be undone.</strong>
+                  </p>
+                  <div className="modal-actions">
+                    <button
+                      type="button"
+                      className="button button-danger"
+                      onClick={confirmDelete}
+                      disabled={deleting}
+                    >
+                      {deleting ? "Deleting…" : "Delete permanently"}
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-ghost"
+                      onClick={() => setDeleteId("")}
+                      disabled={deleting}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </Modal>
             )}
           </div>
         )}
@@ -650,7 +851,7 @@ export function AdminPage() {
                               Cancel
                             </button>
                           )}
-                          <Link href={`#/auction/${auction.id}`} className="text-link">
+                          <Link href={`/auction/${auction.id}`} className="text-link">
                             View
                           </Link>
                         </div>
@@ -726,9 +927,10 @@ export function AdminPage() {
                             <button
                               type="button"
                               className="text-link"
-                              onClick={() => {
-                                markSettlementPaid(settlement.id);
-                                toast("Settlement marked paid.", "success");
+                              onClick={async () => {
+                                const result = await markSettlementPaid(settlement.id);
+                                if (result.ok) toast("Payout recorded as sent. No transfer was initiated.", "success");
+                                else toast(result.error, "error");
                               }}
                             >
                               Mark paid
@@ -916,8 +1118,8 @@ export function AdminPage() {
                           <button
                             type="button"
                             className="text-link"
-                            onClick={() => {
-                              const result = updateAffiliate(account.id, {
+                            onClick={async () => {
+                              const result = await updateAffiliate(account.id, {
                                 status: account.status === "active" ? "paused" : "active",
                               });
                               if (!result.ok) toast(result.error, "error");
@@ -990,8 +1192,8 @@ export function AdminPage() {
                               className="text-link"
                               disabled={!unlockable}
                               title={unlockable ? "Release this earning" : "Return window still open"}
-                              onClick={() => {
-                                const result = reviewAffiliateCommission(entry.id, "approve");
+                              onClick={async () => {
+                                const result = await reviewAffiliateCommission(entry.id, "approve");
                                 if (!result.ok) toast(result.error, "error");
                                 else toast("Earning released.", "success");
                               }}
@@ -1003,8 +1205,8 @@ export function AdminPage() {
                             <button
                               type="button"
                               className="text-link"
-                              onClick={() => {
-                                const result = reviewAffiliateCommission(entry.id, "pay");
+                              onClick={async () => {
+                                const result = await reviewAffiliateCommission(entry.id, "pay");
                                 if (!result.ok) toast(result.error, "error");
                                 else toast("Marked paid.", "success");
                               }}
@@ -1016,8 +1218,8 @@ export function AdminPage() {
                             <button
                               type="button"
                               className="text-link"
-                              onClick={() => {
-                                const result = reviewAffiliateCommission(entry.id, "void");
+                              onClick={async () => {
+                                const result = await reviewAffiliateCommission(entry.id, "void");
                                 if (!result.ok) toast(result.error, "error");
                                 else toast("Earning voided.", "success");
                               }}
@@ -1038,6 +1240,355 @@ export function AdminPage() {
                 />
               )}
             </section>
+          </div>
+        )}
+
+        {tab === "audit" && (
+          <div className="dashboard-section">
+            <div className="panel-head">
+              <div>
+                <h2>Visitor traffic & audit trail</h2>
+                <span>Track page views, registered vs guest traffic, IP addresses, and locations</span>
+              </div>
+              <button
+                type="button"
+                className="button button-ghost"
+                onClick={() => void loadAuditData()}
+                disabled={auditLoading}
+              >
+                <RotateCw size={14} className={auditLoading ? "animate-spin" : ""} /> Refresh
+              </button>
+            </div>
+
+            {/* Quick Visitor Stats */}
+            <div className="stat-grid admin-stat-grid">
+              <div className="stat-card">
+                <span>
+                  <Eye size={15} /> Total views
+                </span>
+                <strong>{auditStats.totalViews}</strong>
+                <em>Recorded site events</em>
+              </div>
+              <div className="stat-card">
+                <span>
+                  <Globe size={15} /> Unique IPs
+                </span>
+                <strong>{auditStats.uniqueIps}</strong>
+                <em>Visitor network addresses</em>
+              </div>
+              <div className="stat-card">
+                <span>
+                  <UserCheck size={15} /> Registered users
+                </span>
+                <strong>{auditStats.registeredViews}</strong>
+                <em>Authenticated sessions</em>
+              </div>
+              <div className="stat-card">
+                <span>
+                  <Users size={15} /> Guests & visitors
+                </span>
+                <strong>{auditStats.guestViews}</strong>
+                <em>Anonymous storefront traffic</em>
+              </div>
+            </div>
+
+            {/* Top Visited Pages */}
+            {auditStats.topPages.length > 0 && (
+              <div className="audit-overview-grid">
+                <div className="top-pages-card">
+                  <h3>
+                    Top visited pages
+                    <span>{auditStats.topPages.length} active routes</span>
+                  </h3>
+                  <div className="top-pages-list">
+                    {auditStats.topPages.map((tp) => {
+                      const maxCount = auditStats.topPages[0]?.count || 1;
+                      const pct = Math.min(100, Math.round((tp.count / maxCount) * 100));
+                      return (
+                        <div key={tp.path} className="top-page-row">
+                          <span className="top-page-path" title={tp.path}>
+                            {tp.path}
+                          </span>
+                          <div className="top-page-bar-wrap">
+                            <div className="top-page-bar" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="top-page-count">{tp.count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="top-pages-card">
+                  <h3>
+                    Traffic breakdown
+                    <span>Audience split</span>
+                  </h3>
+                  <div style={{ display: "grid", gap: "10px", marginTop: "4px" }}>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
+                        <span>Registered users</span>
+                        <strong>{auditStats.registeredViews}</strong>
+                      </div>
+                      <div className="top-page-bar-wrap">
+                        <div
+                          className="top-page-bar"
+                          style={{
+                            width: `${
+                              auditStats.totalViews
+                                ? Math.round((auditStats.registeredViews / auditStats.totalViews) * 100)
+                                : 0
+                            }%`,
+                            background: "#2e6037",
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
+                        <span>Anonymous guests</span>
+                        <strong>{auditStats.guestViews}</strong>
+                      </div>
+                      <div className="top-page-bar-wrap">
+                        <div
+                          className="top-page-bar"
+                          style={{
+                            width: `${
+                              auditStats.totalViews
+                                ? Math.round((auditStats.guestViews / auditStats.totalViews) * 100)
+                                : 0
+                            }%`,
+                            background: "#8c5e3c",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Filter and Search Controls */}
+            <div className="audit-controls">
+              <div className="audit-filter-group">
+                <button
+                  type="button"
+                  className={`audit-pill-button ${auditUserType === "all" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setAuditUserType("all");
+                    setAuditPage(1);
+                  }}
+                >
+                  All traffic
+                </button>
+                <button
+                  type="button"
+                  className={`audit-pill-button ${auditUserType === "registered" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setAuditUserType("registered");
+                    setAuditPage(1);
+                  }}
+                >
+                  Registered only
+                </button>
+                <button
+                  type="button"
+                  className={`audit-pill-button ${auditUserType === "guest" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setAuditUserType("guest");
+                    setAuditPage(1);
+                  }}
+                >
+                  Guests only
+                </button>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <select
+                  value={auditActionFilter}
+                  onChange={(e) => {
+                    setAuditActionFilter(e.target.value);
+                    setAuditPage(1);
+                  }}
+                  className="audit-pill-button"
+                  style={{ background: "#fff", outline: "none" }}
+                >
+                  <option value="all">All actions</option>
+                  <option value="page_view">Page view</option>
+                  <option value="listing.approve">Listing approved</option>
+                  <option value="listing.reject">Listing rejected</option>
+                  <option value="listing.delete">Listing deleted</option>
+                  <option value="auction.complete">Auction complete</option>
+                  <option value="auction.win">Auction won</option>
+                  <option value="offer.accept">Offer accepted</option>
+                  <option value="settings.update">Settings update</option>
+                </select>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setAuditPage(1);
+                    void loadAuditData();
+                  }}
+                  className="audit-search-input"
+                >
+                  <Search size={14} color="#8C745A" />
+                  <input
+                    type="text"
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    placeholder="Search IP, email, path, location…"
+                  />
+                </form>
+              </div>
+            </div>
+
+            {/* Audit Logs Table */}
+            <div className="listing-table audit-table">
+              <div className="table-head">
+                <span>Visitor / User</span>
+                <span>IP & Location</span>
+                <span>Page / Action</span>
+                <span>Device & Browser</span>
+                <span style={{ textAlign: "right" }}>Timestamp</span>
+              </div>
+
+              {auditLogs.length ? (
+                auditLogs.map((log) => {
+                  const isExpanded = expandedLogId === log.id;
+                  const isRegistered = Boolean(log.actorId || log.userEmail);
+                  return (
+                    <div key={log.id} style={{ display: "contents" }}>
+                      <div
+                        className="table-row"
+                        onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                      >
+                        <div className="audit-visitor-cell">
+                          {isRegistered ? (
+                            <>
+                              <strong>{log.userName || "Registered User"}</strong>
+                              <span>{log.userEmail || log.actorId}</span>
+                            </>
+                          ) : (
+                            <>
+                              <strong>Guest visitor</strong>
+                              <span>Anonymous browser</span>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="audit-location-cell">
+                          <span className="audit-ip-tag">{log.ipAddress || "Unknown IP"}</span>
+                          <span className="audit-geo-tag">
+                            <MapPin size={11} /> {log.location || log.country || "Unknown Location"}
+                          </span>
+                        </div>
+
+                        <div className="audit-action-cell">
+                          <span className="audit-path-tag" title={log.pagePath || "/"}>
+                            {log.pagePath || "/"}
+                          </span>
+                          <span className="audit-action-tag">{log.action}</span>
+                        </div>
+
+                        <div className="audit-device-cell">
+                          {formatDeviceBrowser(log.userAgent)}
+                        </div>
+
+                        <div className="audit-time-cell">
+                          <span title={formatDate(log.createdAt)}>{timeAgo(log.createdAt)}</span>
+                          <span style={{ marginLeft: "6px", display: "inline-block", verticalAlign: "middle" }}>
+                            {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Expandable detail box */}
+                      {isExpanded && (
+                        <div className="audit-expanded-detail">
+                          <div className="audit-detail-grid">
+                            <div className="audit-detail-item">
+                              <label>Event ID</label>
+                              <code>{log.id}</code>
+                            </div>
+                            <div className="audit-detail-item">
+                              <label>User ID</label>
+                              <code>{log.actorId || "Guest (none)"}</code>
+                            </div>
+                            <div className="audit-detail-item">
+                              <label>Action & Entity</label>
+                              <span>
+                                {log.action} {log.entityType ? `· ${log.entityType}` : ""} {log.entityId ? `(#${log.entityId})` : ""}
+                              </span>
+                            </div>
+                            <div className="audit-detail-item">
+                              <label>Page URL</label>
+                              <span>{log.metadata?.url || log.pagePath || "/"}</span>
+                            </div>
+                            <div className="audit-detail-item">
+                              <label>Referrer</label>
+                              <span>{log.metadata?.referrer || "Direct / Internal"}</span>
+                            </div>
+                            <div className="audit-detail-item">
+                              <label>Full User Agent</label>
+                              <span>{log.userAgent || "Unknown"}</span>
+                            </div>
+                          </div>
+
+                          {log.metadata && Object.keys(log.metadata).length > 0 && (
+                            <div>
+                              <label style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--mkt-muted)", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                                Raw Metadata Payload
+                              </label>
+                              <pre className="audit-json-box">
+                                {JSON.stringify(log.metadata, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                  <EmptyState
+                    icon={<Globe size={32} />}
+                    title={auditLoading ? "Loading traffic records…" : "No visitor events recorded yet."}
+                    body="Page views and site actions will automatically stream into this audit ledger."
+                  />
+                </div>
+              )}
+
+              {/* Pagination controls */}
+              {auditTotalCount > 25 && (
+                <div className="audit-pagination">
+                  <span>
+                    Showing {(auditPage - 1) * 25 + 1}–{Math.min(auditPage * 25, auditTotalCount)} of {auditTotalCount} events
+                  </span>
+                  <div className="audit-pagination-btns">
+                    <button
+                      type="button"
+                      className="button button-ghost"
+                      style={{ minHeight: "34px", padding: "4px 12px", fontSize: "11px" }}
+                      disabled={auditPage <= 1 || auditLoading}
+                      onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-ghost"
+                      style={{ minHeight: "34px", padding: "4px 12px", fontSize: "11px" }}
+                      disabled={auditPage * 25 >= auditTotalCount || auditLoading}
+                      onClick={() => setAuditPage((p) => p + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1313,7 +1864,7 @@ export function AdminPage() {
         <div className="dashboard-footnote">
           <Shield size={15} />
           Admin actions affect the browser demo only. No real listings, payouts, or auctions exist.
-          <Link href="#/products" className="text-link">
+          <Link href="/products" className="text-link">
             Back to marketplace
           </Link>
         </div>

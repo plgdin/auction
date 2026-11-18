@@ -119,7 +119,7 @@ function Hero({
   headlineAccent = "Second Life.",
   description = "Turn your pre-loved clothes, accessories and more into cash — easily, safely, and sustainably with lelam.co.",
   primaryCtaText = "Start Selling",
-  primaryCtaHref = "#/sell/new",
+  primaryCtaHref = "/sell/new",
   className = "",
 }: HeroProps) {
   return (
@@ -193,7 +193,7 @@ function Hero({
               </button>
               <button
                 type="button"
-                onClick={() => navigate("#/products")}
+                onClick={() => navigate("/products")}
                 style={{
                   background: "linear-gradient(145deg, #5c3b24 0%, #442a17 50%, #341f10 100%)",
                   color: "#FAF7F2",

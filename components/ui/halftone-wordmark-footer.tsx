@@ -13,6 +13,7 @@
 // is fetched: the faces come from the host page or the fallback stacks.
 
 import * as React from "react"
+import { Link } from "@/src/components/Link"
 
 export interface HalftonePalette {
   /** The footer background. */
@@ -560,7 +561,7 @@ export default function HalftoneWordmarkFooter({
             <ul>
               {col.links.map((l) => (
                 <li key={l.label}>
-                  <a href={l.href || "#"}>{l.label}</a>
+                  <Link href={l.href || "#"}>{l.label}</Link>
                 </li>
               ))}
             </ul>

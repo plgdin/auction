@@ -1388,7 +1388,7 @@ const notifications: Notification[] = [
     title: "Your auction is closing soon",
     body: "Knit cardigan · Olive closes in under 10 minutes.",
     createdAt: iso(now - minutes(3)),
-    href: "#/auction/a-2",
+    href: "/auction/a-2",
   },
   {
     id: "n-2",
@@ -1397,7 +1397,7 @@ const notifications: Notification[] = [
     title: "Your offer was accepted",
     body: "Nila Vintage accepted ₹850 for Crewneck sweatshirt · Lilac. Complete payment within 24 hours.",
     createdAt: iso(now - minutes(35)),
-    href: "#/account?tab=offers",
+    href: "/account?tab=offers",
   },
   {
     id: "n-3",
@@ -1406,7 +1406,7 @@ const notifications: Notification[] = [
     title: "Your order is on the way",
     body: "Sunday morning knit is in transit within Trivandrum.",
     createdAt: iso(now - hours(8)),
-    href: "#/orders/o-2",
+    href: "/orders/o-2",
   },
   {
     id: "n-4",
@@ -1415,7 +1415,7 @@ const notifications: Notification[] = [
     title: "New offer on After-hours leather jacket",
     body: "A buyer offered ₹2,100. Review it in your seller dashboard.",
     createdAt: iso(now - hours(1)),
-    href: "#/seller?tab=offers",
+    href: "/seller?tab=offers",
   },
   {
     id: "n-5",
@@ -1424,7 +1424,7 @@ const notifications: Notification[] = [
     title: "Your auction is live",
     body: "The worn-in denim jacket is live with 6 bids.",
     createdAt: iso(now - minutes(22)),
-    href: "#/auction/a-1",
+    href: "/auction/a-1",
   },
   {
     id: "n-6",
@@ -1433,7 +1433,7 @@ const notifications: Notification[] = [
     title: "A listing needs review",
     body: "Oxford shirt · Sky from Kochu House is waiting for approval.",
     createdAt: iso(now - hours(8)),
-    href: "#/admin?tab=listings",
+    href: "/admin?tab=listings",
   },
 ];
 export function createSeedDatabase(): Database {

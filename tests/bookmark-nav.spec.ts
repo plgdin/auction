@@ -16,7 +16,7 @@ test("bookmark navigation follows routes on desktop", async ({ page }) => {
 
   await nav.hover();
   await shopButton.click();
-  await expect(page).toHaveURL(/#\/products$/);
+  await expect(page).toHaveURL(/\/products$/);
   await expect(shopButton).toHaveAttribute("aria-current", "page");
 
   await nav.hover();
@@ -42,6 +42,6 @@ test("mobile bottom navigation stays available and tracks the current route", as
 
   await page.screenshot({ path: "test-results/mobile-bottom-navigation.png" });
   await shopButton.click();
-  await expect(page).toHaveURL(/#\/products$/);
+  await expect(page).toHaveURL(/\/products$/);
   await expect(shopButton).toHaveAttribute("aria-current", "page");
 });

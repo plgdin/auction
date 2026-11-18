@@ -83,11 +83,11 @@ export function InventoryTab() {
             const auction = myAuctionFor(product.id);
             return (
               <article key={product.id} className="inventory-row">
-                <Link href={`#/product/${product.id}`} className="inventory-thumb">
+                <Link href={`/product/${product.id}`} className="inventory-thumb">
                   <img src={product.images[0]} alt={product.title} />
                 </Link>
                 <div className="inventory-id">
-                  <Link href={`#/product/${product.id}`} className="inventory-title">
+                  <Link href={`/product/${product.id}`} className="inventory-title">
                     {product.title}
                   </Link>
                   <span>
@@ -109,7 +109,7 @@ export function InventoryTab() {
                   )}
                 </div>
                 <div className="inventory-actions">
-                  <Link href={`#/sell/new?edit=${product.id}`} className="text-link">
+                  <Link href={`/sell/new?edit=${product.id}`} className="text-link">
                     <Pencil size={12} /> Edit
                   </Link>
                   {product.status === "active" && !auction && (
@@ -174,7 +174,7 @@ export function InventoryTab() {
           title={filter === "all" ? "Empty shelf." : "Nothing in this shelf."}
           body={filter === "all" ? "Add the first piece and it will appear on the rail." : "Try another filter."}
           action={filter === "all" ? "Create a listing" : undefined}
-          actionHref={filter === "all" ? "#/sell" : undefined}
+          actionHref={filter === "all" ? "/sell" : undefined}
         />
       )}
 

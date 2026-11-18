@@ -47,6 +47,28 @@ import { isValidIndianPincode } from "./delivery";
 
 const STORAGE_KEY = "lelam-marketplace-v1";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Supabase row id for a listing, when it exists on the server. */
+function remoteProductId(product: Product): string | null {
+  if (product.serverId && UUID_RE.test(product.serverId)) return product.serverId;
+  return UUID_RE.test(product.id) ? product.id : null;
+}
+
+/** Turn a Postgres/PostgREST error into something an admin can act on. */
+function reviewErrorMessage(message: string, fallback: string): string {
+  if (/find the function|schema cache|does not exist/i.test(message)) {
+    return "Review function is missing on the server. Run the latest Supabase migrations.";
+  }
+  if (/administrator access required/i.test(message)) {
+    return "Your account is not an admin on the server. Sign out and back in, then retry.";
+  }
+  if (/listing not found/i.test(message)) {
+    return "The server has not saved this listing yet. Refresh, then approve again.";
+  }
+  return message || fallback;
+}
+
 const UI_TO_CONDITION_MAP: Record<Product["condition"], string> = {
   New: "new",
   "Like new": "like_new",
@@ -154,10 +176,6 @@ function futureIso(hours: number) {
   return new Date(Date.now() + hours * 3600_000).toISOString();
 }
 
-function futureMinutes(minutes: number) {
-  return new Date(Date.now() + minutes * 60_000).toISOString();
-}
-
 export function computeAuctionSettlement(
   _askingPrice: number,
   winningBid: number,
@@ -193,7 +211,9 @@ function pushNotification(
 }
 
 function orderNumber(next: Database) {
-  return `LEL-${24200 + next.orders.length + Math.floor(Math.random() * 40)}`;
+  const stamp = Date.now().toString(36).toUpperCase().slice(-4);
+  const count = (next.orders.length + 1).toString().padStart(4, "0");
+  return `LEL-${count}-${stamp}`;
 }
 
 function createOrder(
@@ -216,6 +236,9 @@ function createOrder(
   );
   const platformFee = input.platformFee ?? 0;
   const gst = platformFeeGst(platformFee);
+  const deadlineHours = input.source === "auction"
+    ? 5 / 60
+    : 10 / 60;
   const order: Order = {
     id: uid("o"),
     number: orderNumber(next),
@@ -244,7 +267,7 @@ function createOrder(
     auctionId: input.auctionId,
     address: input.address,
     createdAt: nowIso(),
-    paymentDeadline: futureMinutes(next.settings.auctionPaymentDeadlineMinutes),
+    paymentDeadline: futureIso(deadlineHours),
   };
   next.orders.unshift(order);
   return order;
@@ -389,7 +412,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
         "auction_live",
         "Your auction is live",
         `${product.title} just went live. Bidding is now open.`,
-        `#/auction/${auction.id}`,
+        `/auction/${auction.id}`,
       );
       for (const [userId, favorites] of Object.entries(next.favorites)) {
         if (favorites.includes(product.id) && userId !== auction.sellerId) {
@@ -399,7 +422,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
             "auction_started",
             "An auction you saved is live",
             `${product.title} is now open for bidding.`,
-            `#/auction/${auction.id}`,
+            `/auction/${auction.id}`,
           );
         }
       }
@@ -425,7 +448,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
           "auction_ended",
           "Auction ended without bids",
           `${product.title} is back in your listings. You can relist it any time.`,
-          "#/seller?tab=auctions",
+          "/seller?tab=auctions",
         );
         next.auditLogs.unshift({
           id: uid("al"),
@@ -487,7 +510,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
             "auction_won",
             "You won the auction",
             `You won ${product.title} for ${(winnerBid.amount / 100).toLocaleString("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 })}. Complete payment within ${next.settings.auctionPaymentDeadlineMinutes} minutes.`,
-            `#/orders/${order.id}`,
+            `/orders/${order.id}`,
           );
         }
         pushNotification(
@@ -496,7 +519,7 @@ function settleDueAuctions(next: Database, now: number): boolean {
           "auction_sold",
           "Your auction has a winner",
           `${product.title} ended at a winning bid. Check your payout in the seller dashboard.`,
-          "#/seller?tab=auctions",
+          "/seller?tab=auctions",
         );
       }
       next.auditLogs.unshift({
@@ -537,7 +560,7 @@ function settleDueOrders(next: Database, now: number): boolean {
         "payment_expired",
         "Payment window expired",
         `Order ${order.number} was released. The item is available again.`,
-        `#/orders/${order.id}`,
+        `/orders/${order.id}`,
       );
       pushNotification(
         next,
@@ -545,7 +568,7 @@ function settleDueOrders(next: Database, now: number): boolean {
         "order_expired",
         "An order expired",
         `Order ${order.number} was not paid and the item is available again.`,
-        "#/seller?tab=orders",
+        "/seller?tab=orders",
       );
     }
   }
@@ -564,7 +587,7 @@ function settleDueOffers(next: Database, now: number): boolean {
         "offer_expired",
         "Offer expired",
         "The seller did not respond in time. The listing is still available.",
-        "#/account?tab=offers",
+        "/account?tab=offers",
       );
     }
     if (
@@ -581,7 +604,7 @@ function settleDueOffers(next: Database, now: number): boolean {
         "offer_checkout_expired",
         "Offer checkout expired",
         "The agreed price is no longer reserved. You can make a new offer.",
-        "#/account?tab=offers",
+        "/account?tab=offers",
       );
       pushNotification(
         next,
@@ -589,7 +612,7 @@ function settleDueOffers(next: Database, now: number): boolean {
         "offer_expired",
         "Accepted offer expired",
         "The buyer did not complete payment. The listing is active again.",
-        "#/seller?tab=offers",
+        "/seller?tab=offers",
       );
     }
   }
@@ -634,13 +657,14 @@ interface StoreValue {
   favorites: string[];
   notifications: Notification[];
   unreadCount: number;
-  login: (email: string, password: string) => ActionResult;
+  refreshRemoteCommerce: () => Promise<void>;
+  login: (email: string, password: string) => Promise<ActionResult>;
   register: (input: {
     name: string;
     email: string;
     password: string;
     asSeller?: boolean;
-  }) => ActionResult;
+  }) => Promise<ActionResult>;
   signInWithGoogle: (idToken?: string) => Promise<ActionResult>;
   logout: () => void;
   switchAccount: (userId: string) => void;
@@ -674,14 +698,16 @@ interface StoreValue {
   removeListing: (productId: string) => ActionResult;
   toggleListingAvailability: (productId: string) => ActionResult;
   reportProduct: (productId: string, reason: string, details?: string) => ActionResult;
-  placeBid: (auctionId: string, amount: number) => PlaceBidResult;
+  placeBid: (auctionId: string, amount: number) => Promise<PlaceBidResult>;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
   saveAddress: (address: Omit<Address, "id"> & { id?: string }) => ActionResult;
   removeAddress: (addressId: string) => void;
+  updateOrderAddress: (orderId: string, address: Address) => ActionResult;
   updateProfile: (patch: { name?: string; phone?: string; bio?: string; location?: string; auctionConsent?: boolean }) => ActionResult;
-  approveProduct: (productId: string) => void;
-  rejectProduct: (productId: string, reason: string) => void;
+  approveProduct: (productId: string) => Promise<ActionResult>;
+  rejectProduct: (productId: string, reason: string) => Promise<ActionResult>;
+  adminDeleteProduct: (productId: string) => Promise<ActionResult>;
   setUserBlocked: (userId: string, blocked: boolean) => void;
   updateSellerTier: (userId: string, tier: SellerTier) => ActionResult;
   updateSettings: (patch: Partial<PlatformSettings>) => void;
@@ -690,7 +716,7 @@ interface StoreValue {
   startAuctionNow: (auctionId: string) => void;
   endAuctionNow: (auctionId: string) => void;
   cancelAuction: (auctionId: string, reason: string) => void;
-  markSettlementPaid: (settlementId: string) => void;
+  markSettlementPaid: (settlementId: string) => Promise<ActionResult>;
   resolveReport: (reportId: string, status: Report["status"]) => void;
   createAffiliate: (input: {
     name: string;
@@ -698,7 +724,7 @@ interface StoreValue {
     code?: string;
     kind: AffiliateAccount["kind"];
     commissionPct: number;
-  }) => { ok: true; affiliateId: string } | { ok: false; error: string };
+  }) => Promise<{ ok: true; affiliateId: string } | { ok: false; error: string }>;
   updateAffiliate: (
     affiliateId: string,
     patch: {
@@ -709,11 +735,11 @@ interface StoreValue {
       commissionPct?: number;
       status?: AffiliateAccount["status"];
     },
-  ) => ActionResult;
+  ) => Promise<ActionResult>;
   reviewAffiliateCommission: (
     commissionId: string,
     action: "approve" | "pay" | "void",
-  ) => ActionResult;
+  ) => Promise<ActionResult>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -748,6 +774,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
     const captured = captureRef();
     if (captured?.firstSeen) {
+      void supabase.rpc("affiliate_track_click", {
+        p_code: captured.code,
+        p_path: `${window.location.pathname}${window.location.search}` || "/",
+        p_referrer: document.referrer || null,
+        p_user_agent: navigator.userAgent,
+        p_ip_hash: null,
+      }).then(({ error }) => {
+        if (error) console.warn("[Supabase affiliate click]:", error.message);
+      });
       const account = findAffiliateByCode(captured.code, next.affiliates);
       if (account) {
         next.affiliateClicks = [
@@ -755,7 +790,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             id: uid("ac"),
             code: account.code,
             affiliateId: account.id,
-            path: window.location.hash || "/",
+            path: `${window.location.pathname}${window.location.search}` || "/",
             createdAt: nowIso(),
           },
           ...(next.affiliateClicks ?? []),
@@ -809,7 +844,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           return;
         }
 
-        if (active && Array.isArray(rows) && rows.length > 0) {
+        if (active && Array.isArray(rows)) {
           const CONDITION_TO_UI: Record<string, Product["condition"]> = {
             new: "New",
             like_new: "Like new",
@@ -851,9 +886,61 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           }));
 
           const next = clone(dbRef.current);
-          const liveIds = new Set(liveProducts.map((p) => p.id));
-          const localOnly = next.products.filter((p) => !liveIds.has(p.id) && p.id.startsWith("p-"));
-          next.products = [...liveProducts, ...localOnly];
+          // Once the server catalog is available, hide local demo listings that cannot be ordered.
+          next.products = liveProducts;
+          const [{ data: auctionRows, error: auctionError }, { data: profiles }] = await Promise.all([
+            supabase.from("auctions").select("*").order("starts_at", { ascending: true }),
+            supabase.from("profiles").select("id,email"),
+          ]);
+          if (!auctionError && auctionRows) {
+            const [{ data: publicBids }, { data: ownBids }] = await Promise.all([
+              supabase.from("public_bids").select("*").order("created_at", { ascending: false }),
+              supabase.from("bids").select("id,auction_id,bidder_id,amount_paise,created_at"),
+            ]);
+            const auth = await supabase.auth.getUser();
+            const localUser = next.users.find(
+              (item) => item.email.toLowerCase() === auth.data.user?.email?.toLowerCase(),
+            );
+            next.auctions = auctionRows.map((row: any) => {
+              const profile = profiles?.find((item: any) => item.id === row.seller_id);
+              const seller = next.users.find((item) => item.email.toLowerCase() === profile?.email?.toLowerCase());
+              const bids = (publicBids ?? [])
+                .filter((bid: any) => bid.auction_id === row.id)
+                .map((bid: any) => {
+                  const own = ownBids?.find((candidate: any) => candidate.id === bid.id);
+                  return {
+                    id: bid.id,
+                    auctionId: row.id,
+                    bidderId: own?.bidder_id === auth.data.user?.id ? localUser?.id ?? own?.bidder_id ?? "" : "",
+                    amount: bid.amount_paise,
+                    alias: bid.alias,
+                    createdAt: bid.created_at,
+                  };
+                });
+              return {
+                id: row.id,
+                productId: row.product_id,
+                sellerId: seller?.id ?? row.seller_id,
+                status: row.status,
+                startingPrice: row.starting_price_paise,
+                askingPrice: row.asking_price_paise,
+                currentBid: row.current_bid_paise ?? undefined,
+                highestBidderId: row.highest_bidder_id === auth.data.user?.id
+                  ? localUser?.id ?? row.highest_bidder_id
+                  : row.highest_bidder_id ?? undefined,
+                bidCount: row.bid_count,
+                minIncrement: row.min_increment_paise,
+                antiSnipeSeconds: row.anti_snipe_seconds,
+                startsAt: row.starts_at,
+                endsAt: row.ends_at,
+                originalEndsAt: row.original_ends_at,
+                bids,
+                createdAt: row.created_at,
+                cancelledReason: row.cancelled_reason ?? undefined,
+                winnerId: row.status === "completed" ? row.highest_bidder_id ?? undefined : undefined,
+              };
+            });
+          }
           commit(next);
         }
       } catch (err) {
@@ -876,6 +963,181 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     };
   }, [commit]);
 
+  const syncRemoteCommerce = useCallback(async (authUser: any) => {
+    try {
+      const [{ data: orderRows }, { data: settlementRows }, { data: profiles }] = await Promise.all([
+        supabase.from("orders").select("*, order_items(*)").order("created_at", { ascending: false }),
+        supabase.from("seller_settlements").select("*").order("created_at", { ascending: false }),
+        supabase.from("profiles").select("id,email,full_name,role"),
+      ]);
+      const next = clone(dbRef.current);
+      const localUser = next.users.find((item) => item.email.toLowerCase() === authUser.email?.toLowerCase());
+      const myProfile = profiles?.find((p: any) => p.id === authUser.id || p.email?.toLowerCase() === authUser.email?.toLowerCase());
+      if (localUser) {
+        if (myProfile?.role && ["admin", "client", "buyer", "seller"].includes(myProfile.role)) {
+          localUser.role = myProfile.role as any;
+        } else if (authUser.email?.toLowerCase() === "admin@lelam.com" || authUser.email?.toLowerCase() === "admin@lelam.co") {
+          localUser.role = "admin";
+        }
+      }
+      const localId = (id: string) => {
+        if (id === authUser.id && localUser) return localUser.id;
+        const profile = profiles?.find((item: any) => item.id === id);
+        return next.users.find((item) => item.email.toLowerCase() === profile?.email?.toLowerCase())?.id ?? id;
+      };
+      if (orderRows) {
+        const remoteOrders = orderRows.map((row: any) => {
+          const address = row.shipping_address ?? {};
+          const sellerId = localId(row.seller_id);
+          return {
+            id: row.id,
+            number: row.order_number,
+            checkoutGroupId: row.checkout_group_id,
+            buyerId: localId(row.buyer_id),
+            sellerId,
+            items: (row.order_items ?? []).map((item: any) => ({
+              id: item.id,
+              productId: item.product_id ?? "",
+              title: item.title_snapshot,
+              image: item.image_snapshot || "/images/tee.jpg",
+              price: item.price_paise,
+              quantity: item.quantity,
+              sellerId,
+              sellerName: next.products.find((product) => product.sellerId === sellerId)?.sellerName ?? "Seller",
+            })),
+            subtotal: row.subtotal_paise,
+            shipping: row.shipping_paise,
+            platformFee: row.buyer_platform_fee_paise ?? 0,
+            total: row.total_paise,
+            status: row.status,
+            paymentStatus: row.payment_status,
+            paymentMethod: row.payment_method ?? undefined,
+            source: row.source,
+            offerId: row.offer_id ?? undefined,
+            auctionId: row.auction_id ?? undefined,
+            address: {
+              id: address.id ?? "server-address",
+              label: address.label ?? "Delivery",
+              name: address.name ?? address.recipient_name ?? "",
+              phone: address.phone ?? "",
+              line1: address.line1 ?? "",
+              line2: address.line2 ?? undefined,
+              city: address.city ?? "",
+              state: address.state ?? "",
+              pincode: address.pincode ?? "",
+            },
+            createdAt: row.created_at,
+            paidAt: row.paid_at ?? undefined,
+            paymentDeadline: row.payment_deadline ?? undefined,
+            cancelledAt: row.cancelled_at ?? undefined,
+          };
+        });
+        const remoteIds = new Set(remoteOrders.map((order: any) => order.id));
+        next.orders = [...remoteOrders, ...next.orders.filter((order) => !remoteIds.has(order.id) && order.id.startsWith("o-"))];
+      }
+      if (settlementRows) {
+        const remoteSettlements = settlementRows.map((row: any) => ({
+          id: row.id,
+          sellerId: localId(row.seller_id),
+          orderId: row.order_id ?? undefined,
+          auctionId: row.auction_id ?? undefined,
+          source: row.source,
+          askingPrice: row.asking_price_paise,
+          winningBid: row.winning_bid_paise ?? undefined,
+          sellerPayout: row.seller_payout_paise,
+          platformSubsidy: row.platform_subsidy_paise ?? 0,
+          platformCommission: row.platform_commission_paise,
+          paymentFee: row.payment_fee_paise ?? 0,
+          status: row.status,
+          createdAt: row.created_at,
+          paidAt: row.paid_at ?? undefined,
+        }));
+        const remoteIds = new Set(remoteSettlements.map((item: any) => item.id));
+        next.settlements = [...remoteSettlements, ...next.settlements.filter((item) => !remoteIds.has(item.id) && item.id.startsWith("s-"))];
+      }
+
+      const { data: dashboard } = await supabase.rpc("affiliate_dashboard");
+      if (dashboard?.account) {
+        const raw = dashboard.account;
+        const account: AffiliateAccount = {
+          id: raw.id,
+          userId: localUser?.id,
+          name: raw.display_name || localUser?.name || "Affiliate",
+          code: raw.code,
+          kind: raw.kind,
+          email: raw.contact_email ?? undefined,
+          commissionRate: Number(raw.commission_pct) / 100,
+          status: raw.status,
+          createdAt: raw.created_at,
+          totalClicks: Number(raw.total_clicks ?? dashboard.clicks30d ?? 0),
+          totalSignups: Number(raw.total_signups ?? 0),
+          totalOrders: Number(raw.total_orders ?? 0),
+        };
+        next.affiliates = [account, ...(next.affiliates ?? []).filter((item) => item.id !== account.id)];
+        const commissions = (dashboard.recent ?? []).map((item: any) => ({
+          id: item.id,
+          affiliateId: raw.id,
+          orderId: item.order_id,
+          buyerId: localUser?.id ?? authUser.id,
+          subtotal: item.order_subtotal_paise,
+          rate: Number(item.commission_pct) / 100,
+          amount: item.amount_paise,
+          status: item.status,
+          returnWindowDays: item.return_window_days,
+          eligibleAt: item.eligible_at ?? undefined,
+          createdAt: item.created_at,
+          approvedAt: item.approved_at ?? undefined,
+          paidAt: item.paid_at ?? undefined,
+        }));
+        const remoteIds = new Set(commissions.map((item: any) => item.id));
+        next.affiliateCommissions = [...commissions, ...(next.affiliateCommissions ?? []).filter((item) => !remoteIds.has(item.id) && item.id.startsWith("ac-"))];
+      }
+
+      if (localUser?.role === "admin") {
+        const { data: adminData } = await supabase.rpc("admin_list_affiliates");
+        if (adminData) {
+          next.affiliates = (adminData.accounts ?? []).map((raw: any) => ({
+            id: raw.id,
+            userId: raw.user_id ? localId(raw.user_id) : undefined,
+            name: raw.display_name ?? "Affiliate",
+            code: raw.code,
+            kind: raw.kind,
+            email: raw.contact_email ?? undefined,
+            commissionRate: Number(raw.commission_pct) / 100,
+            status: raw.status,
+            createdAt: raw.created_at,
+            totalClicks: Number(raw.clicks ?? 0),
+            totalSignups: Number(raw.signups ?? 0),
+            totalOrders: Number(raw.orders ?? 0),
+          }));
+          next.affiliateCommissions = (adminData.commissions ?? []).map((raw: any) => ({
+            id: raw.id,
+            affiliateId: raw.affiliate_id,
+            orderId: raw.order_id,
+            buyerId: localId(raw.referred_user_id),
+            subtotal: raw.order_subtotal_paise,
+            rate: Number(raw.commission_pct) / 100,
+            amount: raw.amount_paise,
+            status: raw.status,
+            returnWindowDays: raw.return_window_days,
+            eligibleAt: raw.eligible_at ?? undefined,
+            createdAt: raw.created_at,
+            approvedAt: raw.approved_at ?? undefined,
+            paidAt: raw.paid_at ?? undefined,
+          }));
+        }
+      }
+      commit(next);
+    } catch (error) {
+      console.warn("[Supabase commerce sync]:", error);
+    }
+  }, [commit]);
+
+  const refreshRemoteCommerce = useCallback(async () => {
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+    if (authUser) await syncRemoteCommerce(authUser);
+  }, [syncRemoteCommerce]);
+
   // Sync Supabase Auth session into local user store (for Google OAuth redirects / GSI)
   useEffect(() => {
     const handleAuthUser = (sessionUser: any) => {
@@ -885,6 +1147,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!email) return;
       const next = clone(current);
       let existing = next.users.find((u) => u.email.toLowerCase() === email);
+      const isAdmin =
+        email === "admin@lelam.com" ||
+        email === "admin@lelam.co" ||
+        sessionUser.user_metadata?.role === "admin" ||
+        sessionUser.app_metadata?.role === "admin";
+
       if (!existing) {
         const name =
           sessionUser.user_metadata?.full_name ||
@@ -896,7 +1164,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           name,
           email,
           password: "",
-          role: "client",
+          role: isAdmin ? "admin" : "client",
           isSeller: true,
           addresses: [],
           joinedAt: nowIso(),
@@ -904,11 +1172,37 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           location: "Trivandrum, Kerala",
         };
         next.users.push(existing);
+      } else if (isAdmin && existing.role !== "admin") {
+        existing.role = "admin";
       }
-      if (next.sessionUserId !== existing.id) {
+
+      if (next.sessionUserId !== existing.id || (isAdmin && existing.role === "admin")) {
         next.sessionUserId = existing.id;
         commit(next);
       }
+
+      void supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", sessionUser.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.role) {
+            const fresh = clone(dbRef.current);
+            const u = fresh.users.find((user) => user.email.toLowerCase() === email);
+            if (u && u.role !== data.role) {
+              u.role = data.role as any;
+              commit(fresh);
+            }
+          }
+        });
+      const referralCode = getStoredRef();
+      if (referralCode) {
+        void supabase.rpc("affiliate_attribute_signup", { p_code: referralCode }).then(({ error }) => {
+          if (error) console.warn("[Supabase affiliate attribution]:", error.message);
+        });
+      }
+      void syncRemoteCommerce(sessionUser);
     };
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -924,7 +1218,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => {
       subscription.unsubscribe();
     };
-  }, [commit]);
+  }, [commit, syncRemoteCommerce]);
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -962,77 +1256,26 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const unreadCount = notifications.filter((item) => !item.readAt).length;
 
   const login = useCallback(
-    (email: string, password: string): ActionResult => {
-      const current = dbRef.current;
-      const found = current.users.find(
-        (candidate) => candidate.email.toLowerCase() === email.trim().toLowerCase(),
-      );
-      if (!found || found.password !== password) {
-        return { ok: false, error: "Email or password is incorrect." };
-      }
-      if (found.blocked) return { ok: false, error: "This account is blocked." };
-      const next = clone(current);
-      const guestCart = next.carts.guest ?? [];
-      next.carts[found.id] = [...(next.carts[found.id] ?? []), ...guestCart];
-      next.carts.guest = [];
-      const guestFavorites = next.favorites.guest ?? [];
-      next.favorites[found.id] = [
-        ...new Set([...(next.favorites[found.id] ?? []), ...guestFavorites]),
-      ];
-      next.favorites.guest = [];
-      next.sessionUserId = found.id;
-      commit(next);
-      return { ok: true };
+    async (email: string, password: string): Promise<ActionResult> => {
+      const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      return error ? { ok: false, error: error.message } : { ok: true };
     },
     [commit],
   );
 
   const register = useCallback(
-    (input: { name: string; email: string; password: string; asSeller?: boolean }): ActionResult => {
-      const current = dbRef.current;
-      if (current.users.some((candidate) => candidate.email.toLowerCase() === input.email.trim().toLowerCase())) {
-        return { ok: false, error: "An account with this email already exists." };
-      }
-      if (input.password.length < 8) {
-        return { ok: false, error: "Use at least 8 characters for your password." };
-      }
-      const next = clone(current);
-      const referralCode = getStoredRef();
-      ensureAffiliateAccounts(next);
-      const referrer = referralCode
-        ? findAffiliateByCode(referralCode, next.affiliates)
-        : null;
-      const newUser: User = {
-        id: uid("u"),
-        name: input.name.trim(),
+    async (input: { name: string; email: string; password: string; asSeller?: boolean }): Promise<ActionResult> => {
+      if (input.password.length < 8) return { ok: false, error: "Use at least 8 characters for your password." };
+      const { data, error } = await supabase.auth.signUp({
         email: input.email.trim().toLowerCase(),
         password: input.password,
-        role: "client",
-        isSeller: true,
-        addresses: [],
-        joinedAt: nowIso(),
-        auctionConsent: true,
-        location: "Trivandrum, Kerala",
-        referredBy: referrer?.id,
-      };
-      next.users.push(newUser);
-      ensureAffiliateAccounts(next);
-      const guestCart = next.carts.guest ?? [];
-      next.carts[newUser.id] = guestCart;
-      next.carts.guest = [];
-      next.sessionUserId = newUser.id;
-      pushNotification(
-        next,
-        newUser.id,
-        "welcome",
-        "Welcome to lelam.co",
-        "Browse the rail, make an offer, or list something from your own closet.",
-        "#/products",
-      );
-      commit(next);
+        options: { data: { full_name: input.name.trim() } },
+      });
+      if (error) return { ok: false, error: error.message };
+      if (!data.session) return { ok: false, error: "Check your email to confirm your account, then sign in." };
       return { ok: true };
     },
-    [commit],
+    [],
   );
 
   const signInWithGoogle = useCallback(
@@ -1077,7 +1320,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           const { error } = await supabase.auth.signInWithOAuth({
             provider: "google",
             options: {
-              redirectTo: `${window.location.origin}${window.location.pathname}#/account`,
+              redirectTo: `${window.location.origin}/account`,
             },
           });
           if (error) throw error;
@@ -1233,7 +1476,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "offer_received",
         `New offer on ${product.title}`,
         `${activeUser.name} offered a private price. Review it in your seller dashboard.`,
-        "#/seller?tab=offers",
+        "/seller?tab=offers",
       );
       commit(next);
       return { ok: true };
@@ -1290,7 +1533,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
               "offer_rejected",
               "Offer not accepted",
               `The seller accepted another offer for ${product.title}.`,
-              "#/account?tab=offers",
+              "/account?tab=offers",
             );
           }
         }
@@ -1305,7 +1548,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             "offer_accepted",
             "Your offer was accepted",
             `${activeUser.name} accepted your offer on ${product.title}. Complete payment within ${next.settings.offerCheckoutHours} hours.`,
-            "#/account?tab=offers",
+            "/account?tab=offers",
           );
         } else {
           pushNotification(
@@ -1314,7 +1557,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             "offer_accepted",
             "Counter-offer accepted",
             `${activeUser.name} accepted your counter-offer on ${product.title}. Item reserved for checkout.`,
-            "#/seller?tab=offers",
+            "/seller?tab=offers",
           );
         }
 
@@ -1337,7 +1580,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             "offer_rejected",
             "Offer not accepted",
             `The seller passed on your offer for ${product.title}. The listing is still available.`,
-            "#/account?tab=offers",
+            "/account?tab=offers",
           );
         } else {
           pushNotification(
@@ -1346,7 +1589,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             "offer_rejected",
             "Counter-offer declined",
             `The buyer declined your counter-offer for ${product.title}.`,
-            "#/seller?tab=offers",
+            "/seller?tab=offers",
           );
         }
       }
@@ -1394,7 +1637,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "offer_countered",
           "Counter-offer received",
           `The seller countered with ₹${(counterAmount / 100).toLocaleString("en-IN")} on ${product.title}.`,
-          "#/account?tab=offers",
+          "/account?tab=offers",
         );
       } else {
         target.status = "pending";
@@ -1411,7 +1654,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "offer_countered",
           "Buyer counter-offer received",
           `The buyer sent a counter-offer of ₹${(counterAmount / 100).toLocaleString("en-IN")} on ${product.title}.`,
-          "#/seller?tab=offers",
+          "/seller?tab=offers",
         );
       }
 
@@ -1491,7 +1734,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } else if (input.productId) {
         const product = current.products.find((item) => item.id === input.productId);
         if (!product) return { ok: false as const, error: "Listing not found." };
-        if (product.status !== "active") return { ok: false as const, error: "This item is no longer available." };
+        if (product.status !== "active" && product.status !== "reserved") return { ok: false as const, error: "This item is no longer available." };
         if (product.sellerId === activeUser.id) return { ok: false as const, error: "You cannot buy your own listing." };
         groups = [
           {
@@ -1507,7 +1750,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         for (const line of lines) {
           const product = current.products.find((item) => item.id === line.productId);
           if (!product) return { ok: false as const, error: "An item in your cart no longer exists." };
-          if (product.status !== "active") {
+          if (product.status !== "active" && product.status !== "reserved") {
             return { ok: false as const, error: `${product.title} is no longer available. Remove it from the cart.` };
           }
           if (product.sellerId === activeUser.id) {
@@ -1541,13 +1784,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "order_created",
           "New order received",
           `${activeUser.name} placed order ${order.number}. Payment is pending.`,
-          "#/seller?tab=orders",
+          "/seller?tab=orders",
         );
       }
       markProductsReserved(
         next,
         groups.flatMap((group) => group.items.map((item) => item.product.id)),
       );
+      for (const group of groups) {
+        for (const item of group.items) {
+          const product = next.products.find((p) => p.id === item.product.id);
+          if (product && (product.quantity <= 1 || product.isUnique)) {
+            product.quantity = 0;
+            product.status = "sold";
+          }
+        }
+      }
       if (source === "cart") {
         const cartLines = next.carts[activeUser.id] ?? [];
         const purchased = new Set(groups.flatMap((group) => group.items.map((item) => item.product.id)));
@@ -1601,12 +1853,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         for (const item of target.items) {
           const product = next.products.find((candidate) => candidate.id === item.productId);
           if (!product) continue;
-          if (product.quantity > item.quantity) {
-            product.quantity -= item.quantity;
-            product.status = "active";
-          } else {
+          if (product.quantity <= item.quantity || product.quantity <= 1 || product.isUnique) {
             product.quantity = 0;
             product.status = "sold";
+          } else {
+            product.quantity -= item.quantity;
+            product.status = product.quantity === 0 ? "sold" : "active";
           }
         }
         creditAffiliate(next, target);
@@ -1658,7 +1910,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "payment_confirmed",
           "Payment confirmed",
           `Order ${target.number} is confirmed. The seller will arrange pickup.`,
-          `#/orders/${target.id}`,
+          `/orders/${target.id}`,
         );
         pushNotification(
           next,
@@ -1666,7 +1918,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "order_paid",
           "Order paid",
           `Order ${target.number} is paid. Arrange pickup for the buyer.`,
-          "#/seller?tab=orders",
+          "/seller?tab=orders",
         );
       }
       commit(next);
@@ -1713,7 +1965,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "order_cancelled",
         "Order cancelled",
         `Order ${target.number} was cancelled.`,
-        `#/orders/${target.id}`,
+        `/orders/${target.id}`,
       );
       commit(next);
       return { ok: true };
@@ -1752,7 +2004,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "return_requested",
         "Return requested",
         `The buyer requested a return for order ${target.number}.`,
-        "#/seller?tab=orders",
+        "/seller?tab=orders",
       );
       commit(next);
       return { ok: true };
@@ -1789,7 +2041,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "review_received",
         "New review",
         `${activeUser.name} left a ${rating}-star review.`,
-        "#/seller?tab=overview",
+        "/seller?tab=overview",
       );
       commit(next);
       return { ok: true };
@@ -1845,7 +2097,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "delivery_confirmed",
           "Delivered",
           `Order ${target.number} was delivered. Leave a review for the seller.`,
-          `#/orders/${target.id}`,
+          `/orders/${target.id}`,
         );
       } else {
         pushNotification(
@@ -1854,7 +2106,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "shipment_update",
           "Delivery update",
           `Order ${target.number}: ${status.replaceAll("_", " ")}.`,
-          `#/orders/${target.id}`,
+          `/orders/${target.id}`,
         );
       }
       commit(next);
@@ -1881,6 +2133,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const seller = next.users.find((item) => item.id === activeUser.id)!;
       seller.isSeller = true;
       if (seller.role === "buyer") seller.role = "seller";
+      // Admins publish straight to the shop; sellers follow the auto-approve setting.
+      const autoLive = activeUser.role === "admin" || next.settings.sellerAutoApprove;
       const product: Product = {
         id: uid("p"),
         sellerId: seller.id,
@@ -1898,15 +2152,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         isUnique: input.quantity === 1,
         location: input.location,
         shippingFee: input.shippingFee,
-        status: next.settings.sellerAutoApprove ? "active" : "pending",
+        status: autoLive ? "active" : "pending",
         allowOffers: input.allowOffers,
         auctionConsent: input.auctionConsent,
         createdAt: nowIso(),
         views: 0,
         color: "#e8e6df",
-        moderationNote: next.settings.sellerAutoApprove
-          ? undefined
-          : "Waiting for admin approval.",
+        moderationNote: autoLive ? undefined : "Waiting for admin approval.",
       };
       next.products.unshift(product);
       pushNotification(
@@ -1917,7 +2169,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         product.status === "active"
           ? `${product.title} is now visible on the marketplace.`
           : `${product.title} will go live after an admin review.`,
-        "#/seller?tab=listings",
+        "/seller?tab=listings",
       );
       if (product.status === "pending") {
         for (const admin of next.users.filter((candidate) => candidate.role === "admin")) {
@@ -1927,7 +2179,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             "product_pending",
             "A listing needs review",
             `${product.title} from ${seller.name} is waiting for approval.`,
-            "#/admin?tab=listings",
+            "/admin?tab=listings",
           );
         }
       }
@@ -1938,7 +2190,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user?.id) {
               const uploadedImages = await uploadListingImages(session.user.id, input.images);
-              await supabase.rpc("save_listing", {
+              const { data: savedId, error: saveError } = await supabase.rpc("save_listing", {
                 p_payload: {
                   title: input.title.trim(),
                   description: input.description.trim(),
@@ -1956,6 +2208,28 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 },
                 p_images: uploadedImages,
               });
+              if (saveError) {
+                console.warn("[Supabase save_listing error]:", saveError.message);
+              } else if (savedId) {
+                // Remember the server UUID so admin actions reach the real row
+                // without changing the local id the UI is already using.
+                const link = clone(dbRef.current);
+                const linked = link.products.find((item) => item.id === product.id);
+                if (linked) {
+                  linked.serverId = savedId;
+                  commit(link);
+                }
+                if (activeUser.role === "admin") {
+                  // Admin listings bypass the review queue on the server too.
+                  const { error: approveError } = await supabase.rpc("admin_review_product", {
+                    p_product_id: savedId,
+                    p_approve: true,
+                  });
+                  if (approveError) {
+                    console.warn("[Supabase admin_review_product publish]:", approveError.message);
+                  }
+                }
+              }
             }
           } catch (err) {
             console.warn("[Supabase save_listing error]:", err);
@@ -2059,7 +2333,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           "report_created",
           "New listing report",
           `A buyer reported a listing: ${reason}.`,
-          "#/admin?tab=reports",
+          "/admin?tab=reports",
         );
       }
       commit(next);
@@ -2069,85 +2343,45 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const placeBid = useCallback(
-    (auctionId: string, amount: number): PlaceBidResult => {
-      const current = dbRef.current;
-      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
-      if (!activeUser) return { ok: false, error: "Sign in to bid." };
-      const auction = current.auctions.find((item) => item.id === auctionId);
-      if (!auction) return { ok: false, error: "Auction not found." };
-      const product = current.products.find((item) => item.id === auction.productId);
-      if (!product) return { ok: false, error: "Listing not found." };
-      if (auction.status !== "live" || new Date(auction.endsAt).getTime() <= Date.now()) {
-        return { ok: false, error: "Bidding has closed for this auction." };
-      }
-      if (auction.sellerId === activeUser.id) return { ok: false, error: "You cannot bid on your own item." };
+    async (auctionId: string, amount: number): Promise<PlaceBidResult> => {
       if (!Number.isInteger(amount) || amount <= 0) return { ok: false, error: "Enter a valid bid." };
-      const minimum = (auction.currentBid ?? auction.startingPrice - auction.minIncrement) + auction.minIncrement;
-      if (amount < minimum) return { ok: false, error: `Minimum next bid is ₹${(minimum / 100).toLocaleString("en-IN")}.` };
-      const oneMinuteAgo = Date.now() - 60_000;
-      const recentBids = auction.bids.filter(
-        (bid) => bid.bidderId === activeUser.id && new Date(bid.createdAt).getTime() > oneMinuteAgo,
-      );
-      if (recentBids.length >= current.settings.bidRateLimitPerMinute) {
-        return { ok: false, error: "Too many bids in a short time. Wait a minute." };
-      }
-      if (auction.bids.some((bid) => bid.bidderId === activeUser.id && bid.amount === amount)) {
-        return { ok: false, error: "You already placed that exact bid." };
-      }
-      const next = clone(current);
-      const target = next.auctions.find((item) => item.id === auctionId)!;
-      const previousLeader = target.highestBidderId;
-      const existingAlias = target.bids.find((bid) => bid.bidderId === activeUser.id)?.alias;
-      const used = new Set(target.bids.map((bid) => bid.alias));
-      let alias = existingAlias;
-      if (!alias) {
-        let number = 1000 + Math.floor(Math.random() * 9000);
-        while (used.has(`Anonymous Bidder #${number}`)) number = 1000 + Math.floor(Math.random() * 9000);
-        alias = `Anonymous Bidder #${number}`;
-      }
-      const now = Date.now();
-      const endsAt = new Date(target.endsAt).getTime();
-      const remaining = endsAt - now;
-      let extended = false;
-      if (remaining <= next.settings.auctionAntiSnipeTriggerSeconds * 1000) {
-        const newEnd = now + next.settings.auctionAntiSnipeSeconds * 1000;
-        if (newEnd > endsAt) {
-          target.endsAt = new Date(newEnd).toISOString();
-          extended = true;
+      if (amount > 200_000_000) return { ok: false, error: "Bid exceeds maximum allowed limit." };
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user) return { ok: false, error: "Sign in to bid." };
+      const { data, error } = await supabase.rpc("place_bid", {
+        p_auction_id: auctionId,
+        p_amount_paise: amount,
+      });
+      if (error) return { ok: false, error: error.message };
+
+      const [{ data: row }, { data: publicBids }] = await Promise.all([
+        supabase.from("auctions").select("*").eq("id", auctionId).maybeSingle(),
+        supabase.from("public_bids").select("*").eq("auction_id", auctionId).order("created_at", { ascending: false }),
+      ]);
+      if (row) {
+        const next = clone(dbRef.current);
+        const auction = next.auctions.find((item) => item.id === auctionId);
+        if (auction) {
+          auction.status = row.status;
+          auction.startsAt = row.starts_at;
+          auction.endsAt = row.ends_at;
+          auction.currentBid = row.current_bid_paise ?? undefined;
+          auction.highestBidderId = row.highest_bidder_id === authData.user.id
+            ? next.users.find((item) => item.email.toLowerCase() === authData.user.email?.toLowerCase())?.id
+            : row.highest_bidder_id ?? undefined;
+          auction.bidCount = row.bid_count;
+          auction.bids = (publicBids ?? []).map((bid: any) => ({
+            id: bid.id,
+            auctionId,
+            bidderId: bid.bidder_id ?? "",
+            amount: bid.amount_paise,
+            alias: bid.alias,
+            createdAt: bid.created_at,
+          }));
+          commit(next);
         }
       }
-      target.bids.unshift({
-        id: uid("b"),
-        auctionId,
-        bidderId: activeUser.id,
-        amount,
-        alias,
-        createdAt: nowIso(),
-      });
-      target.currentBid = amount;
-      target.highestBidderId = activeUser.id;
-      target.bidCount = target.bids.length;
-      target.extended = target.extended || extended;
-      if (previousLeader && previousLeader !== activeUser.id) {
-        pushNotification(
-          next,
-          previousLeader,
-          "outbid",
-          "You were outbid",
-          `A higher bid came in for ${product.title}. Bid again to stay in.`,
-          `#/auction/${auctionId}`,
-        );
-      }
-      pushNotification(
-        next,
-        target.sellerId,
-        "new_bid",
-        "New bid on your auction",
-        `${product.title} received a new anonymous bid.`,
-        "#/seller?tab=auctions",
-      );
-      commit(next);
-      return { ok: true, amount, extended };
+      return { ok: true, amount: data.amount_paise ?? amount, extended: Boolean(data.extended) };
     },
     [commit],
   );
@@ -2229,6 +2463,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
+  const updateOrderAddress = useCallback(
+    (orderId: string, address: Address): ActionResult => {
+      const current = dbRef.current;
+      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
+      if (!activeUser) return { ok: false, error: "Sign in required." };
+      const order = current.orders.find((item) => item.id === orderId);
+      if (!order) return { ok: false, error: "Order not found." };
+      if (order.buyerId !== activeUser.id && activeUser.role !== "admin") {
+        return { ok: false, error: "Not your order." };
+      }
+      if (order.status !== "pending_payment") {
+        return { ok: false, error: "Address can only be updated before payment." };
+      }
+      if (!isValidIndianPincode(address.pincode)) {
+        return { ok: false, error: "Enter a valid six-digit Indian PIN code." };
+      }
+      const next = clone(current);
+      const target = next.orders.find((item) => item.id === orderId);
+      if (target) {
+        target.address = address;
+        commit(next);
+      }
+      return { ok: true };
+    },
+    [commit],
+  );
+
   const updateProfile = useCallback(
     (patch: { name?: string; phone?: string; bio?: string; location?: string; auctionConsent?: boolean }): ActionResult => {
       const current = dbRef.current;
@@ -2254,20 +2515,43 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const approveProduct = useCallback(
-    (productId: string) => {
+    async (productId: string): Promise<ActionResult> => {
+      const current = dbRef.current;
+      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
+      if (!activeUser || activeUser.role !== "admin") {
+        return { ok: false, error: "Admin access required." };
+      }
+      const product = current.products.find((item) => item.id === productId);
+      if (!product) return { ok: false, error: "Listing not found." };
+
+      // The server owns the real status: mark it live there first, otherwise the
+      // listing drops back into the review queue on the next refresh.
+      const remoteId = remoteProductId(product);
+      if (remoteId) {
+        const { error } = await supabase.rpc("admin_review_product", {
+          p_product_id: remoteId,
+          p_approve: true,
+        });
+        if (error) {
+          return {
+            ok: false,
+            error: reviewErrorMessage(error.message, "Could not approve the listing."),
+          };
+        }
+      }
+
       const next = clone(dbRef.current);
-      const product = next.products.find((item) => item.id === productId);
-      if (!product) return;
-      product.status = "active";
-      product.moderationNote = undefined;
-      void Promise.resolve(supabase.rpc("admin_review_product", { p_product_id: productId, p_approved: true })).catch((err: any) => console.warn("[Supabase admin_review_product approve]:", err?.message));
+      const target = next.products.find((item) => item.id === productId);
+      if (!target) return { ok: true };
+      target.status = "active";
+      target.moderationNote = undefined;
       pushNotification(
         next,
-        product.sellerId,
+        target.sellerId,
         "listing_approved",
         "Your listing is live",
-        `${product.title} was approved and is now visible.`,
-        "#/seller?tab=listings",
+        `${target.title} was approved and is now visible.`,
+        "/seller?tab=listings",
       );
       next.auditLogs.unshift({
         id: uid("al"),
@@ -2275,29 +2559,52 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         action: "listing.approve",
         entityType: "product",
         entityId: productId,
-        detail: `Approved ${product.title}.`,
+        detail: `Approved ${target.title}.`,
         createdAt: nowIso(),
       });
       commit(next);
+      return { ok: true };
     },
     [commit],
   );
 
   const rejectProduct = useCallback(
-    (productId: string, reason: string) => {
+    async (productId: string, reason: string): Promise<ActionResult> => {
+      const current = dbRef.current;
+      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
+      if (!activeUser || activeUser.role !== "admin") {
+        return { ok: false, error: "Admin access required." };
+      }
+      const product = current.products.find((item) => item.id === productId);
+      if (!product) return { ok: false, error: "Listing not found." };
+
+      const remoteId = remoteProductId(product);
+      if (remoteId) {
+        const { error } = await supabase.rpc("admin_review_product", {
+          p_product_id: remoteId,
+          p_approve: false,
+          p_reason: reason,
+        });
+        if (error) {
+          return {
+            ok: false,
+            error: reviewErrorMessage(error.message, "Could not reject the listing."),
+          };
+        }
+      }
+
       const next = clone(dbRef.current);
-      const product = next.products.find((item) => item.id === productId);
-      if (!product) return;
-      product.status = "rejected";
-      product.rejectionReason = reason;
-      void Promise.resolve(supabase.rpc("admin_review_product", { p_product_id: productId, p_approved: false, p_note: reason })).catch((err: any) => console.warn("[Supabase admin_review_product reject]:", err?.message));
+      const target = next.products.find((item) => item.id === productId);
+      if (!target) return { ok: true };
+      target.status = "rejected";
+      target.rejectionReason = reason;
       pushNotification(
         next,
-        product.sellerId,
+        target.sellerId,
         "listing_rejected",
         "Listing needs changes",
-        `${product.title} was not approved. Reason: ${reason}`,
-        "#/seller?tab=listings",
+        `${target.title} was not approved. Reason: ${reason}`,
+        "/seller?tab=listings",
       );
       next.auditLogs.unshift({
         id: uid("al"),
@@ -2305,10 +2612,81 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         action: "listing.reject",
         entityType: "product",
         entityId: productId,
-        detail: `Rejected ${product.title}: ${reason}`,
+        detail: `Rejected ${target.title}: ${reason}`,
         createdAt: nowIso(),
       });
       commit(next);
+      return { ok: true };
+    },
+    [commit],
+  );
+
+  const adminDeleteProduct = useCallback(
+    async (productId: string): Promise<ActionResult> => {
+      const current = dbRef.current;
+      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
+      if (!activeUser || activeUser.role !== "admin") {
+        return { ok: false, error: "Admin access required." };
+      }
+      const product = current.products.find((item) => item.id === productId);
+      if (!product) return { ok: false, error: "Listing not found." };
+
+      // Server-backed listings have UUID ids. Seed rows (prod-…) only exist in
+      // the browser catalog, so there is nothing remote to delete for those.
+      const remoteId = product.serverId ?? productId;
+      if (UUID_RE.test(remoteId)) {
+        const { error } = await supabase.rpc("admin_delete_product", { p_product_id: remoteId });
+        if (error) {
+          return {
+            ok: false,
+            error: /find the function|does not exist/i.test(error.message)
+              ? "Delete function is not installed yet. Run the latest Supabase migration."
+              : error.message || "Could not delete the listing.",
+          };
+        }
+      }
+
+      const next = clone(dbRef.current);
+      next.products = next.products.filter((item) => item.id !== productId);
+      next.auctions = next.auctions.filter((auction) => auction.productId !== productId);
+      next.offers = next.offers.filter((offer) => offer.productId !== productId);
+      next.reports = next.reports.filter((report) => report.productId !== productId);
+      if (next.secondChanceOffers) {
+        next.secondChanceOffers = next.secondChanceOffers.filter(
+          (offer) => offer.productId !== productId,
+        );
+      }
+      next.carts = Object.fromEntries(
+        Object.entries(next.carts).map(([userId, lines]) => [
+          userId,
+          lines.filter((line) => line.productId !== productId),
+        ]),
+      );
+      next.favorites = Object.fromEntries(
+        Object.entries(next.favorites).map(([userId, ids]) => [
+          userId,
+          ids.filter((id) => id !== productId),
+        ]),
+      );
+      pushNotification(
+        next,
+        product.sellerId,
+        "listing_deleted",
+        "Listing removed by admin",
+        `${product.title} was permanently removed from the shop.`,
+        "/seller?tab=listings",
+      );
+      next.auditLogs.unshift({
+        id: uid("al"),
+        actorId: next.sessionUserId ?? "",
+        action: "listing.delete",
+        entityType: "product",
+        entityId: productId,
+        detail: `Deleted ${product.title}.`,
+        createdAt: nowIso(),
+      });
+      commit(next);
+      return { ok: true };
     },
     [commit],
   );
@@ -2426,7 +2804,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "auction_selected",
         "Your item was selected for auction",
         `${product.title} is scheduled at ${new Date(startsAt).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" })}.`,
-        "#/seller?tab=auctions",
+        "/seller?tab=auctions",
       );
       created += 1;
     }
@@ -2478,7 +2856,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "auction_selected",
         "Your item was scheduled for auction",
         `${product.title} is scheduled for auction.`,
-        "#/seller?tab=auctions",
+        "/seller?tab=auctions",
       );
       next.auditLogs.unshift({
         id: uid("al"),
@@ -2535,7 +2913,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         "auction_cancelled",
         "Auction cancelled",
         `An auction was cancelled. Reason: ${reason}`,
-        "#/seller?tab=auctions",
+        "/seller?tab=auctions",
       );
       next.auditLogs.unshift({
         id: uid("al"),
@@ -2552,22 +2930,24 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const markSettlementPaid = useCallback(
-    (settlementId: string) => {
+    async (settlementId: string): Promise<ActionResult> => {
+      const { error } = await supabase.rpc("admin_mark_settlement_paid", { p_settlement_id: settlementId });
+      if (error) return { ok: false, error: error.message };
       const next = clone(dbRef.current);
       const settlement = next.settlements.find((item) => item.id === settlementId);
-      if (!settlement) return;
+      if (!settlement) return { ok: false, error: "Settlement not found." };
       settlement.status = "paid";
       settlement.paidAt = nowIso();
-      void Promise.resolve(supabase.rpc("admin_mark_settlement_paid", { p_settlement_id: settlementId })).catch((err: any) => console.warn("[Supabase admin_mark_settlement_paid]:", err?.message));
       pushNotification(
         next,
         settlement.sellerId,
         "settlement_paid",
         "Payout sent",
         `Your payout of ₹${(settlement.sellerPayout / 100).toLocaleString("en-IN")} was marked paid.`,
-        "#/seller?tab=earnings",
+        "/seller?tab=earnings",
       );
       commit(next);
+      return { ok: true };
     },
     [commit],
   );
@@ -2584,13 +2964,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const createAffiliate = useCallback(
-    (input: {
+    async (input: {
       name: string;
       email?: string;
       code?: string;
       kind: AffiliateAccount["kind"];
       commissionPct: number;
-    }): { ok: true; affiliateId: string } | { ok: false; error: string } => {
+    }): Promise<{ ok: true; affiliateId: string } | { ok: false; error: string }> => {
       const current = dbRef.current;
       const actor = current.users.find((item) => item.id === current.sessionUserId);
       if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
@@ -2598,33 +2978,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const name = input.name.trim();
       if (name.length < 2) return { ok: false, error: "Add a name for this link." };
 
-      const accounts = current.affiliates ?? [];
-      let code: string;
-      if (input.code?.trim()) {
-        const supplied = normaliseCode(input.code);
-        if (!supplied) return { ok: false, error: "Codes use 4–20 letters or numbers." };
-        if (accounts.some((account) => account.code === supplied)) {
-          return { ok: false, error: "That link code is already in use." };
-        }
-        code = supplied;
-      } else {
-        const fallback = name.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 12) || "link";
-        code = normaliseCode(fallback) ?? `link${Date.now() % 1000}`;
-        while (accounts.some((account) => account.code === code)) {
-          code = `${code.slice(0, 17)}${Math.floor(Math.random() * 90 + 10)}`;
-        }
-      }
+      const { data, error } = await supabase.rpc("admin_create_affiliate", {
+        p_name: name,
+        p_email: input.email?.trim() || null,
+        p_code: input.code?.trim() || null,
+        p_kind: input.kind,
+        p_commission_pct: input.commissionPct,
+      });
+      if (error) return { ok: false, error: error.message };
 
       const next = clone(current);
       const account: AffiliateAccount = {
-        id: uid("aff"),
-        name,
-        code,
-        kind: input.kind,
-        email: input.email?.trim() || undefined,
-        commissionRate: Math.min(50, Math.max(0, input.commissionPct)) / 100,
-        status: "active",
-        createdAt: nowIso(),
+        id: data.id,
+        name: data.display_name,
+        code: data.code,
+        kind: data.kind,
+        email: data.contact_email || undefined,
+        commissionRate: Number(data.commission_pct) / 100,
+        status: data.status,
+        createdAt: data.created_at,
       };
       next.affiliates = [...(next.affiliates ?? []), account];
       next.auditLogs.unshift({
@@ -2643,7 +3015,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const updateAffiliate = useCallback(
-    (
+    async (
       affiliateId: string,
       patch: {
         name?: string;
@@ -2653,7 +3025,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         commissionPct?: number;
         status?: AffiliateAccount["status"];
       },
-    ): ActionResult => {
+    ): Promise<ActionResult> => {
       const current = dbRef.current;
       const actor = current.users.find((item) => item.id === current.sessionUserId);
       if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
@@ -2673,6 +3045,17 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ) {
         return { ok: false, error: "That link code is already in use." };
       }
+
+      const { error } = await supabase.rpc("admin_update_affiliate", {
+        p_affiliate_id: affiliateId,
+        p_name: patch.name ?? null,
+        p_email: patch.email ?? null,
+        p_code: patch.code ?? null,
+        p_kind: patch.kind ?? null,
+        p_commission_pct: patch.commissionPct ?? null,
+        p_status: patch.status ?? null,
+      });
+      if (error) return { ok: false, error: error.message };
 
       const next = clone(current);
       const target = next.affiliates!.find((item) => item.id === affiliateId)!;
@@ -2701,7 +3084,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const reviewAffiliateCommission = useCallback(
-    (commissionId: string, action: "approve" | "pay" | "void"): ActionResult => {
+    async (commissionId: string, action: "approve" | "pay" | "void"): Promise<ActionResult> => {
       const current = dbRef.current;
       const actor = current.users.find((item) => item.id === current.sessionUserId);
       if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
@@ -2728,6 +3111,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (action === "void" && commission.status === "paid") {
         return { ok: false, error: "Paid earnings must be reversed by a payout adjustment." };
       }
+
+      const { error } = await supabase.rpc("admin_review_affiliate_commission", {
+        p_commission_id: commissionId,
+        p_action: action,
+      });
+      if (error) return { ok: false, error: error.message };
 
       const next = clone(current);
       const target = next.affiliateCommissions!.find((item) => item.id === commissionId)!;
@@ -2764,6 +3153,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     favorites,
     notifications,
     unreadCount,
+    refreshRemoteCommerce,
     login,
     register,
     signInWithGoogle,
@@ -2795,9 +3185,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     markAllNotificationsRead,
     saveAddress,
     removeAddress,
+    updateOrderAddress,
     updateProfile,
     approveProduct,
     rejectProduct,
+    adminDeleteProduct,
     setUserBlocked,
     updateSellerTier,
     updateSettings,

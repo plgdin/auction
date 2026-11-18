@@ -1,17 +1,20 @@
 import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { ArrowRight, Heart, LogIn, Search, ShoppingBag, UserPlus, X } from "lucide-react";
+import { Navigate, Route as RouterRoute, Routes as RouterRoutes, useLocation, useParams } from "react-router-dom";
 import { LelamNavbar } from "@/components/ui/lelam-navbar";
 import { GenieSearchModal } from "@/components/ui/genie-search-modal";
 import HalftoneWordmarkFooter from "@/components/ui/halftone-wordmark-footer";
-import { Link, navigate } from "./components/Link";
+import { Link, RouterNavigationBridge, navigate, normalizeHref } from "./components/Link";
 import { Modal } from "./components/Modal";
 import { onAuthPrompt, withNext, type AuthPromptDetail } from "./lib/authGate";
 import { formatMoney } from "./lib/format";
-import { useRoute } from "./lib/router";
+import { useSeo } from "./lib/seo";
+import { notFoundMeta } from "./lib/seo-meta";
 import { StoreProvider, useStore } from "./lib/store";
 import { toast } from "./lib/toast";
 import { REDUCED_MOTION } from "./lib/motion";
+import { recordVisitorEvent } from "./lib/audit";
 import { CartDrawer } from "./components/CartDrawer";
 import { HomePage } from "./pages/Home";
 
@@ -29,6 +32,8 @@ const AccountPage = lazy(() => import("./pages/Account").then((module) => ({ def
 const AdminPage = lazy(() => import("./pages/Admin").then((module) => ({ default: module.AdminPage })));
 const OrderDetailPage = lazy(() => import("./pages/OrderDetail").then((module) => ({ default: module.OrderDetailPage })));
 const PoliciesPage = lazy(() => import("./pages/Policies").then((module) => ({ default: module.PoliciesPage })));
+const OrderConfirmationPage = lazy(() => import("./pages/OrderConfirmation").then((module) => ({ default: module.OrderConfirmationPage })));
+const PaymentFailedPage = lazy(() => import("./pages/PaymentFailed").then((module) => ({ default: module.PaymentFailedPage })));
 
 type ToastItem = { id: number; message: string; tone: string };
 
@@ -124,7 +129,7 @@ function SearchModalCard({
             e.preventDefault();
             if (query.trim()) {
               onClose?.();
-              navigate(`#/products?q=${encodeURIComponent(query.trim())}`);
+              navigate(`/products?q=${encodeURIComponent(query.trim())}`);
             }
           }}
           className="relative"
@@ -179,7 +184,7 @@ function SearchModalCard({
                   type="button"
                   onClick={() => {
                     onClose?.();
-                    navigate(`#/product/${product.id}`);
+                    navigate(`/product/${product.id}`);
                   }}
                   className="w-full flex items-center gap-3 p-2.5 rounded-2xl bg-[#FFFDF9] border border-[#E8DCCB] text-left transition-all hover:border-[#CBB693] hover:shadow-sm group"
                   style={{ backgroundColor: "#FFFDF9", borderColor: "#E8DCCB" }}
@@ -228,7 +233,7 @@ function SearchModalCard({
           type="button"
           onClick={() => {
             onClose?.();
-            navigate(`#/products${search ? `?q=${encodeURIComponent(query.trim())}` : ""}`);
+            navigate(`/products${search ? `?q=${encodeURIComponent(query.trim())}` : ""}`);
           }}
           className="w-full flex items-center justify-center gap-2 rounded-2xl py-3 px-4 text-sm font-semibold shadow-md transition-all hover:opacity-95 active:scale-[0.99]"
           style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
@@ -418,7 +423,7 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                     style={{ backgroundColor: "#FFFDF9", borderColor: "#E8DCCB" }}
                   >
                     <Link
-                      href={`#/product/${product.id}`}
+                      href={`/product/${product.id}`}
                       onClick={onClose}
                       className="h-14 w-14 rounded-xl overflow-hidden border border-[#D5C2A5]/70 shrink-0 bg-[#F4E9D8]"
                     >
@@ -426,7 +431,7 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                     </Link>
                     <div className="flex-1 min-w-0">
                       <Link
-                        href={`#/product/${product.id}`}
+                        href={`/product/${product.id}`}
                         onClick={onClose}
                         className="block text-sm font-semibold truncate hover:text-[#8C5E3C] transition-colors"
                         style={{ color: "#332417" }}
@@ -476,7 +481,7 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                   type="button"
                   onClick={() => {
                     onClose();
-                    navigate("#/products");
+                    navigate("/products");
                   }}
                   className="inline-flex items-center gap-1.5 rounded-full px-6 py-3 text-sm font-medium transition-opacity hover:opacity-90 active:scale-[0.99]"
                   style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
@@ -495,7 +500,7 @@ function SavedOverlay({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={() => {
                   onClose();
-                  navigate("#/products");
+                  navigate("/products");
                 }}
                 className="w-full flex items-center justify-center gap-2 rounded-full py-3.5 px-6 text-sm font-semibold transition-all hover:opacity-95 active:scale-[0.99]"
                 style={{ backgroundColor: "#493022", color: "#FAF4EB" }}
@@ -531,14 +536,14 @@ function AuthPrompt({
         </p>
         <div className="auth-prompt-actions">
           <Link
-            href={withNext("#/login", detail.next)}
+            href={withNext("/login", detail.next)}
             className="button button-olive"
             onClick={onClose}
           >
             <LogIn size={17} /> Sign in
           </Link>
           <Link
-            href={withNext("#/register", detail.next)}
+            href={withNext("/register", detail.next)}
             className="button button-ghost"
             onClick={onClose}
           >
@@ -554,6 +559,8 @@ function AuthPrompt({
 }
 
 function NotFound() {
+  const location = useLocation();
+  useSeo(notFoundMeta(location.pathname));
   return (
     <main className="page-shell">
       <div className="section-wrap empty-state page-empty">
@@ -562,7 +569,7 @@ function NotFound() {
           This page is <em>off the rail.</em>
         </h2>
         <p>The link may be old, or the piece may have sold.</p>
-        <Link href="#/products" className="button button-olive">
+        <Link href="/products" className="button button-olive">
           Back to the marketplace
         </Link>
       </div>
@@ -570,37 +577,62 @@ function NotFound() {
   );
 }
 
-function Routes() {
-  const route = useRoute();
-  const path = route.path;
+function AppRoutes() {
+  return (
+    <RouterRoutes>
+      <RouterRoute path="/" element={<HomePage />} />
+      <RouterRoute path="/products" element={<ProductsPage />} />
+      <RouterRoute path="/shop" element={<Navigate to="/products" replace />} />
+      <RouterRoute path="/product/:productId" element={<ProductDetailPage />} />
+      <RouterRoute path="/cart" element={<CartPage />} />
+      <RouterRoute path="/checkout" element={<CheckoutPage />} />
+      <RouterRoute path="/auctions" element={<AuctionsPage />} />
+      <RouterRoute path="/auction/:auctionId" element={<AuctionDetailPage />} />
+      <RouterRoute path="/login" element={<AuthPage mode="login" />} />
+      <RouterRoute path="/register" element={<AuthPage mode="register" />} />
+      <RouterRoute path="/sell" element={<SellPage />} />
+      <RouterRoute path="/sell/new" element={<SellFormPage />} />
+      <RouterRoute path="/seller" element={<SellerDashboardPage />} />
+      <RouterRoute path="/account" element={<AccountPage />} />
+      <RouterRoute path="/admin" element={<AdminPage />} />
+      <RouterRoute path="/order-confirmed/:orderId" element={<OrderConfirmationPage />} />
+      <RouterRoute path="/order-success/:orderId" element={<OrderConfirmationPage />} />
+      <RouterRoute path="/payment-failed" element={<PaymentFailedPage />} />
+      <RouterRoute path="/payment-failed/:orderId" element={<PaymentFailedPage />} />
+      <RouterRoute path="/order/:orderId" element={<LegacyOrderRedirect />} />
+      <RouterRoute path="/orders/:orderId" element={<OrderDetailPage />} />
+      <RouterRoute path="/terms" element={<PoliciesPage />} />
+      <RouterRoute path="/privacy" element={<PoliciesPage />} />
+      <RouterRoute path="/returns" element={<PoliciesPage />} />
+      <RouterRoute path="/auction-terms" element={<PoliciesPage />} />
+      <RouterRoute path="*" element={<NotFound />} />
+    </RouterRoutes>
+  );
+}
 
-  if (path === "/" || path === "") return <HomePage />;
-  if (path === "/products" || path === "/shop") return <ProductsPage />;
-  if (path.startsWith("/product/")) return <ProductDetailPage />;
-  if (path === "/cart") return <CartPage />;
-  if (path === "/checkout") return <CheckoutPage />;
-  if (path === "/auctions") return <AuctionsPage />;
-  if (path.startsWith("/auction/")) return <AuctionDetailPage />;
-  if (path === "/login") return <AuthPage mode="login" />;
-  if (path === "/register") return <AuthPage mode="register" />;
-  if (path === "/sell") return <SellPage />;
-  if (path === "/sell/new") return <SellFormPage />;
-  if (path === "/seller") return <SellerDashboardPage />;
-  if (path === "/account") return <AccountPage />;
-  if (path === "/admin") return <AdminPage />;
-  if (path.startsWith("/orders/")) return <OrderDetailPage />;
-  if (["/terms", "/privacy", "/returns", "/auction-terms"].includes(path)) return <PoliciesPage />;
-  return <NotFound />;
+/** Old singular order links forward to the canonical plural route. */
+function LegacyOrderRedirect() {
+  const { orderId } = useParams();
+  return <Navigate to={`/orders/${orderId}`} replace />;
+}
+
+/** Old bookmarks such as /#/products are forwarded to the clean path. */
+function LegacyHashRedirect() {
+  const location = useLocation();
+  const legacy = location.hash.startsWith("#/") ? normalizeHref(location.hash) : "";
+  if (!legacy) return null;
+  return <Navigate to={legacy} replace />;
 }
 
 function Shell() {
   const { favorites, cartCount, unreadCount, user } = useStore();
-  const route = useRoute();
+  const location = useLocation();
   const [searchOpen, setSearchOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [authPrompt, setAuthPrompt] = useState<AuthPromptDetail | null>(null);
-  const [lastPath, setLastPath] = useState(route.path);
+  const [lastPath, setLastPath] = useState(location.pathname);
+  const anchor = location.hash.replace(/^#/, "");
 
   useEffect(() => onAuthPrompt(setAuthPrompt), []);
 
@@ -612,45 +644,54 @@ function Shell() {
     return () => window.removeEventListener("lelam-open-cart", openCart);
   }, []);
 
+  // Track page views and visitor activity (non-blocking)
+  useEffect(() => {
+    const fullPath = location.pathname + (location.search || "");
+    void recordVisitorEvent({
+      action: "page_view",
+      pagePath: fullPath,
+    });
+  }, [location.pathname, location.search]);
+
   // Scroll reset runs before paint so the incoming page never appears at the old scroll offset.
   useLayoutEffect(() => {
-    if (route.path !== lastPath) {
-      setLastPath(route.path);
-      if (!route.anchor) window.scrollTo({ top: 0, behavior: "auto" });
+    if (location.pathname !== lastPath) {
+      setLastPath(location.pathname);
+      if (!anchor) window.scrollTo({ top: 0, behavior: "auto" });
     }
-    if (route.anchor) {
+    if (anchor) {
       window.setTimeout(() => {
-        document.getElementById(route.anchor)?.scrollIntoView({ behavior: "smooth" });
+        document.getElementById(anchor)?.scrollIntoView({ behavior: "smooth" });
       }, 80);
     }
-  }, [route.path, route.anchor, lastPath]);
+  }, [location.pathname, anchor, lastPath]);
 
   const footerColumns = [
     {
       title: "Marketplace",
       links: [
-        { label: "Shop all", href: "#/products" },
-        { label: "Live auctions", href: "#/auctions" },
-        { label: "Sell a piece", href: "#/sell" },
-        { label: "Categories", href: "#/products" },
+        { label: "Shop all", href: "/products" },
+        { label: "Live auctions", href: "/auctions" },
+        { label: "Sell a piece", href: "/sell" },
+        { label: "Categories", href: "/products" },
       ],
     },
     {
       title: "Account",
       links: [
-        { label: "My orders", href: "#/account?tab=orders" },
-        { label: "My offers", href: "#/account?tab=offers" },
-        { label: "Saved finds", href: "#/account?tab=saved" },
-        { label: user ? "My account" : "Create account", href: user ? "#/account" : "#/register" },
+        { label: "My orders", href: "/account?tab=orders" },
+        { label: "My offers", href: "/account?tab=offers" },
+        { label: "Saved finds", href: "/account?tab=saved" },
+        { label: user ? "My account" : "Create account", href: user ? "/account" : "/register" },
       ],
     },
     {
       title: "Policies",
       links: [
-        { label: "Terms of Service", href: "#/terms" },
-        { label: "Privacy Policy", href: "#/privacy" },
-        { label: "Returns & Refunds", href: "#/returns" },
-        { label: "Auction Terms", href: "#/auction-terms" },
+        { label: "Terms of Service", href: "/terms" },
+        { label: "Privacy Policy", href: "/privacy" },
+        { label: "Returns & Refunds", href: "/returns" },
+        { label: "Auction Terms", href: "/auction-terms" },
       ],
     },
   ];
@@ -675,7 +716,7 @@ function Shell() {
       >
         <div className="site-content">
           <motion.div
-            key={route.path.split("/")[1] || "home"}
+            key={location.pathname.split("/")[1] || "home"}
             initial={REDUCED_MOTION ? false : { opacity: 0.88 }}
             animate={{ opacity: 1 }}
             exit={REDUCED_MOTION ? undefined : { opacity: 0.88 }}
@@ -686,7 +727,7 @@ function Shell() {
             className="w-full"
             style={{ transform: "none" }}
           >
-            <Routes />
+            <AppRoutes />
           </motion.div>
         </div>
 
@@ -714,6 +755,8 @@ export default function App() {
   return (
     <StoreProvider>
       <MotionConfig reducedMotion="user">
+        <RouterNavigationBridge />
+        <LegacyHashRedirect />
         <Shell />
       </MotionConfig>
     </StoreProvider>

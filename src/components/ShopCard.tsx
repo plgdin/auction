@@ -25,7 +25,7 @@ export function ShopCard({ product, priority = false }: { product: Product; prio
   return (
     <article className="shop-card">
       <div className="shop-card-media">
-        <Link href={`#/product/${product.id}`} aria-label={`View ${product.title}`}>
+        <Link href={`/product/${product.id}`} aria-label={`View ${product.title}`}>
           <img
             src={product.images[0]}
             alt={product.title}
@@ -54,7 +54,7 @@ export function ShopCard({ product, priority = false }: { product: Product; prio
             <span className="shop-card-category">{product.category}</span>
             <span className="shop-card-condition-tag">{condition}</span>
           </div>
-          <Link href={`#/product/${product.id}`} className="shop-card-title">
+          <Link href={`/product/${product.id}`} className="shop-card-title">
             {product.title}
           </Link>
           {product.description && (
@@ -77,7 +77,7 @@ export function ShopCard({ product, priority = false }: { product: Product; prio
             aria-label={inCart ? `In cart: ${product.title}` : `Add ${product.title} to cart`}
             onClick={() => {
               if (inCart) {
-                navigate("#/cart");
+                navigate("/cart");
                 return;
               }
               const result = addToCart(product.id);

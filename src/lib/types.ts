@@ -41,6 +41,9 @@ export interface AffiliateAccount {
   commissionRate: number;
   status: "active" | "paused" | "banned";
   createdAt: string;
+  totalClicks?: number;
+  totalSignups?: number;
+  totalOrders?: number;
 }
 
 export interface AffiliateClick {
@@ -83,6 +86,8 @@ export interface Address {
 
 export interface Product {
   id: string;
+  /** Server UUID when a locally-created listing has been saved to Supabase. */
+  serverId?: string;
   sellerId: string;
   sellerName: string;
   title: string;
@@ -305,12 +310,32 @@ export interface Review {
 
 export interface AuditLog {
   id: string;
-  actorId: string;
+  actorId: string | null;
   action: string;
-  entityType: string;
-  entityId?: string;
+  entityType?: string | null;
+  entityId?: string | null;
   detail?: string;
+  pagePath?: string | null;
+  ipAddress?: string | null;
+  location?: string | null;
+  city?: string | null;
+  country?: string | null;
+  countryCode?: string | null;
+  userAgent?: string | null;
+  metadata?: Record<string, any> | null;
   createdAt: string;
+  // Joined or enriched for UI
+  userEmail?: string | null;
+  userName?: string | null;
+  userRole?: string | null;
+}
+
+export interface VisitorStats {
+  totalViews: number;
+  uniqueIps: number;
+  registeredViews: number;
+  guestViews: number;
+  topPages: Array<{ path: string; count: number }>;
 }
 
 export interface PlatformSettings {

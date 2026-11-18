@@ -464,7 +464,7 @@ begin
       'pending', p_payment_method, p_offer_id, to_jsonb(v_address),
       v_group,
       case when p_payment_method = 'cod' then null
-           else now() + interval '30 minutes' end
+           else now() + interval '10 minutes' end
     )
     returning id into v_order_id;
 
