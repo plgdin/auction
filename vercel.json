@@ -31,8 +31,8 @@
       "destination": "/api/sitemap?type=auctions"
     },
     {
-      "source": "/((?!api/|ws$|assets/|images/|fonts/|ass/|\\.well-known/|favicon[^/]*$|android-chrome[^/]*$|apple-touch-icon[^/]*$|robots\\.txt$|llms\\.txt$|site\\.webmanifest$|index\\.html$|[^/]*\\.(png|ico|svg|jpg|jpeg|webp|avif|woff2?|map|json|txt|xml)$).*)",
-      "destination": "/api/render?path=/$1"
+      "source": "/:path((?!api/|ws$|assets/|images/|fonts/|ass/|\\.well-known/|favicon[^/]*$|android-chrome[^/]*$|apple-touch-icon[^/]*$|robots\\.txt$|llms\\.txt$|site\\.webmanifest$|index\\.html$|[^/]*\\.png$|[^/]*\\.ico$|[^/]*\\.svg$|[^/]*\\.jpg$|[^/]*\\.jpeg$|[^/]*\\.webp$|[^/]*\\.avif$|[^/]*\\.woff2?$|[^/]*\\.map$|[^/]*\\.json$|[^/]*\\.txt$|[^/]*\\.xml$).*)",
+      "destination": "/api/render?path=/:path"
     }
   ]
 }
