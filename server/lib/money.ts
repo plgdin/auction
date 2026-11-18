@@ -1,25 +1,12 @@
 /** All monetary values are integer paise. */
 export function computeAuctionSettlement(
-  askingPricePaise: number,
+  _askingPricePaise: number,
   winningBidPaise: number,
-  commissionPct = 5,
+  commissionPct = 10,
 ) {
-  if (winningBidPaise < askingPricePaise) {
-    return {
-      sellerPayoutPaise: askingPricePaise,
-      platformSubsidyPaise: askingPricePaise - winningBidPaise,
-      platformCommissionPaise: 0,
-    };
-  }
-  if (winningBidPaise === askingPricePaise) {
-    return {
-      sellerPayoutPaise: askingPricePaise,
-      platformSubsidyPaise: 0,
-      platformCommissionPaise: 0,
-    };
-  }
-  const excess = winningBidPaise - askingPricePaise;
-  const commission = Math.floor((excess * commissionPct) / 100);
+  // Seller commission is 10% of the full winning bid (GST inclusive),
+  // rounded down to paise. Bids below asking are not subsidised by the platform.
+  const commission = Math.floor((winningBidPaise * commissionPct) / 100);
   return {
     sellerPayoutPaise: winningBidPaise - commission,
     platformSubsidyPaise: 0,

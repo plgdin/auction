@@ -39,6 +39,7 @@ import type {
 } from "./types";
 import {
   BUYER_PLATFORM_FEE_PAISE,
+  platformFeeGst,
   sellerCommission,
   sellerNetPayout,
 } from "./sellerMath";
@@ -165,7 +166,9 @@ function pushNotification(
 }
 
 function orderNumber(next: Database) {
-  return `LEL-${24200 + next.orders.length + Math.floor(Math.random() * 40)}`;
+  const stamp = Date.now().toString(36).toUpperCase().slice(-4);
+  const count = (next.orders.length + 1).toString().padStart(4, "0");
+  return `LEL-${count}-${stamp}`;
 }
 
 function createOrder(
@@ -187,6 +190,10 @@ function createOrder(
     0,
   );
   const platformFee = input.platformFee ?? 0;
+  const gst = platformFeeGst(platformFee);
+  const deadlineHours = input.source === "auction"
+    ? 5 / 60
+    : 48;
   const order: Order = {
     id: uid("o"),
     number: orderNumber(next),
@@ -206,7 +213,8 @@ function createOrder(
     subtotal,
     shipping: 0,
     platformFee,
-    total: subtotal + platformFee,
+    platformFeeGst: gst,
+    total: subtotal + platformFee + gst,
     status: "pending_payment",
     paymentStatus: "pending",
     source: input.source,
@@ -214,7 +222,7 @@ function createOrder(
     auctionId: input.auctionId,
     address: input.address,
     createdAt: nowIso(),
-    paymentDeadline: futureIso(next.settings.auctionPaymentDeadlineHours),
+    paymentDeadline: futureIso(deadlineHours),
   };
   next.orders.unshift(order);
   return order;
@@ -638,6 +646,7 @@ interface StoreValue {
   markAllNotificationsRead: () => void;
   saveAddress: (address: Omit<Address, "id"> & { id?: string }) => ActionResult;
   removeAddress: (addressId: string) => void;
+  updateOrderAddress: (orderId: string, address: Address) => ActionResult;
   updateProfile: (patch: { name?: string; phone?: string; bio?: string; location?: string; auctionConsent?: boolean }) => ActionResult;
   approveProduct: (productId: string) => void;
   rejectProduct: (productId: string, reason: string) => void;
@@ -2214,6 +2223,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const placeBid = useCallback(
     async (auctionId: string, amount: number): Promise<PlaceBidResult> => {
       if (!Number.isInteger(amount) || amount <= 0) return { ok: false, error: "Enter a valid bid." };
+      if (amount > 200_000_000) return { ok: false, error: "Bid exceeds maximum allowed limit." };
       const { data: authData } = await supabase.auth.getUser();
       if (!authData.user) return { ok: false, error: "Sign in to bid." };
       const { data, error } = await supabase.rpc("place_bid", {
@@ -2324,6 +2334,33 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         user.addresses[0].isDefault = true;
       }
       commit(next);
+    },
+    [commit],
+  );
+
+  const updateOrderAddress = useCallback(
+    (orderId: string, address: Address): ActionResult => {
+      const current = dbRef.current;
+      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
+      if (!activeUser) return { ok: false, error: "Sign in required." };
+      const order = current.orders.find((item) => item.id === orderId);
+      if (!order) return { ok: false, error: "Order not found." };
+      if (order.buyerId !== activeUser.id && activeUser.role !== "admin") {
+        return { ok: false, error: "Not your order." };
+      }
+      if (order.status !== "pending_payment") {
+        return { ok: false, error: "Address can only be updated before payment." };
+      }
+      if (!isValidIndianPincode(address.pincode)) {
+        return { ok: false, error: "Enter a valid six-digit Indian PIN code." };
+      }
+      const next = clone(current);
+      const target = next.orders.find((item) => item.id === orderId);
+      if (target) {
+        target.address = address;
+        commit(next);
+      }
+      return { ok: true };
     },
     [commit],
   );
@@ -2906,6 +2943,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     markAllNotificationsRead,
     saveAddress,
     removeAddress,
+    updateOrderAddress,
     updateProfile,
     approveProduct,
     rejectProduct,

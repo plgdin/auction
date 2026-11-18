@@ -125,7 +125,7 @@ const checkoutResult = checkout.result;
 const checkoutOrderId = checkoutResult.orderIds[0];
 const checkoutOrder = await q("select * from orders where id = $1", [checkoutOrderId]);
 check("checkout creates a buyer-owned pending order", checkoutOrder.buyer_id === buyer1 && checkoutOrder.status === "pending_payment");
-check("checkout adds the platform fee exactly once", checkoutOrder.buyer_platform_fee_paise === 1000 && checkoutOrder.total_paise === 70000 + checkoutOrder.shipping_paise + 1000);
+check("checkout adds the platform fee exactly once", checkoutOrder.buyer_platform_fee_paise === 1000 && checkoutOrder.total_paise === 70000 + checkoutOrder.shipping_paise + 1000 + 180);
 check("checkout returns its payment group and total", Boolean(checkoutResult.checkoutGroupId) && checkoutResult.totalPaise === checkoutOrder.total_paise);
 await expectError(
   "checkout rejects malformed delivery PINs",
@@ -293,9 +293,9 @@ const item = await q("select * from order_items where order_id = $1", [order.id]
 check("order has the listing attached", item?.product_id === "10000000-0000-4000-8000-000000000001");
 
 const settlement = await q("select * from seller_settlements where order_id = $1", [order.id]);
-const expectedCommission = Math.floor(((state.current_bid_paise - 100000) * 5) / 100);
+const expectedCommission = Math.floor((state.current_bid_paise * 10) / 100);
 check(
-  "seller settlement pays the bid minus 5% of the excess over asking",
+  "seller settlement pays the bid minus 10% flat commission",
   Number(settlement.seller_payout_paise) === state.current_bid_paise - expectedCommission,
   `(payout ${settlement.seller_payout_paise}, bid ${state.current_bid_paise})`,
 );

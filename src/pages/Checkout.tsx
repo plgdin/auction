@@ -15,7 +15,7 @@ import { Link, navigate } from "../components/Link";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import { BUYER_PLATFORM_FEE_PAISE } from "../lib/sellerMath";
+import { BUYER_PLATFORM_FEE_PAISE, platformFeeGst } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import { isValidIndianPincode } from "../lib/delivery";
 import { supabase } from "../lib/supabase";
@@ -61,12 +61,13 @@ export function CheckoutPage() {
   const subtotal = lines.reduce((total, line) => total + line.unitPrice * line.quantity, 0);
   const sellerIds = [...new Set(lines.map((line) => line.product.sellerId))];
   const platformFee = BUYER_PLATFORM_FEE_PAISE;
+  const gst = platformFeeGst(platformFee);
   const shipping = sellerIds.reduce((sum, sellerId) => {
     const sellerLines = lines.filter((line) => line.product.sellerId === sellerId);
     const sellerSubtotal = sellerLines.reduce((amount, line) => amount + line.unitPrice * line.quantity, 0);
     return sum + (sellerSubtotal >= 199900 ? 0 : Math.max(0, ...sellerLines.map((line) => line.product.shippingFee)));
   }, 0);
-  const total = subtotal + shipping + platformFee;
+  const total = subtotal + shipping + platformFee + gst;
   const address = user?.addresses.find((item) => item.id === selectedAddress);
   const serviceable = address
     ? isValidIndianPincode(address.pincode)
@@ -362,6 +363,10 @@ export function CheckoutPage() {
               <div className="summary-row">
                 <span>Platform fee</span>
                 <strong>{formatMoney(platformFee)}</strong>
+              </div>
+              <div className="summary-row">
+                <span>GST on platform fee (18%)</span>
+                <strong>{formatMoney(gst)}</strong>
               </div>
               {offer && (
                 <div className="summary-row offer-savings">

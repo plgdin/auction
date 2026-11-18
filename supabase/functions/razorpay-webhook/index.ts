@@ -22,6 +22,13 @@ async function hmacHex(secret: string, payload: string): Promise<string> {
     .join("");
 }
 
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < a.length; i++) mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return mismatch === 0;
+}
+
 Deno.serve(async (request) => {
   if (request.method !== "POST") {
     return json({ error: "Method not allowed" }, 405);
@@ -34,7 +41,7 @@ Deno.serve(async (request) => {
   const body = await request.text();
   const signature = request.headers.get("x-razorpay-signature") ?? "";
   const expected = await hmacHex(secret, body);
-  if (expected !== signature) {
+  if (!constantTimeEqual(expected, signature)) {
     return json({ error: "Invalid webhook signature" }, 401);
   }
 

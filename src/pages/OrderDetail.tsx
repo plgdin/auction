@@ -14,6 +14,7 @@ import {
   Truck,
   X,
 } from "lucide-react";
+import { AddressForm } from "../components/AddressForm";
 import { Link, navigate } from "../components/Link";
 import { Field, SelectMenu, StatusPill } from "../components/Ui";
 import { formatDate, formatDateTime, formatMoney } from "../lib/format";
@@ -22,6 +23,7 @@ import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
 import type { Order } from "../lib/types";
 import { payWithRazorpay } from "../lib/payments";
+import { isValidIndianPincode } from "../lib/delivery";
 
 const shipmentSteps: NonNullable<Order["shipment"]>["status"][] = [
   "pending_pickup",
@@ -51,12 +53,14 @@ export function OrderDetailPage() {
     addReview,
     advanceShipment,
     reportProduct,
+    updateOrderAddress,
   } = useStore();
   const orderId = route.path.split("/")[2] || "";
   const order = db.orders.find((item) => item.id === orderId);
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [shipmentStatus, setShipmentStatus] = useState("");
+  const [editingAddress, setEditingAddress] = useState(false);
 
   if (!order) {
     return (
@@ -113,6 +117,13 @@ export function OrderDetailPage() {
       ["picked_up", "in_transit", "out_for_delivery", "delivered", "returned"].includes(order.shipment.status),
   );
   const canPay = isBuyer && order.status === "pending_payment";
+  const needsAddress = Boolean(
+    isBuyer &&
+      order.status === "pending_payment" &&
+      (!order.address?.line1?.trim() ||
+        !isValidIndianPincode(order.address?.pincode) ||
+        order.address?.id === "addr-needed"),
+  );
   const canCancel =
     !isAuction &&
     (isBuyer || isSeller || isAdmin) &&
@@ -402,7 +413,13 @@ export function OrderDetailPage() {
                 <button
                   type="button"
                   className="button button-olive summary-cta"
+                  disabled={needsAddress}
                   onClick={async () => {
+                    if (needsAddress) {
+                      setEditingAddress(true);
+                      toast("Please add a delivery address before completing payment.", "error");
+                      return;
+                    }
                     try {
                       await payWithRazorpay(
                         order.source === "auction" ? { orderId: order.id } : { checkoutGroupId: order.checkoutGroupId },
@@ -415,7 +432,7 @@ export function OrderDetailPage() {
                     }
                   }}
                 >
-                  <CreditCard size={15} /> Pay {formatMoney(order.total)}
+                  <CreditCard size={15} /> {needsAddress ? "Add delivery address to pay" : `Pay ${formatMoney(order.total)}`}
                 </button>
               )}
 
@@ -489,17 +506,91 @@ export function OrderDetailPage() {
             </div>
 
             <div className="panel order-address">
-              <h3>
-                <MapPin size={14} /> Delivery address
-              </h3>
-              <strong>{order.address.name}</strong>
-              <p>
-                {order.address.line1}
-                {order.address.line2 ? `, ${order.address.line2}` : ""}
-                <br />
-                {order.address.city}, {order.address.state} {order.address.pincode}
-              </p>
-              <span>{order.address.phone}</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h3 style={{ margin: 0 }}>
+                  <MapPin size={14} /> Delivery address
+                </h3>
+                {isBuyer && order.status === "pending_payment" && (
+                  <button
+                    type="button"
+                    className="text-link"
+                    style={{ fontSize: 13 }}
+                    onClick={() => setEditingAddress((prev) => !prev)}
+                  >
+                    {editingAddress ? "Cancel" : needsAddress ? "Add address" : "Change"}
+                  </button>
+                )}
+              </div>
+              {editingAddress ? (
+                <div style={{ marginTop: 12 }}>
+                  {user?.addresses && user.addresses.length > 0 && (
+                    <div style={{ marginBottom: 14, display: "grid", gap: 8 }}>
+                      <p style={{ fontSize: 12, color: "#6b5847", margin: 0 }}>Select a saved address:</p>
+                      {user.addresses.map((addr) => (
+                        <button
+                          key={addr.id}
+                          type="button"
+                          className="button button-ghost"
+                          style={{ textAlign: "left", justifyContent: "flex-start", padding: "8px 12px", height: "auto" }}
+                          onClick={() => {
+                            const res = updateOrderAddress(order.id, addr);
+                            if (res.ok) {
+                              setEditingAddress(false);
+                              toast("Address updated.", "success");
+                            } else {
+                              toast(res.error, "error");
+                            }
+                          }}
+                        >
+                          <div>
+                            <strong>{addr.label}</strong> — {addr.name}, {addr.line1}, {addr.city} {addr.pincode}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <AddressForm
+                    initial={order.address?.id !== "addr-needed" ? order.address : undefined}
+                    onSaved={() => {
+                      const latestAddr = user?.addresses.find((a) => a.isDefault) || user?.addresses[user?.addresses.length - 1];
+                      if (latestAddr) {
+                        updateOrderAddress(order.id, latestAddr);
+                      }
+                      setEditingAddress(false);
+                      toast("Delivery address saved.", "success");
+                    }}
+                    onCancel={() => setEditingAddress(false)}
+                  />
+                </div>
+              ) : (
+                <>
+                  {needsAddress ? (
+                    <div style={{ marginTop: 8 }}>
+                      <p style={{ color: "#c2410c", fontSize: 13, fontWeight: 500, margin: "0 0 8px" }}>
+                        ⚠️ Delivery address required to complete payment.
+                      </p>
+                      <button
+                        type="button"
+                        className="button button-olive"
+                        onClick={() => setEditingAddress(true)}
+                      >
+                        Add address now
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <strong>{order.address.name}</strong>
+                      <p>
+                        {order.address.line1}
+                        {order.address.line2 ? `, ${order.address.line2}` : ""}
+                        <br />
+                        {order.address.city}, {order.address.state} {order.address.pincode}
+                      </p>
+                      <span>{order.address.phone}</span>
+                    </>
+                  )}
+                </>
+              )}
             </div>
 
             <div className="panel order-contact">

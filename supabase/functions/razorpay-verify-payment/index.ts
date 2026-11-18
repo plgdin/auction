@@ -1,7 +1,7 @@
 // Verifies a Razorpay signature, then marks the order paid through the
 // service-role RPC. Deploy with: supabase functions deploy razorpay-verify-payment
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { corsHeaders, json } from "../_shared/cors.ts";
+import { getCorsHeaders, json } from "../_shared/cors.ts";
 
 async function hmacHex(secret: string, payload: string): Promise<string> {
   const encoder = new TextEncoder();
@@ -27,19 +27,19 @@ function constantTimeEqual(a: string, b: string): boolean {
 
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
+    return new Response("ok", { headers: getCorsHeaders(request) });
   }
 
   try {
     const authorization = request.headers.get("Authorization") ?? "";
-    if (!authorization) return json({ error: "Sign in required" }, 401);
+    if (!authorization) return json({ error: "Sign in required" }, 401, request);
 
     const url = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const keySecret = Deno.env.get("RAZORPAY_KEY_SECRET");
 
-    if (!keySecret) return json({ error: "Razorpay is not configured" }, 503);
+    if (!keySecret) return json({ error: "Razorpay is not configured" }, 503, request);
 
     const body = await request.json().catch(() => ({}));
     const orderId = String(body.orderId ?? "");
@@ -49,7 +49,7 @@ Deno.serve(async (request) => {
     const razorpaySignature = String(body.razorpay_signature ?? "");
 
     if ((!orderId && !checkoutGroupId) || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
-      return json({ error: "Missing payment fields" }, 400);
+      return json({ error: "Missing payment fields" }, 400, request);
     }
 
     const caller = createClient(url, anonKey, {
@@ -59,7 +59,7 @@ Deno.serve(async (request) => {
     const {
       data: { user },
     } = await caller.auth.getUser();
-    if (!user) return json({ error: "Sign in required" }, 401);
+    if (!user) return json({ error: "Sign in required" }, 401, request);
 
     // Only the buyer can complete payment for their own order.
     let ordersQuery = caller
@@ -69,14 +69,14 @@ Deno.serve(async (request) => {
       ? ordersQuery.eq("id", orderId).eq("buyer_id", user.id)
       : ordersQuery.eq("checkout_group_id", checkoutGroupId).eq("buyer_id", user.id);
     const { data: orders } = await ordersQuery;
-    if (!orders?.length) return json({ error: "Order not found" }, 404);
+    if (!orders?.length) return json({ error: "Order not found" }, 404, request);
 
     const expected = await hmacHex(
       keySecret,
       `${razorpayOrderId}|${razorpayPaymentId}`,
     );
     if (!constantTimeEqual(expected, razorpaySignature)) {
-      return json({ error: "Payment signature is invalid" }, 400);
+      return json({ error: "Payment signature is invalid" }, 400, request);
     }
 
     const admin = createClient(url, serviceKey);
@@ -94,12 +94,12 @@ Deno.serve(async (request) => {
         });
     if (error) {
       console.error("confirm_order_payment", error);
-      return json({ error: error.message }, 400);
+      return json({ error: error.message }, 400, request);
     }
 
-    return json({ ok: true });
+    return json({ ok: true }, 200, request);
   } catch (error) {
     console.error("razorpay-verify-payment", error);
-    return json({ error: String(error) }, 500);
+    return json({ error: String(error) }, 500, request);
   }
 });
