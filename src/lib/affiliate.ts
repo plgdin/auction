@@ -131,7 +131,7 @@ export function previewAccount(
     code: codeForUser(user.id),
     kind: "creator",
     email: user.email,
-    commissionRate: (settings.affiliateCommissionPct || 5) / 100,
+    commissionRate: (settings.affiliateCommissionPct || 1) / 100,
     status: "active",
     createdAt: user.joinedAt,
   };

@@ -254,8 +254,20 @@ function ensureAffiliateAccounts(next: Database): boolean {
   const accounts = next.affiliates ?? [];
   let changed = false;
 
+  if (!next.settings.affiliateCommissionPct || next.settings.affiliateCommissionPct === 5) {
+    next.settings.affiliateCommissionPct = 1;
+    changed = true;
+  }
+
   for (const user of next.users) {
-    if (accounts.some((account) => account.userId === user.id)) continue;
+    const existing = accounts.find((account) => account.userId === user.id);
+    if (existing) {
+      if (existing.commissionRate === 0.05) {
+        existing.commissionRate = (next.settings.affiliateCommissionPct || 1) / 100;
+        changed = true;
+      }
+      continue;
+    }
     let code = codeForUser(user.id);
     while (accounts.some((account) => account.code === code)) {
       code = `${code.slice(0, 16)}${Math.floor(Math.random() * 90 + 10)}`;
@@ -267,7 +279,7 @@ function ensureAffiliateAccounts(next: Database): boolean {
       code,
       kind: "creator",
       email: user.email,
-      commissionRate: (next.settings.affiliateCommissionPct || 5) / 100,
+      commissionRate: (next.settings.affiliateCommissionPct || 1) / 100,
       status: "active",
       createdAt: user.joinedAt,
     });
