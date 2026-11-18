@@ -146,8 +146,18 @@ function loadDatabase(): Database {
             parsed.sessionUserId = null;
           }
         }
-        const migrated = { ...parsed, settings: { ...seeded.settings, ...parsed.settings } };
-        if (previousVersion < seeded.version) {
+        const existingProductIds = new Set((parsed.products ?? []).map((p) => p.id));
+        const missingProducts = seeded.products.filter((p) => !existingProductIds.has(p.id));
+        const mergedProducts =
+          missingProducts.length > 0
+            ? [...(parsed.products ?? []), ...missingProducts]
+            : (parsed.products ?? []);
+        const migrated = {
+          ...parsed,
+          products: mergedProducts,
+          settings: { ...seeded.settings, ...parsed.settings },
+        };
+        if (previousVersion < seeded.version || missingProducts.length > 0) {
           try {
             localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
           } catch {
