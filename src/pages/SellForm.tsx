@@ -6,7 +6,7 @@ import { CATEGORIES } from "../lib/categories";
 import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import { sellerNetPayout } from "../lib/sellerMath";
+import { sellerCommissionPercent, sellerNetPayout } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import type { Category, Condition } from "../lib/types";
 
@@ -460,7 +460,9 @@ export function SellFormPage() {
                     <strong>{formatMoney(sellerNetPayout(Math.round(Number(form.price) * 100), user?.sellerTier))}</strong>
                   </div>
                   <p>
-                    10% seller commission, GST included — sell for ₹1,000 and you receive ₹900. Settlement starts after the 3-day buyer return-request window closes.
+                    {sellerCommissionPercent(user?.sellerTier) === 5
+                      ? "5% verified seller commission, GST included — sell for ₹1,000 and you receive ₹950. Settlement starts after the 3-day buyer return-request window closes."
+                      : "10% seller commission, GST included — sell for ₹1,000 and you receive ₹900. Settlement starts after the 3-day buyer return-request window closes."}
                   </p>
                 </div>
               )}
@@ -551,7 +553,11 @@ export function SellFormPage() {
               </h3>
               <ul>
                 <li>Doorstep delivery is available across India.</li>
-                <li>10% seller commission, GST included — sell for ₹1,000 and you receive ₹900.</li>
+                <li>
+                  {sellerCommissionPercent(user?.sellerTier) === 5
+                    ? "5% verified seller commission, GST included — sell for ₹1,000 and you receive ₹950."
+                    : "10% seller commission, GST included — sell for ₹1,000 and you receive ₹900."}
+                </li>
                 <li>Offers stay private; there is no public haggling.</li>
               </ul>
               <div className="sell-trust">

@@ -24,6 +24,7 @@ import { EmptyState, Field, StatusPill, Tabs } from "../components/Ui";
 import { ShopCard } from "../components/ShopCard";
 import { accountForUser, summariseAffiliate } from "../lib/affiliate";
 import { formatDate, formatDateTime, formatMoney, timeAgo } from "../lib/format";
+import { sellerCommissionPercent } from "../lib/sellerMath";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
@@ -206,7 +207,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
           <div className="stat-card">
             <span><Wallet size={15} /> Paid Out</span>
             <strong>{formatMoney(lifetimeEarnings)}</strong>
-            <em>10% seller commission, inclusive of GST</em>
+            <em>{sellerCommissionPercent(user?.sellerTier)}% seller commission, inclusive of GST</em>
           </div>
         </div>
 
@@ -584,7 +585,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
             <div className="account-section-head">
               <h2>Earnings & Payouts</h2>
               <span>
-                  Your sales earnings after a 10% seller commission, inclusive of GST.
+                  Your sales earnings after a {sellerCommissionPercent(user?.sellerTier)}% seller commission, inclusive of GST.
               </span>
             </div>
             <EarningsTab />

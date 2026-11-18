@@ -114,8 +114,8 @@ export function AuctionsPage() {
               highest valid bid when the clock runs out wins and pays within 5 minutes.
             </p>
             <p>
-              One flat 10% seller commission applies to every sale, GST included — sell for
-              ₹1,000 and you keep ₹900.
+              One flat 10% standard seller commission (5% for verified sellers) applies to every sale, GST included — sell for
+              ₹1,000 and you keep ₹900 (or ₹950 if verified).
             </p>
             <div className="mt-5">
               <OriginButton

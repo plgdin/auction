@@ -731,7 +731,9 @@ export function AdminPage() {
                           const tier = e.target.value as "normal" | "verified";
                           updateSellerTier(account.id, tier);
                           toast(
-                            `Updated ${account.name} seller verification status. Commission remains 10%, inclusive of GST.`,
+                            tier === "verified"
+                              ? `Verified ${account.name}. Commission set to 5%, inclusive of GST.`
+                              : `Updated ${account.name} to normal tier (10% commission).`,
                             "success",
                           );
                         }}

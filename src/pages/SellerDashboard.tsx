@@ -17,6 +17,7 @@ import { Link, navigate } from "../components/Link";
 import { Countdown } from "../components/Countdown";
 import { EmptyState, ScheduleDateTime, SelectMenu, StatusPill, Tabs } from "../components/Ui";
 import { formatDate, formatMoney, timeAgo } from "../lib/format";
+import { sellerCommissionPercent } from "../lib/sellerMath";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
@@ -734,7 +735,7 @@ export function SellerDashboardPage() {
               <h3>Schedule an auction</h3>
               <p>
                 Pick one of your active listings and a start time. Bidding opens at{" "}
-                {db.settings.auctionStartPct}% of the asking price. A 10% commission applies to the
+                {db.settings.auctionStartPct}% of the asking price. A {sellerCommissionPercent(user?.sellerTier)}% commission applies to the
                 full winning bid.
               </p>
               <div className="auction-schedule-form">
@@ -802,7 +803,7 @@ export function SellerDashboardPage() {
                           )}
                           {auction.status === "live" && (
                             <span className="auction-state">
-                              Highest bid wins. A 10% commission applies to the full winning bid.
+                              Highest bid wins. A {sellerCommissionPercent(user?.sellerTier)}% commission applies to the full winning bid.
                             </span>
                           )}
                           {auction.status === "completed" && (

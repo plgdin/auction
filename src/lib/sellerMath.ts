@@ -8,6 +8,7 @@ import type { Offer, SellerTier } from "./types";
 
 export const SELLER_COMMISSION_PERCENT = 10;
 export const SELLER_COMMISSION_PERCENT_NORMAL = 10;
+export const SELLER_COMMISSION_PERCENT_VERIFIED = 5;
 export const BUYER_PLATFORM_FEE_PAISE = 1_000;
 export const PLATFORM_FEE_GST_PERCENT = 18;
 
@@ -21,8 +22,10 @@ export function buyerPlatformFeeTotal(platformFeePaise: number): number {
   return Math.max(0, platformFeePaise) + platformFeeGst(platformFeePaise);
 }
 
-export function sellerCommissionPercent(_tier?: SellerTier): number {
-  return SELLER_COMMISSION_PERCENT;
+export function sellerCommissionPercent(tier?: SellerTier): number {
+  return tier === "verified"
+    ? SELLER_COMMISSION_PERCENT_VERIFIED
+    : SELLER_COMMISSION_PERCENT_NORMAL;
 }
 
 export function sellerCommission(amount: number, tier?: SellerTier): number {
