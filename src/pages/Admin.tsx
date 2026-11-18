@@ -54,6 +54,7 @@ export function AdminPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [deleteId, setDeleteId] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [reviewingId, setReviewingId] = useState("");
   const [settings, setSettings] = useState(db.settings);
   const [affiliateForm, setAffiliateForm] = useState({
     name: "",
@@ -90,6 +91,32 @@ export function AdminPage() {
   const setTabAndHash = (next: string) => {
     setTab(next);
     navigate(`/admin?tab=${next}`);
+  };
+
+  const handleApprove = async (productId: string) => {
+    if (reviewingId) return;
+    setReviewingId(productId);
+    const result = await approveProduct(productId);
+    setReviewingId("");
+    if (result.ok) toast("Listing approved and live in the shop.", "success");
+    else toast(result.error, "error");
+  };
+
+  const handleReject = async () => {
+    if (!rejectReason.trim()) {
+      toast("Add a reason.", "error");
+      return;
+    }
+    if (reviewingId) return;
+    setReviewingId(rejectId);
+    const result = await rejectProduct(rejectId, rejectReason.trim());
+    setReviewingId("");
+    if (!result.ok) {
+      toast(result.error, "error");
+      return;
+    }
+    toast("Listing rejected. Seller notified.", "success");
+    setRejectId("");
   };
 
   const pending = db.products.filter((product) => product.status === "pending");
@@ -296,10 +323,8 @@ export function AdminPage() {
                         <button
                           type="button"
                           className="text-link"
-                          onClick={() => {
-                            approveProduct(product.id);
-                            toast("Listing approved.", "success");
-                          }}
+                          disabled={reviewingId === product.id}
+                          onClick={() => void handleApprove(product.id)}
                         >
                           Approve
                         </button>
@@ -400,12 +425,10 @@ export function AdminPage() {
                       <button
                         type="button"
                         className="button button-olive"
-                        onClick={() => {
-                          approveProduct(product.id);
-                          toast("Listing approved.", "success");
-                        }}
+                        disabled={reviewingId === product.id}
+                        onClick={() => void handleApprove(product.id)}
                       >
-                        <Check size={14} /> Approve
+                        <Check size={14} /> {reviewingId === product.id ? "Approving…" : "Approve"}
                       </button>
                       <button
                         type="button"
@@ -444,17 +467,10 @@ export function AdminPage() {
                   <button
                     type="button"
                     className="button button-olive"
-                    onClick={() => {
-                      if (!rejectReason.trim()) {
-                        toast("Add a reason.", "error");
-                        return;
-                      }
-                      rejectProduct(rejectId, rejectReason.trim());
-                      toast("Listing rejected. Seller notified.");
-                      setRejectId("");
-                    }}
+                    disabled={reviewingId === rejectId}
+                    onClick={() => void handleReject()}
                   >
-                    Send rejection
+                    {reviewingId === rejectId ? "Sending…" : "Send rejection"}
                   </button>
                   <button
                     type="button"

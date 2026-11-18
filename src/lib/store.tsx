@@ -49,6 +49,26 @@ const STORAGE_KEY = "lelam-marketplace-v1";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/** Supabase row id for a listing, when it exists on the server. */
+function remoteProductId(product: Product): string | null {
+  if (product.serverId && UUID_RE.test(product.serverId)) return product.serverId;
+  return UUID_RE.test(product.id) ? product.id : null;
+}
+
+/** Turn a Postgres/PostgREST error into something an admin can act on. */
+function reviewErrorMessage(message: string, fallback: string): string {
+  if (/find the function|schema cache|does not exist/i.test(message)) {
+    return "Review function is missing on the server. Run the latest Supabase migrations.";
+  }
+  if (/administrator access required/i.test(message)) {
+    return "Your account is not an admin on the server. Sign out and back in, then retry.";
+  }
+  if (/listing not found/i.test(message)) {
+    return "The server has not saved this listing yet. Refresh, then approve again.";
+  }
+  return message || fallback;
+}
+
 const UI_TO_CONDITION_MAP: Record<Product["condition"], string> = {
   New: "new",
   "Like new": "like_new",
@@ -673,8 +693,8 @@ interface StoreValue {
   removeAddress: (addressId: string) => void;
   updateOrderAddress: (orderId: string, address: Address) => ActionResult;
   updateProfile: (patch: { name?: string; phone?: string; bio?: string; location?: string; auctionConsent?: boolean }) => ActionResult;
-  approveProduct: (productId: string) => void;
-  rejectProduct: (productId: string, reason: string) => void;
+  approveProduct: (productId: string) => Promise<ActionResult>;
+  rejectProduct: (productId: string, reason: string) => Promise<ActionResult>;
   adminDeleteProduct: (productId: string) => Promise<ActionResult>;
   setUserBlocked: (userId: string, blocked: boolean) => void;
   updateSellerTier: (userId: string, tier: SellerTier) => ActionResult;
@@ -2189,10 +2209,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 }
                 if (activeUser.role === "admin") {
                   // Admin listings bypass the review queue on the server too.
-                  await supabase.rpc("admin_review_product", {
+                  const { error: approveError } = await supabase.rpc("admin_review_product", {
                     p_product_id: savedId,
-                    p_approved: true,
+                    p_approve: true,
                   });
+                  if (approveError) {
+                    console.warn("[Supabase admin_review_product publish]:", approveError.message);
+                  }
                 }
               }
             }
@@ -2480,19 +2503,42 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   );
 
   const approveProduct = useCallback(
-    (productId: string) => {
+    async (productId: string): Promise<ActionResult> => {
+      const current = dbRef.current;
+      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
+      if (!activeUser || activeUser.role !== "admin") {
+        return { ok: false, error: "Admin access required." };
+      }
+      const product = current.products.find((item) => item.id === productId);
+      if (!product) return { ok: false, error: "Listing not found." };
+
+      // The server owns the real status: mark it live there first, otherwise the
+      // listing drops back into the review queue on the next refresh.
+      const remoteId = remoteProductId(product);
+      if (remoteId) {
+        const { error } = await supabase.rpc("admin_review_product", {
+          p_product_id: remoteId,
+          p_approve: true,
+        });
+        if (error) {
+          return {
+            ok: false,
+            error: reviewErrorMessage(error.message, "Could not approve the listing."),
+          };
+        }
+      }
+
       const next = clone(dbRef.current);
-      const product = next.products.find((item) => item.id === productId);
-      if (!product) return;
-      product.status = "active";
-      product.moderationNote = undefined;
-      void Promise.resolve(supabase.rpc("admin_review_product", { p_product_id: productId, p_approved: true })).catch((err: any) => console.warn("[Supabase admin_review_product approve]:", err?.message));
+      const target = next.products.find((item) => item.id === productId);
+      if (!target) return { ok: true };
+      target.status = "active";
+      target.moderationNote = undefined;
       pushNotification(
         next,
-        product.sellerId,
+        target.sellerId,
         "listing_approved",
         "Your listing is live",
-        `${product.title} was approved and is now visible.`,
+        `${target.title} was approved and is now visible.`,
         "/seller?tab=listings",
       );
       next.auditLogs.unshift({
@@ -2501,28 +2547,51 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         action: "listing.approve",
         entityType: "product",
         entityId: productId,
-        detail: `Approved ${product.title}.`,
+        detail: `Approved ${target.title}.`,
         createdAt: nowIso(),
       });
       commit(next);
+      return { ok: true };
     },
     [commit],
   );
 
   const rejectProduct = useCallback(
-    (productId: string, reason: string) => {
+    async (productId: string, reason: string): Promise<ActionResult> => {
+      const current = dbRef.current;
+      const activeUser = current.users.find((item) => item.id === current.sessionUserId);
+      if (!activeUser || activeUser.role !== "admin") {
+        return { ok: false, error: "Admin access required." };
+      }
+      const product = current.products.find((item) => item.id === productId);
+      if (!product) return { ok: false, error: "Listing not found." };
+
+      const remoteId = remoteProductId(product);
+      if (remoteId) {
+        const { error } = await supabase.rpc("admin_review_product", {
+          p_product_id: remoteId,
+          p_approve: false,
+          p_reason: reason,
+        });
+        if (error) {
+          return {
+            ok: false,
+            error: reviewErrorMessage(error.message, "Could not reject the listing."),
+          };
+        }
+      }
+
       const next = clone(dbRef.current);
-      const product = next.products.find((item) => item.id === productId);
-      if (!product) return;
-      product.status = "rejected";
-      product.rejectionReason = reason;
-      void Promise.resolve(supabase.rpc("admin_review_product", { p_product_id: productId, p_approved: false, p_note: reason })).catch((err: any) => console.warn("[Supabase admin_review_product reject]:", err?.message));
+      const target = next.products.find((item) => item.id === productId);
+      if (!target) return { ok: true };
+      target.status = "rejected";
+      target.rejectionReason = reason;
       pushNotification(
         next,
-        product.sellerId,
+        target.sellerId,
         "listing_rejected",
         "Listing needs changes",
-        `${product.title} was not approved. Reason: ${reason}`,
+        `${target.title} was not approved. Reason: ${reason}`,
         "/seller?tab=listings",
       );
       next.auditLogs.unshift({
@@ -2531,10 +2600,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         action: "listing.reject",
         entityType: "product",
         entityId: productId,
-        detail: `Rejected ${product.title}: ${reason}`,
+        detail: `Rejected ${target.title}: ${reason}`,
         createdAt: nowIso(),
       });
       commit(next);
+      return { ok: true };
     },
     [commit],
   );
