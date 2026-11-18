@@ -76,6 +76,32 @@ export async function payWithRazorpay(
         contact: prefill?.contact || "",
       },
       theme: { color: "#493022" },
+      config: {
+        display: {
+          blocks: {
+            banks: {
+              name: "Pay via UPI, Card, or Netbanking",
+              instruments: [
+                { method: "upi" },
+                { method: "card" },
+                { method: "netbanking" },
+              ],
+            },
+          },
+          sequence: ["block.banks"],
+          preferences: {
+            show_default_blocks: false,
+          },
+        },
+      },
+      method: {
+        netbanking: true,
+        card: true,
+        upi: true,
+        wallet: false,
+        emi: false,
+        paylater: false,
+      },
       handler: async (response: Record<string, string>) => {
         try {
           await supabase.functions.invoke("razorpay-verify-payment", {

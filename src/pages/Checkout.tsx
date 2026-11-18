@@ -219,7 +219,7 @@ export function CheckoutPage() {
 
       if (payment !== "cod") {
         try {
-          await payWithRazorpay(
+          const res = await payWithRazorpay(
             {
               checkoutGroupId,
               orderId: createdOrderIds[0],
@@ -228,22 +228,28 @@ export function CheckoutPage() {
             },
             { name: user.name, email: user.email, contact: user.phone },
           );
-        } catch (payErr: any) {
-          if (createdOrderIds[0] && payErr?.message?.includes("cancelled")) {
+
+          for (const oId of createdOrderIds) {
             try {
-              await supabase.rpc("cancel_order", {
-                p_order_id: createdOrderIds[0],
-                p_reason: "Payment cancelled by user",
+              await supabase.rpc("buyer_confirm_order_payment", {
+                p_order_id: oId,
+                p_payment_id: res.razorpay_payment_id || null,
               });
             } catch {
-              // cancellation cleanup ignored
+              // fallback
             }
+          }
+
+          payOrders(createdOrderIds);
+          toast("Payment confirmed. Your order is in progress.", "success");
+        } catch (payErr: any) {
+          if (createdOrderIds[0]) {
+            await refreshRemoteCommerce();
+            navigate(`#/payment-failed/${createdOrderIds[0]}`);
+            return;
           }
           throw payErr;
         }
-
-        payOrders(createdOrderIds);
-        toast("Payment confirmed. Your order is in progress.", "success");
       } else {
         if (createdOrderIds.some((id) => id.startsWith("o-"))) {
           payOrders(createdOrderIds);
@@ -252,7 +258,7 @@ export function CheckoutPage() {
       }
 
       await refreshRemoteCommerce();
-      navigate(`#/orders/${createdOrderIds[0]}`);
+      navigate(`#/order-confirmed/${createdOrderIds[0]}`);
     } catch (error) {
       toast(error instanceof Error ? error.message : "Could not complete checkout.", "error");
     } finally {

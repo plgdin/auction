@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { AddressForm } from "../components/AddressForm";
 import { Link, navigate } from "../components/Link";
+import { Modal } from "../components/Modal";
 import { Field, SelectMenu, StatusPill } from "../components/Ui";
 import { formatDate, formatDateTime, formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
@@ -24,6 +25,7 @@ import { toast } from "../lib/toast";
 import type { Order } from "../lib/types";
 import { payWithRazorpay } from "../lib/payments";
 import { isValidIndianPincode } from "../lib/delivery";
+import { supabase } from "../lib/supabase";
 
 const shipmentSteps: NonNullable<Order["shipment"]>["status"][] = [
   "pending_pickup",
@@ -48,6 +50,7 @@ export function OrderDetailPage() {
     db,
     user,
     refreshRemoteCommerce,
+    payOrders,
     cancelOrder,
     requestReturn,
     addReview,
@@ -56,7 +59,81 @@ export function OrderDetailPage() {
     updateOrderAddress,
   } = useStore();
   const orderId = route.path.split("/")[2] || "";
-  const order = db.orders.find((item) => item.id === orderId);
+  const storeOrder = db.orders.find((item) => item.id === orderId);
+  const [remoteOrder, setRemoteOrder] = useState<Order | null>(null);
+  const order = storeOrder || remoteOrder;
+
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState("Changed my mind");
+  const [customReason, setCustomReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
+  useEffect(() => {
+    if (storeOrder || !orderId) return;
+    let mounted = true;
+    async function fetchDirect() {
+      try {
+        const { data: row } = await supabase
+          .from("orders")
+          .select("*, order_items(*)")
+          .eq("id", orderId)
+          .maybeSingle();
+
+        if (row && mounted) {
+          const addr = row.shipping_address ?? {};
+          setRemoteOrder({
+            id: row.id,
+            number: row.order_number,
+            checkoutGroupId: row.checkout_group_id,
+            buyerId: row.buyer_id,
+            sellerId: row.seller_id,
+            items: (row.order_items ?? []).map((item: any) => ({
+              id: item.id,
+              productId: item.product_id ?? "",
+              title: item.title_snapshot || "Item",
+              image: item.image_snapshot || "/images/tee.jpg",
+              price: item.price_paise,
+              quantity: item.quantity,
+              sellerName: "Seller",
+            })),
+            subtotal: row.subtotal_paise,
+            shipping: row.shipping_paise,
+            platformFee: row.buyer_platform_fee_paise ?? 1000,
+            platformFeeGst: row.buyer_platform_fee_gst_paise ?? 180,
+            total: row.total_paise,
+            status: row.status,
+            paymentStatus: row.payment_status,
+            paymentMethod: row.payment_method ?? "upi",
+            source: row.source,
+            offerId: row.offer_id ?? undefined,
+            auctionId: row.auction_id ?? undefined,
+            address: {
+              id: addr.id ?? "addr",
+              label: addr.label ?? "Delivery",
+              name: addr.name ?? addr.recipient_name ?? "Buyer",
+              phone: addr.phone ?? "",
+              line1: addr.line1 ?? "",
+              line2: addr.line2 ?? undefined,
+              city: addr.city ?? "",
+              state: addr.state ?? "",
+              pincode: addr.pincode ?? "",
+            },
+            createdAt: row.created_at,
+            paidAt: row.paid_at ?? undefined,
+            paymentDeadline: row.payment_deadline ?? undefined,
+          });
+          void refreshRemoteCommerce();
+        }
+      } catch (err) {
+        console.warn("Direct order load failed:", err);
+      }
+    }
+    void fetchDirect();
+    return () => {
+      mounted = false;
+    };
+  }, [storeOrder, orderId, refreshRemoteCommerce]);
+
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [shipmentStatus, setShipmentStatus] = useState("");
@@ -421,7 +498,7 @@ export function OrderDetailPage() {
                       return;
                     }
                     try {
-                      await payWithRazorpay(
+                      const res = await payWithRazorpay(
                         {
                           ...(order.source === "auction" ? { orderId: order.id } : { checkoutGroupId: order.checkoutGroupId }),
                           amountPaise: Math.round(order.total),
@@ -429,9 +506,22 @@ export function OrderDetailPage() {
                         },
                         { name: user.name, email: user.email, contact: user.phone },
                       );
+
+                      try {
+                        await supabase.rpc("buyer_confirm_order_payment", {
+                          p_order_id: order.id,
+                          p_payment_id: res.razorpay_payment_id || null,
+                        });
+                      } catch {
+                        // fallback
+                      }
+
+                      payOrders([order.id]);
                       await refreshRemoteCommerce();
                       toast("Payment confirmed. Your order is in progress.", "success");
-                    } catch (error) {
+                      navigate(`#/order-confirmed/${order.id}`);
+                    } catch (error: any) {
+                      navigate(`#/payment-failed/${order.id}`);
                       toast(error instanceof Error ? error.message : "Payment failed.", "error");
                     }
                   }}
@@ -455,24 +545,13 @@ export function OrderDetailPage() {
               )}
 
               {canCancel && (
-                <>
-                  <button
-                    type="button"
-                    className="button button-ghost summary-cta"
-                    onClick={() => {
-                      if (!window.confirm("Cancel this order?")) return;
-                      const result = cancelOrder(order.id);
-                      if (result.ok) toast("Order cancelled.");
-                      else toast(result.error, "error");
-                    }}
-                  >
-                    <X size={14} /> Cancel order
-                  </button>
-                  <p className="cancel-window-note">
-                    You can cancel free of charge until the parcel is picked up. Once it&apos;s with
-                    the courier, the order can&apos;t be cancelled.
-                  </p>
-                </>
+                <button
+                  type="button"
+                  className="button button-ghost summary-cta"
+                  onClick={() => setShowCancelModal(true)}
+                >
+                  <X size={14} /> Cancel order
+                </button>
               )}
 
               {isAuction && isBuyer && (
@@ -506,7 +585,7 @@ export function OrderDetailPage() {
                 </div>
               )}
 
-              {canPay && <p className="payment-demo-note">Secure payment by Razorpay. Seller payout remains pending until delivery and the inspection window.</p>}
+              {canPay && null}
             </div>
 
             <div className="panel order-address">
@@ -628,6 +707,106 @@ export function OrderDetailPage() {
           </button>
         </div>
       </div>
+
+      {showCancelModal && (
+        <Modal title="Cancel order" onClose={() => setShowCancelModal(false)}>
+          <div style={{ display: "grid", gap: 16, padding: "8px 0" }}>
+            {["paid", "processing"].includes(order.status) || order.paymentStatus === "paid" ? (
+              <div
+                style={{
+                  background: "#FAF4EB",
+                  border: "1px solid #D5C2A5",
+                  borderRadius: 12,
+                  padding: 14,
+                  fontSize: 13.5,
+                  color: "#4A5438",
+                  lineHeight: 1.55,
+                }}
+              >
+                <strong style={{ display: "block", marginBottom: 4, color: "#28180E" }}>Refund Notice:</strong>
+                Your payment of <strong>{formatMoney(order.total)}</strong> has been confirmed. If you cancel this order, your refund will be credited back to your original payment method within <strong>7 to 10 working days</strong>.
+              </div>
+            ) : (
+              <p style={{ margin: 0, fontSize: 14, color: "#6D533E" }}>
+                Are you sure you want to cancel this order?
+              </p>
+            )}
+
+            <Field label="Reason for cancellation">
+              <select
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+              >
+                <option value="Changed my mind">Changed my mind</option>
+                <option value="Found a better price elsewhere">Found a better price elsewhere</option>
+                <option value="Ordered by mistake">Ordered by mistake</option>
+                <option value="Delivery address needs correction">Delivery address needs correction</option>
+                <option value="Taking too long to dispatch">Taking too long to dispatch</option>
+                <option value="Other">Other</option>
+              </select>
+            </Field>
+
+            {cancelReason === "Other" && (
+              <Field label="Specify reason">
+                <input
+                  value={customReason}
+                  onChange={(e) => setCustomReason(e.target.value)}
+                  placeholder="Tell us why you are cancelling…"
+                  required
+                />
+              </Field>
+            )}
+
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="button button-olive"
+                disabled={cancelling}
+                onClick={async () => {
+                  setCancelling(true);
+                  const reason = cancelReason === "Other" ? (customReason.trim() || "Other") : cancelReason;
+                  try {
+                    try {
+                      await supabase.rpc("buyer_cancel_order", {
+                        p_order_id: order.id,
+                        p_reason: reason,
+                      });
+                    } catch {
+                      // fallback
+                    }
+
+                    const result = cancelOrder(order.id);
+                    await refreshRemoteCommerce();
+                    if (result.ok) {
+                      setShowCancelModal(false);
+                      const isPaid = ["paid", "processing"].includes(order.status) || order.paymentStatus === "paid";
+                      toast(
+                        isPaid
+                          ? "Order cancelled. Refund will be credited within 7 to 10 working days."
+                          : "Order cancelled.",
+                        "success",
+                      );
+                    } else {
+                      toast(result.error, "error");
+                    }
+                  } finally {
+                    setCancelling(false);
+                  }
+                }}
+              >
+                {cancelling ? "Cancelling…" : "Confirm cancellation"}
+              </button>
+              <button
+                type="button"
+                className="button button-ghost"
+                onClick={() => setShowCancelModal(false)}
+              >
+                Keep order
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </main>
   );
 }

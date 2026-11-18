@@ -1700,6 +1700,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         next,
         groups.flatMap((group) => group.items.map((item) => item.product.id)),
       );
+      for (const group of groups) {
+        for (const item of group.items) {
+          const product = next.products.find((p) => p.id === item.product.id);
+          if (product && (product.quantity <= 1 || product.isUnique)) {
+            product.quantity = 0;
+            product.status = "sold";
+          }
+        }
+      }
       if (source === "cart") {
         const cartLines = next.carts[activeUser.id] ?? [];
         const purchased = new Set(groups.flatMap((group) => group.items.map((item) => item.product.id)));
@@ -1753,12 +1762,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         for (const item of target.items) {
           const product = next.products.find((candidate) => candidate.id === item.productId);
           if (!product) continue;
-          if (product.quantity > item.quantity) {
-            product.quantity -= item.quantity;
-            product.status = "active";
-          } else {
+          if (product.quantity <= item.quantity || product.quantity <= 1 || product.isUnique) {
             product.quantity = 0;
             product.status = "sold";
+          } else {
+            product.quantity -= item.quantity;
+            product.status = product.quantity === 0 ? "sold" : "active";
           }
         }
         creditAffiliate(next, target);
