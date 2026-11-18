@@ -193,7 +193,7 @@ function createOrder(
   const gst = platformFeeGst(platformFee);
   const deadlineHours = input.source === "auction"
     ? 5 / 60
-    : 48;
+    : 10 / 60;
   const order: Order = {
     id: uid("o"),
     number: orderNumber(next),
