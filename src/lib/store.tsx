@@ -933,10 +933,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const [{ data: orderRows }, { data: settlementRows }, { data: profiles }] = await Promise.all([
         supabase.from("orders").select("*, order_items(*)").order("created_at", { ascending: false }),
         supabase.from("seller_settlements").select("*").order("created_at", { ascending: false }),
-        supabase.from("profiles").select("id,email,full_name"),
+        supabase.from("profiles").select("id,email,full_name,role"),
       ]);
       const next = clone(dbRef.current);
       const localUser = next.users.find((item) => item.email.toLowerCase() === authUser.email?.toLowerCase());
+      const myProfile = profiles?.find((p: any) => p.id === authUser.id || p.email?.toLowerCase() === authUser.email?.toLowerCase());
+      if (localUser) {
+        if (myProfile?.role && ["admin", "client", "buyer", "seller"].includes(myProfile.role)) {
+          localUser.role = myProfile.role as any;
+        } else if (authUser.email?.toLowerCase() === "admin@lelam.com" || authUser.email?.toLowerCase() === "admin@lelam.co") {
+          localUser.role = "admin";
+        }
+      }
       const localId = (id: string) => {
         if (id === authUser.id && localUser) return localUser.id;
         const profile = profiles?.find((item: any) => item.id === id);
@@ -1104,6 +1112,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       if (!email) return;
       const next = clone(current);
       let existing = next.users.find((u) => u.email.toLowerCase() === email);
+      const isAdmin =
+        email === "admin@lelam.com" ||
+        email === "admin@lelam.co" ||
+        sessionUser.user_metadata?.role === "admin" ||
+        sessionUser.app_metadata?.role === "admin";
+
       if (!existing) {
         const name =
           sessionUser.user_metadata?.full_name ||
@@ -1115,7 +1129,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           name,
           email,
           password: "",
-          role: "client",
+          role: isAdmin ? "admin" : "client",
           isSeller: true,
           addresses: [],
           joinedAt: nowIso(),
@@ -1123,11 +1137,30 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           location: "Trivandrum, Kerala",
         };
         next.users.push(existing);
+      } else if (isAdmin && existing.role !== "admin") {
+        existing.role = "admin";
       }
-      if (next.sessionUserId !== existing.id) {
+
+      if (next.sessionUserId !== existing.id || (isAdmin && existing.role === "admin")) {
         next.sessionUserId = existing.id;
         commit(next);
       }
+
+      void supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", sessionUser.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.role) {
+            const fresh = clone(dbRef.current);
+            const u = fresh.users.find((user) => user.email.toLowerCase() === email);
+            if (u && u.role !== data.role) {
+              u.role = data.role as any;
+              commit(fresh);
+            }
+          }
+        });
       const referralCode = getStoredRef();
       if (referralCode) {
         void supabase.rpc("affiliate_attribute_signup", { p_code: referralCode }).then(({ error }) => {
