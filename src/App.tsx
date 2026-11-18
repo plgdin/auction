@@ -14,6 +14,7 @@ import { notFoundMeta } from "./lib/seo-meta";
 import { StoreProvider, useStore } from "./lib/store";
 import { toast } from "./lib/toast";
 import { REDUCED_MOTION } from "./lib/motion";
+import { recordVisitorEvent } from "./lib/audit";
 import { CartDrawer } from "./components/CartDrawer";
 import { HomePage } from "./pages/Home";
 
@@ -642,6 +643,15 @@ function Shell() {
     window.addEventListener("lelam-open-cart", openCart);
     return () => window.removeEventListener("lelam-open-cart", openCart);
   }, []);
+
+  // Track page views and visitor activity (non-blocking)
+  useEffect(() => {
+    const fullPath = location.pathname + (location.search || "");
+    void recordVisitorEvent({
+      action: "page_view",
+      pagePath: fullPath,
+    });
+  }, [location.pathname, location.search]);
 
   // Scroll reset runs before paint so the incoming page never appears at the old scroll offset.
   useLayoutEffect(() => {

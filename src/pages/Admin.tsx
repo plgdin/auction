@@ -4,16 +4,25 @@ import {
   BadgeCheck,
   Ban,
   Check,
+  ChevronDown,
+  ChevronUp,
   Copy,
+  Eye,
   Gavel,
+  Globe,
   IndianRupee,
   Link2,
+  MapPin,
+  Plus,
+  RotateCw,
+  Search,
   Settings2,
   Shield,
   Sparkles,
-  Plus,
   Tag,
   Trash2,
+  UserCheck,
+  Users,
   Wallet,
   X,
 } from "lucide-react";
@@ -23,9 +32,10 @@ import { Modal } from "../components/Modal";
 import { EmptyState, Field, StatusPill, Tabs } from "../components/Ui";
 import { formatDate, formatMoney, timeAgo } from "../lib/format";
 import { affiliateUrl, summariseAffiliate } from "../lib/affiliate";
+import { fetchAdminAuditLogs, formatDeviceBrowser } from "../lib/audit";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
-import type { AffiliateAccount } from "../lib/types";
+import type { AffiliateAccount, AuditLog, VisitorStats } from "../lib/types";
 import { toast } from "../lib/toast";
 
 export function AdminPage() {
@@ -64,6 +74,50 @@ export function AdminPage() {
     commissionPct: db.settings.affiliateCommissionPct,
   });
   const [rateDrafts, setRateDrafts] = useState<Record<string, string>>({});
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [auditTotalCount, setAuditTotalCount] = useState(0);
+  const [auditStats, setAuditStats] = useState<VisitorStats>({
+    totalViews: 0,
+    uniqueIps: 0,
+    registeredViews: 0,
+    guestViews: 0,
+    topPages: [],
+  });
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditUserType, setAuditUserType] = useState<"all" | "registered" | "guest">("all");
+  const [auditActionFilter, setAuditActionFilter] = useState("all");
+  const [auditSearch, setAuditSearch] = useState("");
+  const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+
+  const loadAuditData = async () => {
+    setAuditLoading(true);
+    try {
+      const res = await fetchAdminAuditLogs(
+        {
+          page: auditPage,
+          limit: 25,
+          userType: auditUserType,
+          action: auditActionFilter,
+          search: auditSearch,
+        },
+        db.auditLogs,
+      );
+      setAuditLogs(res.logs);
+      setAuditTotalCount(res.totalCount);
+      setAuditStats(res.stats);
+    } catch (err) {
+      console.warn("Failed to load audit data:", err);
+    } finally {
+      setAuditLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (tab === "audit") {
+      void loadAuditData();
+    }
+  }, [tab, auditPage, auditUserType, auditActionFilter]);
 
   useEffect(() => {
     setTab(route.query.get("tab") || "overview");
@@ -295,6 +349,7 @@ export function AdminPage() {
             { id: "auctions", label: "Auctions", count: db.auctions.length },
             { id: "finance", label: "Finance", count: pendingSettlements.length },
             { id: "affiliates", label: "Affiliates", count: affiliatePendingCount },
+            { id: "audit", label: "Visitors & Audit" },
             { id: "settings", label: "Settings" },
           ]}
           active={tab}
@@ -1185,6 +1240,355 @@ export function AdminPage() {
                 />
               )}
             </section>
+          </div>
+        )}
+
+        {tab === "audit" && (
+          <div className="dashboard-section">
+            <div className="panel-head">
+              <div>
+                <h2>Visitor traffic & audit trail</h2>
+                <span>Track page views, registered vs guest traffic, IP addresses, and locations</span>
+              </div>
+              <button
+                type="button"
+                className="button button-ghost"
+                onClick={() => void loadAuditData()}
+                disabled={auditLoading}
+              >
+                <RotateCw size={14} className={auditLoading ? "animate-spin" : ""} /> Refresh
+              </button>
+            </div>
+
+            {/* Quick Visitor Stats */}
+            <div className="stat-grid admin-stat-grid">
+              <div className="stat-card">
+                <span>
+                  <Eye size={15} /> Total views
+                </span>
+                <strong>{auditStats.totalViews}</strong>
+                <em>Recorded site events</em>
+              </div>
+              <div className="stat-card">
+                <span>
+                  <Globe size={15} /> Unique IPs
+                </span>
+                <strong>{auditStats.uniqueIps}</strong>
+                <em>Visitor network addresses</em>
+              </div>
+              <div className="stat-card">
+                <span>
+                  <UserCheck size={15} /> Registered users
+                </span>
+                <strong>{auditStats.registeredViews}</strong>
+                <em>Authenticated sessions</em>
+              </div>
+              <div className="stat-card">
+                <span>
+                  <Users size={15} /> Guests & visitors
+                </span>
+                <strong>{auditStats.guestViews}</strong>
+                <em>Anonymous storefront traffic</em>
+              </div>
+            </div>
+
+            {/* Top Visited Pages */}
+            {auditStats.topPages.length > 0 && (
+              <div className="audit-overview-grid">
+                <div className="top-pages-card">
+                  <h3>
+                    Top visited pages
+                    <span>{auditStats.topPages.length} active routes</span>
+                  </h3>
+                  <div className="top-pages-list">
+                    {auditStats.topPages.map((tp) => {
+                      const maxCount = auditStats.topPages[0]?.count || 1;
+                      const pct = Math.min(100, Math.round((tp.count / maxCount) * 100));
+                      return (
+                        <div key={tp.path} className="top-page-row">
+                          <span className="top-page-path" title={tp.path}>
+                            {tp.path}
+                          </span>
+                          <div className="top-page-bar-wrap">
+                            <div className="top-page-bar" style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="top-page-count">{tp.count}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="top-pages-card">
+                  <h3>
+                    Traffic breakdown
+                    <span>Audience split</span>
+                  </h3>
+                  <div style={{ display: "grid", gap: "10px", marginTop: "4px" }}>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
+                        <span>Registered users</span>
+                        <strong>{auditStats.registeredViews}</strong>
+                      </div>
+                      <div className="top-page-bar-wrap">
+                        <div
+                          className="top-page-bar"
+                          style={{
+                            width: `${
+                              auditStats.totalViews
+                                ? Math.round((auditStats.registeredViews / auditStats.totalViews) * 100)
+                                : 0
+                            }%`,
+                            background: "#2e6037",
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
+                        <span>Anonymous guests</span>
+                        <strong>{auditStats.guestViews}</strong>
+                      </div>
+                      <div className="top-page-bar-wrap">
+                        <div
+                          className="top-page-bar"
+                          style={{
+                            width: `${
+                              auditStats.totalViews
+                                ? Math.round((auditStats.guestViews / auditStats.totalViews) * 100)
+                                : 0
+                            }%`,
+                            background: "#8c5e3c",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Filter and Search Controls */}
+            <div className="audit-controls">
+              <div className="audit-filter-group">
+                <button
+                  type="button"
+                  className={`audit-pill-button ${auditUserType === "all" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setAuditUserType("all");
+                    setAuditPage(1);
+                  }}
+                >
+                  All traffic
+                </button>
+                <button
+                  type="button"
+                  className={`audit-pill-button ${auditUserType === "registered" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setAuditUserType("registered");
+                    setAuditPage(1);
+                  }}
+                >
+                  Registered only
+                </button>
+                <button
+                  type="button"
+                  className={`audit-pill-button ${auditUserType === "guest" ? "is-active" : ""}`}
+                  onClick={() => {
+                    setAuditUserType("guest");
+                    setAuditPage(1);
+                  }}
+                >
+                  Guests only
+                </button>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <select
+                  value={auditActionFilter}
+                  onChange={(e) => {
+                    setAuditActionFilter(e.target.value);
+                    setAuditPage(1);
+                  }}
+                  className="audit-pill-button"
+                  style={{ background: "#fff", outline: "none" }}
+                >
+                  <option value="all">All actions</option>
+                  <option value="page_view">Page view</option>
+                  <option value="listing.approve">Listing approved</option>
+                  <option value="listing.reject">Listing rejected</option>
+                  <option value="listing.delete">Listing deleted</option>
+                  <option value="auction.complete">Auction complete</option>
+                  <option value="auction.win">Auction won</option>
+                  <option value="offer.accept">Offer accepted</option>
+                  <option value="settings.update">Settings update</option>
+                </select>
+
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setAuditPage(1);
+                    void loadAuditData();
+                  }}
+                  className="audit-search-input"
+                >
+                  <Search size={14} color="#8C745A" />
+                  <input
+                    type="text"
+                    value={auditSearch}
+                    onChange={(e) => setAuditSearch(e.target.value)}
+                    placeholder="Search IP, email, path, location…"
+                  />
+                </form>
+              </div>
+            </div>
+
+            {/* Audit Logs Table */}
+            <div className="listing-table audit-table">
+              <div className="table-head">
+                <span>Visitor / User</span>
+                <span>IP & Location</span>
+                <span>Page / Action</span>
+                <span>Device & Browser</span>
+                <span style={{ textAlign: "right" }}>Timestamp</span>
+              </div>
+
+              {auditLogs.length ? (
+                auditLogs.map((log) => {
+                  const isExpanded = expandedLogId === log.id;
+                  const isRegistered = Boolean(log.actorId || log.userEmail);
+                  return (
+                    <div key={log.id} style={{ display: "contents" }}>
+                      <div
+                        className="table-row"
+                        onClick={() => setExpandedLogId(isExpanded ? null : log.id)}
+                      >
+                        <div className="audit-visitor-cell">
+                          {isRegistered ? (
+                            <>
+                              <strong>{log.userName || "Registered User"}</strong>
+                              <span>{log.userEmail || log.actorId}</span>
+                            </>
+                          ) : (
+                            <>
+                              <strong>Guest visitor</strong>
+                              <span>Anonymous browser</span>
+                            </>
+                          )}
+                        </div>
+
+                        <div className="audit-location-cell">
+                          <span className="audit-ip-tag">{log.ipAddress || "Unknown IP"}</span>
+                          <span className="audit-geo-tag">
+                            <MapPin size={11} /> {log.location || log.country || "Unknown Location"}
+                          </span>
+                        </div>
+
+                        <div className="audit-action-cell">
+                          <span className="audit-path-tag" title={log.pagePath || "/"}>
+                            {log.pagePath || "/"}
+                          </span>
+                          <span className="audit-action-tag">{log.action}</span>
+                        </div>
+
+                        <div className="audit-device-cell">
+                          {formatDeviceBrowser(log.userAgent)}
+                        </div>
+
+                        <div className="audit-time-cell">
+                          <span title={formatDate(log.createdAt)}>{timeAgo(log.createdAt)}</span>
+                          <span style={{ marginLeft: "6px", display: "inline-block", verticalAlign: "middle" }}>
+                            {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Expandable detail box */}
+                      {isExpanded && (
+                        <div className="audit-expanded-detail">
+                          <div className="audit-detail-grid">
+                            <div className="audit-detail-item">
+                              <label>Event ID</label>
+                              <code>{log.id}</code>
+                            </div>
+                            <div className="audit-detail-item">
+                              <label>User ID</label>
+                              <code>{log.actorId || "Guest (none)"}</code>
+                            </div>
+                            <div className="audit-detail-item">
+                              <label>Action & Entity</label>
+                              <span>
+                                {log.action} {log.entityType ? `· ${log.entityType}` : ""} {log.entityId ? `(#${log.entityId})` : ""}
+                              </span>
+                            </div>
+                            <div className="audit-detail-item">
+                              <label>Page URL</label>
+                              <span>{log.metadata?.url || log.pagePath || "/"}</span>
+                            </div>
+                            <div className="audit-detail-item">
+                              <label>Referrer</label>
+                              <span>{log.metadata?.referrer || "Direct / Internal"}</span>
+                            </div>
+                            <div className="audit-detail-item">
+                              <label>Full User Agent</label>
+                              <span>{log.userAgent || "Unknown"}</span>
+                            </div>
+                          </div>
+
+                          {log.metadata && Object.keys(log.metadata).length > 0 && (
+                            <div>
+                              <label style={{ fontSize: "10px", textTransform: "uppercase", color: "var(--mkt-muted)", fontWeight: 600, display: "block", marginBottom: "4px" }}>
+                                Raw Metadata Payload
+                              </label>
+                              <pre className="audit-json-box">
+                                {JSON.stringify(log.metadata, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ padding: "40px 20px", textAlign: "center" }}>
+                  <EmptyState
+                    icon={<Globe size={32} />}
+                    title={auditLoading ? "Loading traffic records…" : "No visitor events recorded yet."}
+                    body="Page views and site actions will automatically stream into this audit ledger."
+                  />
+                </div>
+              )}
+
+              {/* Pagination controls */}
+              {auditTotalCount > 25 && (
+                <div className="audit-pagination">
+                  <span>
+                    Showing {(auditPage - 1) * 25 + 1}–{Math.min(auditPage * 25, auditTotalCount)} of {auditTotalCount} events
+                  </span>
+                  <div className="audit-pagination-btns">
+                    <button
+                      type="button"
+                      className="button button-ghost"
+                      style={{ minHeight: "34px", padding: "4px 12px", fontSize: "11px" }}
+                      disabled={auditPage <= 1 || auditLoading}
+                      onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      className="button button-ghost"
+                      style={{ minHeight: "34px", padding: "4px 12px", fontSize: "11px" }}
+                      disabled={auditPage * 25 >= auditTotalCount || auditLoading}
+                      onClick={() => setAuditPage((p) => p + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
