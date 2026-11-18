@@ -82,7 +82,8 @@ await db.exec(`
   values
     ('10000000-0000-4000-8000-000000000001', '${seller}', 'Jacket', 'jacket', 100000, 1, true, 'active', true),
     ('10000000-0000-4000-8000-000000000002', '${seller}', 'Knit', 'knit', 80000, 1, true, 'active', true),
-    ('10000000-0000-4000-8000-000000000003', '${seller}', 'Bag', 'bag', 50000, 1, true, 'active', true);
+    ('10000000-0000-4000-8000-000000000003', '${seller}', 'Bag', 'bag', 50000, 1, true, 'active', true),
+    ('10000000-0000-4000-8000-000000000004', '${seller}', 'Shoes', 'shoes', 70000, 1, true, 'active', true);
 `);
 
 let failures = 0;
@@ -110,6 +111,62 @@ async function expectError(label, fn, pattern) {
   }
 }
 const q = async (text, params = []) => (await db.query(text, params)).rows[0] ?? null;
+
+// --------------------------------------------- secure checkout + capture
+await asUser(buyer1);
+const checkout = await q(
+  `select public.checkout_create_orders(
+    '{"name":"Buyer One","phone":"9000000001","line1":"1 Road","city":"Kochi","state":"Kerala","pincode":"695001"}'::jsonb,
+    '[{"product_id":"10000000-0000-4000-8000-000000000004","quantity":1}]'::jsonb,
+    null, null, 1, 'upi'
+  ) as result`,
+);
+const checkoutResult = checkout.result;
+const checkoutOrderId = checkoutResult.orderIds[0];
+const checkoutOrder = await q("select * from orders where id = $1", [checkoutOrderId]);
+check("checkout creates a buyer-owned pending order", checkoutOrder.buyer_id === buyer1 && checkoutOrder.status === "pending_payment");
+check("checkout adds the platform fee exactly once", checkoutOrder.buyer_platform_fee_paise === 1000 && checkoutOrder.total_paise === 70000 + checkoutOrder.shipping_paise + 1000 + 180);
+check("checkout returns its payment group and total", Boolean(checkoutResult.checkoutGroupId) && checkoutResult.totalPaise === checkoutOrder.total_paise);
+await expectError(
+  "checkout rejects malformed delivery PINs",
+  () => db.query(`select public.checkout_create_orders('{"name":"Buyer","phone":"9000000001","line1":"Road","pincode":"bad"}'::jsonb, '[{"product_id":"10000000-0000-4000-8000-000000000003","quantity":1}]'::jsonb, null, null, 1, 'upi')`),
+  /Complete the delivery address/,
+);
+await asService();
+const providerOrderId = "rzp_test_checkout_group";
+await db.query(
+  `insert into payments (checkout_group_id, provider, provider_order_id, amount_paise)
+   values ($1, 'razorpay', $2, $3)`,
+  [checkoutResult.checkoutGroupId, providerOrderId, checkoutOrder.total_paise],
+);
+await db.query(
+  "select public.confirm_checkout_group_payment($1, $2, 'pay_test_checkout')",
+  [checkoutResult.checkoutGroupId, providerOrderId],
+);
+const capturedOrder = await q("select * from orders where id = $1", [checkoutOrderId]);
+check("group capture marks the order paid", capturedOrder.payment_status === "paid" && capturedOrder.status === "processing");
+check("group capture creates seller settlement", Boolean(await q("select id from seller_settlements where order_id = $1", [checkoutOrderId])));
+check("group capture records the payment as captured", (await q("select status from payments where provider_order_id = $1", [providerOrderId])).status === "captured");
+await db.query(
+  "select public.confirm_checkout_group_payment($1, $2, 'pay_test_checkout_retry')",
+  [checkoutResult.checkoutGroupId, providerOrderId],
+);
+check("replayed group capture is idempotent", (await db.query("select count(*)::int as count from seller_settlements where order_id = $1", [checkoutOrderId])).rows[0].count === 1);
+
+// direct buy-now checkout
+await asUser(buyer2);
+const directCheckout = await q(
+  `select public.checkout_create_orders(
+    '{"name":"Buyer Two","phone":"9000000002","line1":"2 Road","city":"Kochi","state":"Kerala","pincode":"695002"}'::jsonb,
+    '[]'::jsonb,
+    '10000000-0000-4000-8000-000000000003', null, 1, 'card'
+  ) as result`,
+);
+const directOrderId = directCheckout.result.orderIds[0];
+const directOrder = await q("select * from orders where id = $1", [directOrderId]);
+check("direct checkout creates single product order", directOrder.buyer_id === buyer2 && directOrder.source === "buy_now");
+check("direct checkout holds item as reserved", (await q("select status from products where id = '10000000-0000-4000-8000-000000000003'")).status === "reserved");
+
 
 // ---------------------------------------------------------------- schedule
 await asUser(seller);
@@ -236,9 +293,9 @@ const item = await q("select * from order_items where order_id = $1", [order.id]
 check("order has the listing attached", item?.product_id === "10000000-0000-4000-8000-000000000001");
 
 const settlement = await q("select * from seller_settlements where order_id = $1", [order.id]);
-const expectedCommission = Math.floor(((state.current_bid_paise - 100000) * 5) / 100);
+const expectedCommission = Math.floor((state.current_bid_paise * 10) / 100);
 check(
-  "seller settlement pays the bid minus 5% of the excess over asking",
+  "seller settlement pays the bid minus 10% flat commission",
   Number(settlement.seller_payout_paise) === state.current_bid_paise - expectedCommission,
   `(payout ${settlement.seller_payout_paise}, bid ${state.current_bid_paise})`,
 );
@@ -279,6 +336,23 @@ if (offer) {
   check(
     "second-chance order is pending payment",
     (await q("select status from orders where id = $1", [scOrder.id])).status === "pending_payment",
+  );
+
+  await asService();
+  const auctionProviderOrderId = "rzp_test_auction_order";
+  await db.query(
+    `insert into payments (order_id, provider, provider_order_id, amount_paise)
+     values ($1, 'razorpay', $2, (select total_paise from orders where id = $1))`,
+    [scOrder.id, auctionProviderOrderId],
+  );
+  await db.query(
+    "select public.confirm_order_payment($1, 'razorpay', $2, 'pay_test_auction')",
+    [scOrder.id, auctionProviderOrderId],
+  );
+  const paidScOrder = await q("select * from orders where id = $1", [scOrder.id]);
+  check(
+    "auction order marked paid via confirm_order_payment",
+    paidScOrder.payment_status === "paid" && paidScOrder.status === "processing",
   );
 }
 

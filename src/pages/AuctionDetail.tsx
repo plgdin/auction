@@ -18,6 +18,7 @@ import { formatMoney, formatDateTime, shortDate } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { toast } from "../lib/toast";
+import { promptAuth } from "../lib/authGate";
 
 export function AuctionDetailPage() {
   const route = useRoute();
@@ -79,7 +80,7 @@ export function AuctionDetailPage() {
   const participating = Boolean(user && bids.some((bid) => bid.bidderId === user.id));
   const leading = Boolean(user && auction.highestBidderId === user.id);
 
-  const submitBid = () => {
+  const submitBid = async () => {
     if (!acceptedAuctionTerms) {
       toast("Please accept the Auction Terms before bidding.", "error");
       return;
@@ -89,7 +90,7 @@ export function AuctionDetailPage() {
       toast("Enter a bid amount.", "error");
       return;
     }
-    const result = placeBid(auction.id, amount);
+    const result = await placeBid(auction.id, amount);
     if (!result.ok) {
       toast(result.error, "error");
       return;
@@ -177,9 +178,12 @@ export function AuctionDetailPage() {
               {completed && auction.winnerId && (
                 <span className="auction-winner-line">
                   <Trophy size={14} /> Won by{" "}
-                  {auction.winnerId === user?.id ? "you" : "an anonymous bidder"}
+                  {auction.winnerId === user?.id
+                    ? "you"
+                    : bids.find((bid) => bid.amount === auction.currentBid)?.alias ?? "anonymous bidder"}
                 </span>
               )}
+              {completed && !auction.winnerId && <span className="auction-winner-line">No bids — lot did not sell</span>}
               {live && leading && (
                 <span className="auction-leading">
                   <BadgeCheck size={14} /> You are the highest bidder
@@ -194,7 +198,7 @@ export function AuctionDetailPage() {
               </p>
             </div>
 
-            {live && !ownAuction && (
+            {live && !ownAuction && user && !user.blocked && user.role !== "admin" && (
               <div className="auction-bid-form">
                 <label className="field">
                   <span className="field-label">Your bid (₹)</span>
@@ -250,6 +254,26 @@ export function AuctionDetailPage() {
                 </p>
               </div>
             )}
+
+            {live && !ownAuction && !user && (
+              <div className="auction-own-note">
+                <Gavel size={16} />
+                <div>
+                  <strong>Sign in to bid</strong>
+                  <p>Your account is required to place and track bids.</p>
+                  <button
+                    type="button"
+                    className="text-link"
+                    onClick={() => promptAuth(window.location.hash, "place a bid")}
+                  >
+                    Sign in or create an account <ArrowUpRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {live && user?.blocked && <p className="auction-own-note">This account is blocked from bidding.</p>}
+            {live && user?.role === "admin" && <p className="auction-own-note">Administrators cannot bid.</p>}
 
             {ownAuction && (
               <div className="auction-own-note">

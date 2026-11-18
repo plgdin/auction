@@ -29,6 +29,8 @@ const AccountPage = lazy(() => import("./pages/Account").then((module) => ({ def
 const AdminPage = lazy(() => import("./pages/Admin").then((module) => ({ default: module.AdminPage })));
 const OrderDetailPage = lazy(() => import("./pages/OrderDetail").then((module) => ({ default: module.OrderDetailPage })));
 const PoliciesPage = lazy(() => import("./pages/Policies").then((module) => ({ default: module.PoliciesPage })));
+const OrderConfirmationPage = lazy(() => import("./pages/OrderConfirmation").then((module) => ({ default: module.OrderConfirmationPage })));
+const PaymentFailedPage = lazy(() => import("./pages/PaymentFailed").then((module) => ({ default: module.PaymentFailedPage })));
 
 type ToastItem = { id: number; message: string; tone: string };
 
@@ -588,6 +590,8 @@ function Routes() {
   if (path === "/seller") return <SellerDashboardPage />;
   if (path === "/account") return <AccountPage />;
   if (path === "/admin") return <AdminPage />;
+  if (path.startsWith("/order-confirmed/") || path.startsWith("/order-success/")) return <OrderConfirmationPage />;
+  if (path.startsWith("/payment-failed/") || path === "/payment-failed") return <PaymentFailedPage />;
   if (path.startsWith("/orders/")) return <OrderDetailPage />;
   if (["/terms", "/privacy", "/returns", "/auction-terms"].includes(path)) return <PoliciesPage />;
   return <NotFound />;

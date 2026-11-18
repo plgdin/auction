@@ -30,7 +30,7 @@ export function CartDrawer({ isOpen, onClose }: CartDrawerProps) {
   const total = cartSubtotal + (cart.length > 0 ? BUYER_PLATFORM_FEE_PAISE : 0);
 
   return (
-    <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Drawer open={isOpen} onOpenChange={(open: boolean) => !open && onClose()}>
       <DrawerContent
         style={{ fontFamily: SANS_FONT }}
         className="max-w-[420px] mx-auto bg-[#FAF7F2] border-t border-x border-[#e4d7c7] rounded-t-[28px] text-[#3a2816] shadow-2xl p-0 overflow-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"

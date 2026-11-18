@@ -41,6 +41,9 @@ export interface AffiliateAccount {
   commissionRate: number;
   status: "active" | "paused" | "banned";
   createdAt: string;
+  totalClicks?: number;
+  totalSignups?: number;
+  totalOrders?: number;
 }
 
 export interface AffiliateClick {

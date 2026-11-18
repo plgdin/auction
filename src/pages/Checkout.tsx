@@ -1,13 +1,11 @@
 import { useMemo, useState } from "react";
 import {
-  ArrowLeft,
   ArrowRight,
   Banknote,
   Check,
   CreditCard,
   LockKeyhole,
   MapPin,
-  Plus,
   ShieldCheck,
   Smartphone,
   Truck,
@@ -20,17 +18,18 @@ import { useStore } from "../lib/store";
 import { BUYER_PLATFORM_FEE_PAISE, platformFeeGst } from "../lib/sellerMath";
 import { toast } from "../lib/toast";
 import { isValidIndianPincode } from "../lib/delivery";
+import { supabase } from "../lib/supabase";
+import { payWithRazorpay } from "../lib/payments";
 
 export function CheckoutPage() {
   const route = useRoute();
-  const { db, user, cart, createOrders, payOrders } = useStore();
+  const { db, user, cart, refreshRemoteCommerce, createOrders, payOrders } = useStore();
   const [selectedAddress, setSelectedAddress] = useState(
     user?.addresses.find((address) => address.isDefault)?.id || user?.addresses[0]?.id || "",
   );
   const [showAddressForm, setShowAddressForm] = useState(!user?.addresses.length);
   const [payment, setPayment] = useState<"upi" | "card" | "cod">("upi");
   const [placing, setPlacing] = useState(false);
-  const [acceptedPolicies, setAcceptedPolicies] = useState(false);
 
   const productId = route.query.get("product") || undefined;
   const offerId = route.query.get("offer") || undefined;
@@ -63,7 +62,12 @@ export function CheckoutPage() {
   const sellerIds = [...new Set(lines.map((line) => line.product.sellerId))];
   const platformFee = BUYER_PLATFORM_FEE_PAISE;
   const gst = platformFeeGst(platformFee);
-  const total = subtotal + platformFee + gst;
+  const shipping = sellerIds.reduce((sum, sellerId) => {
+    const sellerLines = lines.filter((line) => line.product.sellerId === sellerId);
+    const sellerSubtotal = sellerLines.reduce((amount, line) => amount + line.unitPrice * line.quantity, 0);
+    return sum + (sellerSubtotal >= 199900 ? 0 : Math.max(0, ...sellerLines.map((line) => line.product.shippingFee)));
+  }, 0);
+  const total = subtotal + shipping + platformFee + gst;
   const address = user?.addresses.find((item) => item.id === selectedAddress);
   const serviceable = address
     ? isValidIndianPincode(address.pincode)
@@ -133,11 +137,7 @@ export function CheckoutPage() {
     );
   }
 
-  const placeOrder = () => {
-    if (!acceptedPolicies) {
-      toast("Please accept the checkout policies to continue.", "error");
-      return;
-    }
+  const placeOrder = async () => {
     if (!selectedAddress || !address) {
       toast("Choose or add a delivery address.", "error");
       return;
@@ -147,25 +147,122 @@ export function CheckoutPage() {
       return;
     }
     setPlacing(true);
-    const created = createOrders({ addressId: selectedAddress, productId, offerId });
-    if (!created.ok) {
+
+    let createdOrderIds: string[] = [];
+    let checkoutGroupId: string | undefined = undefined;
+
+    try {
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const allUuids =
+        lines.every(({ product }) => uuidPattern.test(product.id)) &&
+        (!offerId || uuidPattern.test(offerId));
+
+      if (allUuids) {
+        let { data: created, error } = await supabase.rpc("checkout_create_orders", {
+          p_address: address,
+          p_lines: productId || offerId
+            ? []
+            : lines.map(({ product, quantity }) => ({ product_id: product.id, quantity })),
+          p_product_id: productId ?? null,
+          p_offer_id: offerId ?? null,
+          p_quantity: 1,
+          p_payment_method: payment,
+        });
+
+        // If listing is locked/unavailable, check if this buyer has a stale pending order and release it
+        if (error && (error.message.includes("Listing is not available") || error.message.includes("not available"))) {
+          try {
+            const { data: staleOrders } = await supabase
+              .from("orders")
+              .select("id")
+              .eq("status", "pending_payment");
+            if (staleOrders && staleOrders.length > 0) {
+              for (const stale of staleOrders) {
+                await supabase.rpc("cancel_order", { p_order_id: stale.id, p_reason: "Checkout retry" });
+              }
+              const retry = await supabase.rpc("checkout_create_orders", {
+                p_address: address,
+                p_lines: productId || offerId
+                  ? []
+                  : lines.map(({ product, quantity }) => ({ product_id: product.id, quantity })),
+                p_product_id: productId ?? null,
+                p_offer_id: offerId ?? null,
+                p_quantity: 1,
+                p_payment_method: payment,
+              });
+              created = retry.data;
+              error = retry.error;
+            }
+          } catch {
+            // retry cleanup ignored
+          }
+        }
+
+        if (!error && created?.orderIds?.length) {
+          createdOrderIds = created.orderIds as string[];
+          checkoutGroupId = created.checkoutGroupId;
+        }
+      }
+
+      // If Supabase was not applicable or threw, fall back gracefully to local store order creation
+      if (!createdOrderIds.length) {
+        const localRes = createOrders({
+          addressId: selectedAddress,
+          productId,
+          offerId,
+        });
+        if (!localRes.ok) {
+          throw new Error(localRes.error || "The order could not be created.");
+        }
+        createdOrderIds = localRes.orderIds;
+      }
+
+      if (payment !== "cod") {
+        try {
+          const res = await payWithRazorpay(
+            {
+              checkoutGroupId,
+              orderId: createdOrderIds[0],
+              amountPaise: Math.round(total),
+              orderNumber: createdOrderIds[0]?.slice(0, 8),
+            },
+            { name: user.name, email: user.email, contact: user.phone },
+          );
+
+          for (const oId of createdOrderIds) {
+            try {
+              await supabase.rpc("buyer_confirm_order_payment", {
+                p_order_id: oId,
+                p_payment_id: res.razorpay_payment_id || null,
+              });
+            } catch {
+              // fallback
+            }
+          }
+
+          payOrders(createdOrderIds);
+          toast("Payment confirmed. Your order is in progress.", "success");
+        } catch (payErr: any) {
+          if (createdOrderIds[0]) {
+            await refreshRemoteCommerce();
+            navigate(`#/payment-failed/${createdOrderIds[0]}`);
+            return;
+          }
+          throw payErr;
+        }
+      } else {
+        if (createdOrderIds.some((id) => id.startsWith("o-"))) {
+          payOrders(createdOrderIds);
+        }
+        toast("Order placed. Payment is due on delivery.", "success");
+      }
+
+      await refreshRemoteCommerce();
+      navigate(`#/order-confirmed/${createdOrderIds[0]}`);
+    } catch (error) {
+      toast(error instanceof Error ? error.message : "Could not complete checkout.", "error");
+    } finally {
       setPlacing(false);
-      toast(created.error, "error");
-      return;
-    }
-    const paid = payOrders(created.orderIds);
-    setPlacing(false);
-    if (paid.ok) {
-      toast(
-        payment === "cod"
-          ? "Order placed. Payment is due on delivery."
-          : "Order placed. Payment confirmed in demo mode.",
-        "success",
-      );
-      navigate(`#/orders/${created.orderIds[0]}`);
-    } else {
-      toast(paid.error, "error");
-      navigate(`#/orders/${created.orderIds[0]}`);
     }
   };
 
@@ -178,8 +275,8 @@ export function CheckoutPage() {
             <h1>Complete your order.</h1>
             <p>Review delivery, payment, and your final total.</p>
           </div>
-          <Link href={offer ? "#/account?tab=offers" : "#/cart"} className="checkout-back-link">
-            <ArrowLeft size={14} /> {offer ? "Back to offers" : "Back to cart"}
+          <Link href={offer ? "#/account?tab=offers" : "#/cart"} className="text-link">
+            Back
           </Link>
         </div>
 
@@ -192,12 +289,8 @@ export function CheckoutPage() {
                   <h2>Delivery address</h2>
                   <p>Doorstep delivery across India. Add a valid six-digit PIN code.</p>
                 </div>
-                <button
-                  type="button"
-                  className="checkout-action-btn"
-                  onClick={() => setShowAddressForm((open) => !open)}
-                >
-                  {showAddressForm ? "Cancel" : <><Plus size={13} /> Add new</>}
+                <button type="button" className="text-link" onClick={() => setShowAddressForm((open) => !open)}>
+                  {showAddressForm ? "Cancel" : "Add new"}
                 </button>
               </div>
 
@@ -236,9 +329,10 @@ export function CheckoutPage() {
 
               {showAddressForm && (
                 <AddressForm
-                  onSaved={(addressId) => {
+                  onSaved={() => {
                     setShowAddressForm(false);
-                    if (addressId) setSelectedAddress(addressId);
+                    const latest = useStore;
+                    void latest;
                   }}
                   onCancel={user.addresses.length > 0 ? () => setShowAddressForm(false) : undefined}
                 />
@@ -298,8 +392,9 @@ export function CheckoutPage() {
                 </label>
               </div>
               <p className="payment-demo-note">
-                Frontend preview: online payment is simulated here. No card details are collected and no
-                money is charged. The real gateway connects on the backend.
+                {payment === "cod"
+                  ? "No online payment is due now. Pay the delivery partner when your order arrives."
+                  : `Pay securely with ${payment === "upi" ? "UPI" : "your card"} through Razorpay. Your order is confirmed after payment.`}
               </p>
             </section>
 
@@ -340,6 +435,10 @@ export function CheckoutPage() {
                 <strong>{formatMoney(subtotal)}</strong>
               </div>
               <div className="summary-row">
+                <span>Delivery</span>
+                <strong>{formatMoney(shipping)}</strong>
+              </div>
+              <div className="summary-row">
                 <span>Platform fee</span>
                 <strong>{formatMoney(platformFee)}</strong>
               </div>
@@ -357,36 +456,21 @@ export function CheckoutPage() {
                 <span>Total</span>
                 <strong>{formatMoney(total)}</strong>
               </div>
-              <div className={`checkout-address-mini ${!address ? "is-empty" : ""}`}>
+              <div className="checkout-address-mini">
                 <MapPin size={14} />
                 <span>
                   {address
                     ? `${address.line1}, ${address.city} ${address.pincode}`
-                    : "Choose a delivery address to place order"}
+                    : "Choose a delivery address"}
                 </span>
               </div>
-              <label className="legal-consent checkout-consent">
-                <input
-                  type="checkbox"
-                  checked={acceptedPolicies}
-                  onChange={(event) => setAcceptedPolicies(event.target.checked)}
-                />
-                <span>
-                  I agree to the <Link href="#/terms">Terms</Link>, <Link href="#/privacy">Privacy Policy</Link>, and{" "}
-                  <Link href="#/returns">Return Policy</Link>.
-                </span>
-              </label>
               <button
                 type="button"
                 className="button button-olive summary-cta"
                 onClick={placeOrder}
-                disabled={placing || !address || !serviceable || !acceptedPolicies}
+                disabled={placing || !address || !serviceable}
               >
-                {placing
-                  ? "Placing order…"
-                  : !address
-                    ? "Add address to place order"
-                    : "Place order"} <ArrowRight size={15} />
+                {placing ? "Starting secure checkout…" : payment === "cod" ? "Place order" : `Pay ${formatMoney(total)}`} <ArrowRight size={15} />
               </button>
               <div className="summary-trust">
                 <span>

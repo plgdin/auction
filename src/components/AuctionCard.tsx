@@ -1,5 +1,5 @@
 import { ArrowUpRight, Gavel } from "lucide-react";
-import { formatMoney } from "../lib/format";
+import { formatDateTime, formatMoney } from "../lib/format";
 import type { Auction, Product } from "../lib/types";
 import { Countdown } from "./Countdown";
 import { Link } from "./Link";
@@ -26,6 +26,9 @@ export function AuctionCard({ auction, product }: { auction: Auction; product: P
     : isCompleted
       ? `${auction.bidCount} bids`
       : `Min. increment ${formatMoney(auction.minIncrement)}`;
+  const winner = auction.winnerId
+    ? auction.bids.find((bid) => bid.amount === auction.currentBid)?.alias
+    : undefined;
 
   return (
     <article
@@ -42,15 +45,26 @@ export function AuctionCard({ auction, product }: { auction: Auction; product: P
       <div className="shop-card-info">
         <p className="shop-card-meta auction-tile-topline">
           <span>{product.category}</span>
-          {isLive && <Countdown to={auction.endsAt} compact />}
+          {isLive && <Countdown to={auction.endsAt} prefix="Ends in" compact />}
           {isScheduled && <Countdown to={auction.startsAt} prefix="Starts in" compact />}
-          {isCompleted && <span>Ended</span>}
+          {isCompleted && <span>Ended {formatDateTime(auction.endsAt)}</span>}
         </p>
         <Link href={`#/auction/${auction.id}`} className="shop-card-title">
           {product.title}
         </Link>
         <p className="shop-card-meta">
           Asking {formatMoney(auction.askingPrice)} · {detail}
+        </p>
+        <p className="shop-card-meta">
+          {isScheduled
+            ? `Starts ${formatDateTime(auction.startsAt)} · Ends ${formatDateTime(auction.endsAt)}`
+            : isLive
+              ? `Started ${formatDateTime(auction.startsAt)} · Ends ${formatDateTime(auction.endsAt)}`
+              : auction.status === "cancelled"
+                ? auction.cancelledReason || "Auction cancelled"
+                : winner
+                  ? `Won by ${winner}`
+                  : "No bids — lot did not sell"}
         </p>
         <div className="shop-card-buy">
           <div className="auction-tile-bid">

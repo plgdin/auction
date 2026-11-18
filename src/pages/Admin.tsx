@@ -127,8 +127,8 @@ export function AdminPage() {
     }
   };
 
-  const submitAffiliate = () => {
-    const result = createAffiliate({
+  const submitAffiliate = async () => {
+    const result = await createAffiliate({
       name: affiliateForm.name,
       email: affiliateForm.email,
       code: affiliateForm.code,
@@ -148,7 +148,7 @@ export function AdminPage() {
     }));
   };
 
-  const saveAffiliateRate = (account: AffiliateAccount) => {
+  const saveAffiliateRate = async (account: AffiliateAccount) => {
     const draft = rateDrafts[account.id];
     if (draft === undefined) return;
     const next = Number(draft);
@@ -162,7 +162,7 @@ export function AdminPage() {
       return;
     }
     if (next / 100 === account.commissionRate) return;
-    const result = updateAffiliate(account.id, { commissionPct: next });
+    const result = await updateAffiliate(account.id, { commissionPct: next });
     if (!result.ok) toast(result.error, "error");
     else toast(`${account.name} now earns ${next}%.`, "success");
     setRateDrafts((previous) => {
@@ -726,9 +726,10 @@ export function AdminPage() {
                             <button
                               type="button"
                               className="text-link"
-                              onClick={() => {
-                                markSettlementPaid(settlement.id);
-                                toast("Settlement marked paid.", "success");
+                              onClick={async () => {
+                                const result = await markSettlementPaid(settlement.id);
+                                if (result.ok) toast("Payout recorded as sent. No transfer was initiated.", "success");
+                                else toast(result.error, "error");
                               }}
                             >
                               Mark paid
@@ -916,8 +917,8 @@ export function AdminPage() {
                           <button
                             type="button"
                             className="text-link"
-                            onClick={() => {
-                              const result = updateAffiliate(account.id, {
+                            onClick={async () => {
+                              const result = await updateAffiliate(account.id, {
                                 status: account.status === "active" ? "paused" : "active",
                               });
                               if (!result.ok) toast(result.error, "error");
@@ -990,8 +991,8 @@ export function AdminPage() {
                               className="text-link"
                               disabled={!unlockable}
                               title={unlockable ? "Release this earning" : "Return window still open"}
-                              onClick={() => {
-                                const result = reviewAffiliateCommission(entry.id, "approve");
+                              onClick={async () => {
+                                const result = await reviewAffiliateCommission(entry.id, "approve");
                                 if (!result.ok) toast(result.error, "error");
                                 else toast("Earning released.", "success");
                               }}
@@ -1003,8 +1004,8 @@ export function AdminPage() {
                             <button
                               type="button"
                               className="text-link"
-                              onClick={() => {
-                                const result = reviewAffiliateCommission(entry.id, "pay");
+                              onClick={async () => {
+                                const result = await reviewAffiliateCommission(entry.id, "pay");
                                 if (!result.ok) toast(result.error, "error");
                                 else toast("Marked paid.", "success");
                               }}
@@ -1016,8 +1017,8 @@ export function AdminPage() {
                             <button
                               type="button"
                               className="text-link"
-                              onClick={() => {
-                                const result = reviewAffiliateCommission(entry.id, "void");
+                              onClick={async () => {
+                                const result = await reviewAffiliateCommission(entry.id, "void");
                                 if (!result.ok) toast(result.error, "error");
                                 else toast("Earning voided.", "success");
                               }}

@@ -1,11 +1,9 @@
 import type { Offer, SellerTier } from "./types";
 
 /**
- * Seller-side money logic. Every figure on the sell page and seller dashboard
- * must come from these helpers so the demo never shows invented numbers.
- *
- * Seller commission: 10% of the sale price, inclusive of GST.
- * Buyer platform fee: ₹10 (1000 paise) charged at checkout.
+ * Seller-side money logic.
+ * Flat 10% seller commission on sale price (GST inclusive).
+ * Buyer platform fee: ₹10 (1000 paise) + 18% GST (180 paise) charged at checkout.
  */
 
 export const SELLER_COMMISSION_PERCENT = 10;
@@ -13,12 +11,12 @@ export const SELLER_COMMISSION_PERCENT_NORMAL = 10;
 export const BUYER_PLATFORM_FEE_PAISE = 1_000;
 export const PLATFORM_FEE_GST_PERCENT = 18;
 
-/** GST charged on the buyer platform fee, rounded to the nearest paise. */
+/** GST charged on the buyer platform fee, rounded to nearest paise. */
 export function platformFeeGst(platformFeePaise: number): number {
   return Math.round(Math.max(0, platformFeePaise) * (PLATFORM_FEE_GST_PERCENT / 100));
 }
 
-/** Platform fee plus its GST. */
+/** Total buyer platform fee including 18% GST. */
 export function buyerPlatformFeeTotal(platformFeePaise: number): number {
   return Math.max(0, platformFeePaise) + platformFeeGst(platformFeePaise);
 }

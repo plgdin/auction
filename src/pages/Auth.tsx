@@ -79,9 +79,9 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
     return () => clearInterval(checkInterval);
   }, [signInWithGoogle, destination, mode]);
 
-  const submit = () => {
+  const submit = async () => {
     if (mode === "login") {
-      const result = login(email, password);
+      const result = await login(email, password);
       if (result.ok) {
         toast("Welcome back.", "success");
         navigate(destination);
@@ -94,7 +94,7 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
       toast("Please accept the Terms of Service and Privacy Policy.", "error");
       return;
     }
-    const result = register({ name, email, password });
+    const result = await register({ name, email, password });
     if (result.ok) {
       toast("Account created. Welcome to Lelam.", "success");
       navigate(destination);

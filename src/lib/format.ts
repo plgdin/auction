@@ -3,12 +3,12 @@ export function formatMoney(paise: number, compact = false): string {
   if (compact && rupees >= 100000) {
     return `₹${(rupees / 100000).toFixed(1)}L`;
   }
-  const hasPaise = Math.round(rupees * 100) % 100 !== 0;
+  const hasFraction = Math.abs(paise % 100) > 0;
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
-    minimumFractionDigits: hasPaise ? 2 : 0,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: hasFraction ? 2 : 0,
   }).format(rupees);
 }
 
