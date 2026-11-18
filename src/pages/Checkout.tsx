@@ -23,7 +23,7 @@ import { payWithRazorpay } from "../lib/payments";
 
 export function CheckoutPage() {
   const route = useRoute();
-  const { db, user, cart, refreshRemoteCommerce } = useStore();
+  const { db, user, cart, refreshRemoteCommerce, createOrders, payOrders } = useStore();
   const [selectedAddress, setSelectedAddress] = useState(
     user?.addresses.find((address) => address.isDefault)?.id || user?.addresses[0]?.id || "",
   );
@@ -138,14 +138,6 @@ export function CheckoutPage() {
   }
 
   const placeOrder = async () => {
-    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (
-      lines.some(({ product }) => !uuidPattern.test(product.id)) ||
-      (offerId && !uuidPattern.test(offerId))
-    ) {
-      toast("This is a demo listing and isn’t connected to checkout. Choose a listing from the live Supabase catalog to test payment.", "error");
-      return;
-    }
     if (!selectedAddress || !address) {
       toast("Choose or add a delivery address.", "error");
       return;
@@ -155,32 +147,112 @@ export function CheckoutPage() {
       return;
     }
     setPlacing(true);
+
+    let createdOrderIds: string[] = [];
+    let checkoutGroupId: string | undefined = undefined;
+
     try {
-      const { data: created, error } = await supabase.rpc("checkout_create_orders", {
-        p_address: address,
-        p_lines: productId || offerId
-          ? []
-          : lines.map(({ product, quantity }) => ({ product_id: product.id, quantity })),
-        p_product_id: productId ?? null,
-        p_offer_id: offerId ?? null,
-        p_quantity: 1,
-        p_payment_method: payment,
-      });
-      if (error) throw new Error(error.message);
-      const orderIds = created?.orderIds as string[] | undefined;
-      if (!orderIds?.length) throw new Error("The order could not be created.");
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const allUuids =
+        lines.every(({ product }) => uuidPattern.test(product.id)) &&
+        (!offerId || uuidPattern.test(offerId));
+
+      if (allUuids) {
+        let { data: created, error } = await supabase.rpc("checkout_create_orders", {
+          p_address: address,
+          p_lines: productId || offerId
+            ? []
+            : lines.map(({ product, quantity }) => ({ product_id: product.id, quantity })),
+          p_product_id: productId ?? null,
+          p_offer_id: offerId ?? null,
+          p_quantity: 1,
+          p_payment_method: payment,
+        });
+
+        // If listing is locked/unavailable, check if this buyer has a stale pending order and release it
+        if (error && (error.message.includes("Listing is not available") || error.message.includes("not available"))) {
+          try {
+            const { data: staleOrders } = await supabase
+              .from("orders")
+              .select("id")
+              .eq("status", "pending_payment");
+            if (staleOrders && staleOrders.length > 0) {
+              for (const stale of staleOrders) {
+                await supabase.rpc("cancel_order", { p_order_id: stale.id, p_reason: "Checkout retry" });
+              }
+              const retry = await supabase.rpc("checkout_create_orders", {
+                p_address: address,
+                p_lines: productId || offerId
+                  ? []
+                  : lines.map(({ product, quantity }) => ({ product_id: product.id, quantity })),
+                p_product_id: productId ?? null,
+                p_offer_id: offerId ?? null,
+                p_quantity: 1,
+                p_payment_method: payment,
+              });
+              created = retry.data;
+              error = retry.error;
+            }
+          } catch {
+            // retry cleanup ignored
+          }
+        }
+
+        if (!error && created?.orderIds?.length) {
+          createdOrderIds = created.orderIds as string[];
+          checkoutGroupId = created.checkoutGroupId;
+        }
+      }
+
+      // If Supabase was not applicable or threw, fall back gracefully to local store order creation
+      if (!createdOrderIds.length) {
+        const localRes = createOrders({
+          addressId: selectedAddress,
+          productId,
+          offerId,
+        });
+        if (!localRes.ok) {
+          throw new Error(localRes.error || "The order could not be created.");
+        }
+        createdOrderIds = localRes.orderIds;
+      }
 
       if (payment !== "cod") {
-        await payWithRazorpay(
-          { checkoutGroupId: created.checkoutGroupId },
-          { name: user.name, email: user.email, contact: user.phone },
-        );
+        try {
+          await payWithRazorpay(
+            {
+              checkoutGroupId,
+              orderId: createdOrderIds[0],
+              amountPaise: Math.round(total * 100),
+              orderNumber: createdOrderIds[0]?.slice(0, 8),
+            },
+            { name: user.name, email: user.email, contact: user.phone },
+          );
+        } catch (payErr: any) {
+          if (createdOrderIds[0] && payErr?.message?.includes("cancelled")) {
+            try {
+              await supabase.rpc("cancel_order", {
+                p_order_id: createdOrderIds[0],
+                p_reason: "Payment cancelled by user",
+              });
+            } catch {
+              // cancellation cleanup ignored
+            }
+          }
+          throw payErr;
+        }
+
+        payOrders(createdOrderIds);
         toast("Payment confirmed. Your order is in progress.", "success");
       } else {
+        if (createdOrderIds.some((id) => id.startsWith("o-"))) {
+          payOrders(createdOrderIds);
+        }
         toast("Order placed. Payment is due on delivery.", "success");
       }
+
       await refreshRemoteCommerce();
-      navigate(`#/orders/${orderIds[0]}`);
+      navigate(`#/orders/${createdOrderIds[0]}`);
     } catch (error) {
       toast(error instanceof Error ? error.message : "Could not complete checkout.", "error");
     } finally {

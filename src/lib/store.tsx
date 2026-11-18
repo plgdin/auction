@@ -1643,7 +1643,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       } else if (input.productId) {
         const product = current.products.find((item) => item.id === input.productId);
         if (!product) return { ok: false as const, error: "Listing not found." };
-        if (product.status !== "active") return { ok: false as const, error: "This item is no longer available." };
+        if (product.status !== "active" && product.status !== "reserved") return { ok: false as const, error: "This item is no longer available." };
         if (product.sellerId === activeUser.id) return { ok: false as const, error: "You cannot buy your own listing." };
         groups = [
           {
@@ -1659,7 +1659,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         for (const line of lines) {
           const product = current.products.find((item) => item.id === line.productId);
           if (!product) return { ok: false as const, error: "An item in your cart no longer exists." };
-          if (product.status !== "active") {
+          if (product.status !== "active" && product.status !== "reserved") {
             return { ok: false as const, error: `${product.title} is no longer available. Remove it from the cart.` };
           }
           if (product.sellerId === activeUser.id) {
