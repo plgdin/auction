@@ -63,7 +63,6 @@ export function ShopCard({ product, priority = false }: { product: Product; prio
           <p className="shop-card-meta">
             <span>Size: {product.size || "One size"}</span> <span>·</span> {condition}
             {product.brand && <> <span>·</span> {product.brand}</>}
-            {product.location && <> <span>·</span> 📍 {product.location}</>}
           </p>
         </div>
 

@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { ShopCard } from "../components/ShopCard";
 import { SelectMenu } from "../components/Ui";
+import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
 import { CATEGORIES, findTopForLegacy, groupsFor } from "../lib/categories";
@@ -416,27 +417,21 @@ export function ProductsPage() {
                     </button>
                   </h3>
                   {openSections.price && (
-                    <div className="shop-filter-options shop-price-control">
-                      <label htmlFor="shop-max-price">Maximum price</label>
-                      <div className="shop-price-input-wrap">
-                        <span aria-hidden="true">₹</span>
-                        <input
-                          id="shop-max-price"
-                          type="number"
-                          min={0}
-                          max={Math.round(highestPrice / 100)}
-                          step={500}
-                          value={Math.round(Math.min(maxPrice, highestPrice) / 100)}
-                          onChange={(event) => {
-                            const rupees = Math.max(0, Number(event.target.value) || 0);
-                            setMaxPrice(rupees * 100);
-                          }}
-                          aria-label="Maximum price"
-                        />
+                    <div className="shop-filter-options">
+                      <input
+                        type="range"
+                        className="shop-range"
+                        min={0}
+                        max={highestPrice}
+                        step={5000}
+                        value={Math.min(maxPrice, highestPrice)}
+                        onChange={(event) => setMaxPrice(Number(event.target.value))}
+                        aria-label="Maximum price"
+                      />
+                      <div className="shop-price-ends">
+                        <span>₹0</span>
+                        <span>{formatMoney(Math.min(maxPrice, highestPrice))}{maxPrice >= highestPrice ? "+" : ""}</span>
                       </div>
-                      <button type="button" className="shop-price-reset" onClick={() => setMaxPrice(highestPrice)}>
-                        Show all prices
-                      </button>
                     </div>
                   )}
                 </section>

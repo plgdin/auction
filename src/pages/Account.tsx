@@ -154,10 +154,9 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
           <div className="account-identity">
             <span className="account-avatar large">{user.name.slice(0, 1)}</span>
             <div>
-              <div className="eyebrow">MY ACCOUNT</div>
               <h1>{user.name}</h1>
               <p>
-                {user.email} · Seller commission 10% (inclusive of GST) · Joined {formatDate(user.joinedAt)}
+                {user.email} · Member since {formatDate(user.joinedAt)}
               </p>
             </div>
           </div>

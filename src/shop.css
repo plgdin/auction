@@ -255,11 +255,56 @@
   padding-bottom: 7px;
 }
 
-.shop-price-control { display: grid; gap: 8px; }
-.shop-price-control > label { color: #4a3420; font: 700 11px/1.3 "DM Sans", sans-serif; }
-.shop-price-input-wrap { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border: 1px solid #a68d6c; border-radius: 8px; background: #fffdf8; color: #4d2d14; }
-.shop-price-input-wrap input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #140a04; font: 600 14px/1.4 "DM Sans", sans-serif; }
-.shop-price-reset { justify-self: start; padding: 0; border: 0; background: none; color: #6f4a2f; font: 700 11px/1.4 "DM Sans", sans-serif; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+.shop-price-ends {
+  display: flex;
+  justify-content: space-between;
+  margin: 3px 1px 0;
+  font: 700 11px/1 "DM Sans", sans-serif;
+  color: #0e0703;
+}
+
+.shop-range {
+  appearance: none;
+  -webkit-appearance: none;
+  display: block;
+  width: 100%;
+  height: 16px;
+  margin: 4px 0 2px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.shop-range::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 2px;
+  background: #2b180a;
+}
+
+.shop-range::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5.5px;
+  border: 2px solid #f6eedc;
+  border-radius: 50%;
+  background: #2b180a;
+  box-shadow: 0 1px 3px rgba(30, 15, 5, 0.45);
+}
+
+.shop-range::-moz-range-track {
+  height: 3px;
+  border-radius: 2px;
+  background: #2b180a;
+}
+
+.shop-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #f6eedc;
+  border-radius: 50%;
+  background: #2b180a;
+}
 
 /* Sizes */
 
@@ -1417,6 +1462,12 @@
   }
 
   .shop-check { min-height: 44px; }
+  .shop-range { height: 44px; }
+  .shop-range::-webkit-slider-runnable-track,
+  .shop-range::-moz-range-track { height: 4px; }
+  .shop-range::-webkit-slider-thumb,
+  .shop-range::-moz-range-thumb { width: 20px; height: 20px; }
+  .shop-range::-webkit-slider-thumb { margin-top: -8px; }
   .shop-size-list button { min-height: 44px; height: auto; }
   .shop-pagination button { width: 44px; height: 44px; }
   .shop-heart { width: 44px; height: 44px; }
