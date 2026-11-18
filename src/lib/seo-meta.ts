@@ -1,6 +1,6 @@
 /**
  * Pure metadata builders shared by the browser (src/lib/seo.ts) and the
- * Vercel SEO functions (api/lib/meta.ts). No DOM or Node dependencies.
+ * Vercel SEO functions (server/lib/meta.ts). No DOM or Node dependencies.
  */
 
 export const SITE_URL = "https://lelam.co";

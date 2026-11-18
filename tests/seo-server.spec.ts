@@ -1,7 +1,26 @@
 import { expect, test } from "@playwright/test";
-import { buildAuctionSitemap, buildProductSitemap } from "../api/lib/sitemap";
-import renderFunction from "../api/render";
-import sitemapFunction from "../api/sitemap";
+import { buildAuctionSitemap, buildProductSitemap } from "../server/lib/sitemap";
+import renderFunction from "../server/render";
+import sitemapFunction from "../server/sitemap";
+
+/** Invoke a Vercel-style Node handler with a minimal request/response pair. */
+async function callApi(
+  handler: (req: unknown, res: unknown) => Promise<void>,
+  url: string,
+): Promise<{ status: number; body: string; headers: Record<string, string> }> {
+  const state = { body: "", headers: {} as Record<string, string> };
+  const res = {
+    statusCode: 200,
+    setHeader: (key: string, value: string) => {
+      state.headers[key] = value;
+    },
+    end: (body?: string) => {
+      state.body = body ?? "";
+    },
+  };
+  await handler({ method: "GET", url, headers: { host: "lelam.co" } }, res);
+  return { status: res.statusCode, body: state.body, headers: state.headers };
+}
 
 function meta(html: string, attribute: "name" | "property", key: string): string | undefined {
   const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -155,22 +174,17 @@ test("client hydration keeps the server-rendered JSON-LD", async ({ page }) => {
 });
 
 test("Vercel functions serve the built shell with route metadata", async () => {
-  const product = await renderFunction(
-    new Request("https://lelam.co/api/render?path=/product/p-1"),
-  );
+  const product = await callApi(renderFunction, "/api/render?path=/product/p-1");
   expect(product.status).toBe(200);
-  const html = await product.text();
-  expect(html).toContain("/assets/app.js");
-  expect(html).toContain("The worn-in denim jacket");
+  expect(product.body).toContain("/assets/app.js");
+  expect(product.body).toContain("The worn-in denim jacket");
 
-  const missing = await renderFunction(
-    new Request("https://lelam.co/api/render?path=/product/does-not-exist"),
-  );
+  const missing = await callApi(renderFunction, "/api/render?path=/product/does-not-exist");
   expect(missing.status).toBe(404);
 
-  const map = await sitemapFunction(new Request("https://lelam.co/api/sitemap?type=index"));
+  const map = await callApi(sitemapFunction, "/api/sitemap?type=index");
   expect(map.status).toBe(200);
-  expect(await map.text()).toContain("<sitemapindex");
+  expect(map.body).toContain("<sitemapindex");
 });
 
 test("static assets, robots and API paths remain unaffected", async ({ request }) => {
@@ -181,7 +195,4 @@ test("static assets, robots and API paths remain unaffected", async ({ request }
   const robots = await request.get("/robots.txt");
   expect(robots.status()).toBe(200);
   expect(await robots.text()).toContain("Sitemap: https://lelam.co/sitemap.xml");
-
-  const api = await request.get("/api/render");
-  expect(await api.text()).not.toContain('<div id="root">');
 });

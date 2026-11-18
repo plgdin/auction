@@ -3,8 +3,8 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import path from "node:path";
 import fs from "node:fs";
-import { renderRoute } from "./api/lib/render";
-import { buildSitemap, type SitemapType } from "./api/lib/sitemap";
+import { renderRoute } from "./server/lib/render";
+import { buildSitemap, type SitemapType } from "./server/lib/sitemap";
 
 const SITEMAP_ROUTE = /^\/sitemap(?:-(static|categories|products|auctions))?\.xml$/;
 const SEO_ROUTE = /^\/(?:products|product\/[^/]+|auctions|auction\/[^/]+|order\/[^/]+)\/?$/;
@@ -39,7 +39,7 @@ function generateShellPlugin(): Plugin {
     apply: "build",
     closeBundle() {
       const html = fs.readFileSync(path.resolve(process.cwd(), "dist/index.html"), "utf8");
-      const target = path.resolve(process.cwd(), "api/lib/shell.generated.ts");
+      const target = path.resolve(process.cwd(), "server/lib/shell.generated.ts");
       fs.writeFileSync(
         target,
         `// Generated from dist/index.html by vite.config.ts. Do not edit.\nexport const SHELL_HTML = ${JSON.stringify(html)};\n`,
