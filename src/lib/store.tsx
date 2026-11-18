@@ -2101,6 +2101,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const seller = next.users.find((item) => item.id === activeUser.id)!;
       seller.isSeller = true;
       if (seller.role === "buyer") seller.role = "seller";
+      // Admins publish straight to the shop; sellers follow the auto-approve setting.
+      const autoLive = activeUser.role === "admin" || next.settings.sellerAutoApprove;
       const product: Product = {
         id: uid("p"),
         sellerId: seller.id,
@@ -2118,15 +2120,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         isUnique: input.quantity === 1,
         location: input.location,
         shippingFee: input.shippingFee,
-        status: next.settings.sellerAutoApprove ? "active" : "pending",
+        status: autoLive ? "active" : "pending",
         allowOffers: input.allowOffers,
         auctionConsent: input.auctionConsent,
         createdAt: nowIso(),
         views: 0,
         color: "#e8e6df",
-        moderationNote: next.settings.sellerAutoApprove
-          ? undefined
-          : "Waiting for admin approval.",
+        moderationNote: autoLive ? undefined : "Waiting for admin approval.",
       };
       next.products.unshift(product);
       pushNotification(
@@ -2158,7 +2158,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             const { data: { session } } = await supabase.auth.getSession();
             if (session?.user?.id) {
               const uploadedImages = await uploadListingImages(session.user.id, input.images);
-              const { data: savedId } = await supabase.rpc("save_listing", {
+              const { data: savedId, error: saveError } = await supabase.rpc("save_listing", {
                 p_payload: {
                   title: input.title.trim(),
                   description: input.description.trim(),
@@ -2176,14 +2176,23 @@ export function StoreProvider({ children }: { children: ReactNode }) {
                 },
                 p_images: uploadedImages,
               });
-              // Align the local row with its server UUID so admin actions
-              // (delete/approve) hit the real record without a refresh.
-              if (savedId && typeof savedId === "string" && UUID_RE.test(savedId)) {
-                const remap = clone(dbRef.current);
-                const target = remap.products.find((item) => item.id === product.id);
-                if (target) {
-                  target.id = savedId;
-                  commit(remap);
+              if (saveError) {
+                console.warn("[Supabase save_listing error]:", saveError.message);
+              } else if (savedId) {
+                // Remember the server UUID so admin actions reach the real row
+                // without changing the local id the UI is already using.
+                const link = clone(dbRef.current);
+                const linked = link.products.find((item) => item.id === product.id);
+                if (linked) {
+                  linked.serverId = savedId;
+                  commit(link);
+                }
+                if (activeUser.role === "admin") {
+                  // Admin listings bypass the review queue on the server too.
+                  await supabase.rpc("admin_review_product", {
+                    p_product_id: savedId,
+                    p_approved: true,
+                  });
                 }
               }
             }
@@ -2542,8 +2551,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       // Server-backed listings have UUID ids. Seed rows (prod-…) only exist in
       // the browser catalog, so there is nothing remote to delete for those.
-      if (UUID_RE.test(productId)) {
-        const { error } = await supabase.rpc("admin_delete_product", { p_product_id: productId });
+      const remoteId = product.serverId ?? productId;
+      if (UUID_RE.test(remoteId)) {
+        const { error } = await supabase.rpc("admin_delete_product", { p_product_id: remoteId });
         if (error) {
           return {
             ok: false,

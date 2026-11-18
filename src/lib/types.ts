@@ -86,6 +86,8 @@ export interface Address {
 
 export interface Product {
   id: string;
+  /** Server UUID when a locally-created listing has been saved to Supabase. */
+  serverId?: string;
   sellerId: string;
   sellerName: string;
   title: string;

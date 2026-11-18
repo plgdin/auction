@@ -7321,3 +7321,11 @@ button.button:active {
 @media (max-width: 560px) {
   .admin-delete-seller { display: none; }
 }
+
+/* Admin: add-listing entry points */
+.admin-listings-head { display: flex; align-items: center; justify-content: flex-end; gap: 14px; flex-wrap: wrap; }
+.dashboard-page .admin-listings-head > span { font-size: 14px; color: var(--mkt-muted); }
+.admin-new-listing { min-height: 38px; padding: 7px 14px; font-size: 12px; gap: 5px; }
+@media (max-width: 640px) {
+  .admin-listings-head { justify-content: flex-start; }
+}

@@ -11,6 +11,7 @@ import {
   Settings2,
   Shield,
   Sparkles,
+  Plus,
   Tag,
   Trash2,
   Wallet,
@@ -215,7 +216,13 @@ export function AdminPage() {
             >
               <Sparkles size={15} /> Generate auctions
             </button>
-            <Link href="/products" className="button button-olive">
+            <Link
+              href="/sell/new?next=%2Fadmin%3Ftab%3Dlistings"
+              className="button button-olive"
+            >
+              <Plus size={15} /> New listing
+            </Link>
+            <Link href="/products" className="button button-ghost">
               Marketplace <ArrowUpRight size={15} />
             </Link>
           </div>
@@ -463,9 +470,17 @@ export function AdminPage() {
             <section className="panel admin-all-listings">
               <div className="panel-head">
                 <h2>All listings</h2>
-                <span>
-                  {db.products.length} item{db.products.length === 1 ? "" : "s"} in the shop
-                </span>
+                <div className="admin-listings-head">
+                  <span>
+                    {db.products.length} item{db.products.length === 1 ? "" : "s"} in the shop
+                  </span>
+                  <Link
+                    href="/sell/new?next=%2Fadmin%3Ftab%3Dlistings"
+                    className="button button-ghost admin-new-listing"
+                  >
+                    <Plus size={14} /> Add listing
+                  </Link>
+                </div>
               </div>
               {db.products.length ? (
                 <div className="listing-table admin-delete-table">
