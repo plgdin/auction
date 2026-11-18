@@ -1580,7 +1580,7 @@ export function createSeedDatabase(): Database {
       platformCommissionPct: 10,
       bidRateLimitPerMinute: 20,
       serviceablePrefixes: ["695"],
-      affiliateCommissionPct: 5,
+      affiliateCommissionPct: 1,
       returnWindowDays: 7,
     },
     sessionUserId: null,

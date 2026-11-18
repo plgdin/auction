@@ -131,8 +131,8 @@ export function previewAccount(
     code: codeForUser(user.id),
     kind: "creator",
     email: user.email,
-    commissionRate: (settings.affiliateCommissionPct || 5) / 100,
-    status: "active",
+    commissionRate: (settings.affiliateCommissionPct || 1) / 100,
+    status: "pending",
     createdAt: user.joinedAt,
   };
 }

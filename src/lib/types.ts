@@ -37,10 +37,11 @@ export interface AffiliateAccount {
   code: string;
   kind: "creator" | "college" | "partner";
   email?: string;
-  /** 0.05 = 5% of the item subtotal. Set per link by an admin. */
+  /** 0.01 = 1% of the item subtotal. Set per link by an admin. */
   commissionRate: number;
-  status: "active" | "paused" | "banned";
+  status: "pending" | "active" | "rejected" | "paused" | "banned";
   createdAt: string;
+  applicationNote?: string;
   totalClicks?: number;
   totalSignups?: number;
   totalOrders?: number;
@@ -356,7 +357,7 @@ export interface PlatformSettings {
   platformCommissionPct: number;
   bidRateLimitPerMinute: number;
   serviceablePrefixes: string[];
-  /** Default share for new affiliate links, as a percentage (5 = 5%). */
+  /** Default share for new affiliate links, as a percentage (1 = 1%). */
   affiliateCommissionPct: number;
   /** Days after delivery before affiliate earnings unlock. */
   returnWindowDays: number;

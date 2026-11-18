@@ -277,24 +277,11 @@ function ensureAffiliateAccounts(next: Database): boolean {
   const accounts = next.affiliates ?? [];
   let changed = false;
 
-  for (const user of next.users) {
-    if (accounts.some((account) => account.userId === user.id)) continue;
-    let code = codeForUser(user.id);
-    while (accounts.some((account) => account.code === code)) {
-      code = `${code.slice(0, 16)}${Math.floor(Math.random() * 90 + 10)}`;
+  for (const account of accounts) {
+    if (account.commissionRate === 0.05) {
+      account.commissionRate = 0.01;
+      changed = true;
     }
-    accounts.push({
-      id: `aff-${user.id}`,
-      userId: user.id,
-      name: user.name,
-      code,
-      kind: "creator",
-      email: user.email,
-      commissionRate: (next.settings.affiliateCommissionPct || 5) / 100,
-      status: "active",
-      createdAt: user.joinedAt,
-    });
-    changed = true;
   }
 
   if (changed) next.affiliates = accounts;
@@ -728,6 +715,9 @@ interface StoreValue {
     commissionId: string,
     action: "approve" | "pay" | "void",
   ) => Promise<ActionResult>;
+  applyForAffiliate: (note?: string) => Promise<{ ok: true; status: AffiliateAccount["status"] } | { ok: false; error: string }>;
+  adminApproveAffiliate: (affiliateId: string, commissionPct?: number) => Promise<ActionResult>;
+  adminRejectAffiliate: (affiliateId: string, reason?: string) => Promise<ActionResult>;
 }
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -3132,6 +3122,105 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [commit],
   );
 
+  const applyForAffiliate = useCallback(
+    async (note?: string): Promise<{ ok: true; status: AffiliateAccount["status"] } | { ok: false; error: string }> => {
+      const current = dbRef.current;
+      const user = current.users.find((u) => u.id === current.sessionUserId);
+      if (!user) return { ok: false, error: "Sign in to apply." };
+
+      const { data, error } = await supabase.rpc("affiliate_apply", {
+        p_note: note?.trim() || null,
+      });
+      if (error) return { ok: false, error: error.message };
+
+      const next = clone(current);
+      const raw = data?.account;
+      const code = raw?.code || codeForUser(user.id);
+      const account: AffiliateAccount = {
+        id: raw?.id || `aff-${user.id}`,
+        userId: user.id,
+        name: user.name,
+        code,
+        kind: "creator",
+        email: user.email,
+        commissionRate: 0.01,
+        status: (raw?.status as AffiliateAccount["status"]) || "pending",
+        createdAt: raw?.created_at || nowIso(),
+        applicationNote: note?.trim(),
+      };
+
+      next.affiliates = [account, ...(next.affiliates ?? []).filter((item) => item.userId !== user.id)];
+      commit(next);
+      return { ok: true, status: account.status };
+    },
+    [commit],
+  );
+
+  const adminApproveAffiliate = useCallback(
+    async (affiliateId: string, commissionPct: number = 1): Promise<ActionResult> => {
+      const current = dbRef.current;
+      const actor = current.users.find((item) => item.id === current.sessionUserId);
+      if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
+
+      const { error } = await supabase.rpc("admin_approve_affiliate", {
+        p_affiliate_id: affiliateId,
+        p_commission_pct: commissionPct || 1,
+      });
+      if (error) return { ok: false, error: error.message };
+
+      const next = clone(current);
+      const target = (next.affiliates ?? []).find((item) => item.id === affiliateId);
+      if (target) {
+        target.status = "active";
+        target.commissionRate = (commissionPct || 1) / 100;
+      }
+      next.auditLogs.unshift({
+        id: uid("al"),
+        actorId: next.sessionUserId ?? "",
+        action: "affiliate.approve",
+        entityType: "affiliate",
+        entityId: affiliateId,
+        detail: `Approved at ${commissionPct || 1}%`,
+        createdAt: nowIso(),
+      });
+      commit(next);
+      return { ok: true };
+    },
+    [commit],
+  );
+
+  const adminRejectAffiliate = useCallback(
+    async (affiliateId: string, reason?: string): Promise<ActionResult> => {
+      const current = dbRef.current;
+      const actor = current.users.find((item) => item.id === current.sessionUserId);
+      if (actor?.role !== "admin") return { ok: false, error: "Admins only." };
+
+      const { error } = await supabase.rpc("admin_reject_affiliate", {
+        p_affiliate_id: affiliateId,
+        p_reason: reason?.trim() || null,
+      });
+      if (error) return { ok: false, error: error.message };
+
+      const next = clone(current);
+      const target = (next.affiliates ?? []).find((item) => item.id === affiliateId);
+      if (target) {
+        target.status = "rejected";
+      }
+      next.auditLogs.unshift({
+        id: uid("al"),
+        actorId: next.sessionUserId ?? "",
+        action: "affiliate.reject",
+        entityType: "affiliate",
+        entityId: affiliateId,
+        detail: reason || "Rejected",
+        createdAt: nowIso(),
+      });
+      commit(next);
+      return { ok: true };
+    },
+    [commit],
+  );
+
   const value: StoreValue = {
     db,
     user,
@@ -3191,6 +3280,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     createAffiliate,
     updateAffiliate,
     reviewAffiliateCommission,
+    applyForAffiliate,
+    adminApproveAffiliate,
+    adminRejectAffiliate,
   };
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

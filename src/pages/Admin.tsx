@@ -57,6 +57,8 @@ export function AdminPage() {
     createAffiliate,
     updateAffiliate,
     reviewAffiliateCommission,
+    adminApproveAffiliate,
+    adminRejectAffiliate,
   } = useStore();
   const route = useRoute();
   const [tab, setTab] = useState(route.query.get("tab") || "overview");
@@ -71,7 +73,7 @@ export function AdminPage() {
     email: "",
     code: "",
     kind: "creator" as AffiliateAccount["kind"],
-    commissionPct: db.settings.affiliateCommissionPct,
+    commissionPct: db.settings.affiliateCommissionPct || 1,
   });
   const [rateDrafts, setRateDrafts] = useState<Record<string, string>>({});
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
@@ -192,6 +194,8 @@ export function AdminPage() {
   const affiliateAccounts = [...(db.affiliates ?? [])].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
+  const pendingAffiliateAccounts = affiliateAccounts.filter((account) => account.status === "pending");
+  const approvedAffiliateAccounts = affiliateAccounts.filter((account) => account.status !== "pending");
   const affiliateCommissions = [...(db.affiliateCommissions ?? [])].sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
@@ -348,7 +352,7 @@ export function AdminPage() {
             { id: "users", label: "Users", count: db.users.length },
             { id: "auctions", label: "Auctions", count: db.auctions.length },
             { id: "finance", label: "Finance", count: pendingSettlements.length },
-            { id: "affiliates", label: "Affiliates", count: affiliatePendingCount },
+            { id: "affiliates", label: "Affiliates", count: affiliatePendingCount + pendingAffiliateAccounts.length },
             { id: "audit", label: "Visitors & Audit" },
             { id: "settings", label: "Settings" },
           ]}
@@ -974,6 +978,66 @@ export function AdminPage() {
               </div>
             </div>
 
+            {/* Pending Applications Section */}
+            {pendingAffiliateAccounts.length > 0 && (
+              <section className="panel" style={{ border: "1px solid #c9b08f", background: "#fdfbf7" }}>
+                <div className="panel-head">
+                  <h2>Pending affiliate applications</h2>
+                  <span>Review and approve user affiliate requests ({pendingAffiliateAccounts.length})</span>
+                </div>
+                <div className="listing-table affiliate-table">
+                  <div className="table-head">
+                    <span>Applicant</span>
+                    <span>Link code</span>
+                    <span>Applied</span>
+                    <span>Note / Channel</span>
+                    <span style={{ textAlign: "right" }}>Actions</span>
+                  </div>
+                  {pendingAffiliateAccounts.map((account) => (
+                    <div key={account.id} className="table-row">
+                      <div className="table-product">
+                        <div>
+                          <strong>{account.name}</strong>
+                          <span>{account.email || "Member account"} · site user</span>
+                        </div>
+                      </div>
+                      <span>?ref={account.code}</span>
+                      <span>{timeAgo(account.createdAt)}</span>
+                      <span style={{ fontSize: "12px", color: "#5c5a52" }}>
+                        {account.applicationNote || "Standard member request"}
+                      </span>
+                      <div className="table-actions" style={{ justifyContent: "flex-end" }}>
+                        <button
+                          type="button"
+                          className="button button-olive"
+                          style={{ minHeight: "34px", padding: "6px 12px", fontSize: "11.5px" }}
+                          onClick={async () => {
+                            const res = await adminApproveAffiliate(account.id, 1);
+                            if (res.ok) toast(`Approved ${account.name} at 1% commission.`, "success");
+                            else toast(res.error, "error");
+                          }}
+                        >
+                          <Check size={13} /> Approve (1%)
+                        </button>
+                        <button
+                          type="button"
+                          className="button button-ghost"
+                          style={{ minHeight: "34px", padding: "6px 12px", fontSize: "11.5px" }}
+                          onClick={async () => {
+                            const res = await adminRejectAffiliate(account.id);
+                            if (res.ok) toast(`Rejected ${account.name}'s request.`);
+                            else toast(res.error, "error");
+                          }}
+                        >
+                          <X size={13} /> Reject
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
             <section className="panel">
               <div className="panel-head">
                 <h2>Create a link</h2>
@@ -1059,7 +1123,7 @@ export function AdminPage() {
                 <h2>Links</h2>
                 <span>Change the rate or pause a partner anytime</span>
               </div>
-              {affiliateAccounts.length ? (
+              {approvedAffiliateAccounts.length ? (
                 <div className="listing-table affiliate-table">
                   <div className="table-head">
                     <span>Partner</span>
@@ -1069,7 +1133,7 @@ export function AdminPage() {
                     <span>Status</span>
                     <span>Actions</span>
                   </div>
-                  {affiliateAccounts.map((account) => {
+                  {approvedAffiliateAccounts.map((account) => {
                     const summary = summariseAffiliate(account, db);
                     return (
                       <div key={account.id} className="table-row">

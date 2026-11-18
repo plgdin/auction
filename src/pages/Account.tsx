@@ -3,6 +3,7 @@ import {
   ArrowUpRight,
   Bell,
   Check,
+  Clock,
   Copy,
   Heart,
   Link2,
@@ -21,7 +22,7 @@ import { Link, navigate } from "../components/Link";
 import { AddressForm } from "../components/AddressForm";
 import { EmptyState, Field, StatusPill, Tabs } from "../components/Ui";
 import { ShopCard } from "../components/ShopCard";
-import { accountForUser, previewAccount, summariseAffiliate } from "../lib/affiliate";
+import { accountForUser, summariseAffiliate } from "../lib/affiliate";
 import { formatDate, formatDateTime, formatMoney, timeAgo } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useStore } from "../lib/store";
@@ -46,6 +47,7 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
     updateProfile,
     markNotificationRead,
     markAllNotificationsRead,
+    applyForAffiliate,
   } = useStore();
   const route = useRoute();
   const [tab, setTab] = useState(route.query.get("tab") || defaultTab || "orders");
@@ -59,6 +61,8 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
   const [counterAmount, setCounterAmount] = useState<string>("");
   const [counterNote, setCounterNote] = useState<string>("");
   const [copiedAffiliate, setCopiedAffiliate] = useState(false);
+  const [applyingAffiliate, setApplyingAffiliate] = useState(false);
+  const [affiliateNote, setAffiliateNote] = useState("");
 
   useEffect(() => {
     setTab(route.query.get("tab") || defaultTab || "orders");
@@ -118,14 +122,19 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
     .reduce((sum, s) => sum + s.sellerPayout, 0);
   const pendingSalesCount = mySales.filter((o) => ["paid", "processing", "awaiting_pickup"].includes(o.status)).length;
 
-  const affiliateAccount = accountForUser(user, db.affiliates) ?? previewAccount(user, db.settings);
-  const affiliate = summariseAffiliate(affiliateAccount, db);
-  const commissionRatePct = Math.round(affiliateAccount.commissionRate * 1000) / 10;
-  const commissions = [...(db.affiliateCommissions ?? [])]
-    .filter((entry) => entry.affiliateId === affiliateAccount.id)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const affiliateAccount = accountForUser(user, db.affiliates);
+  const affiliate = affiliateAccount ? summariseAffiliate(affiliateAccount, db) : null;
+  const commissionRatePct = affiliateAccount
+    ? Math.round(affiliateAccount.commissionRate * 1000) / 10
+    : (db.settings.affiliateCommissionPct || 1);
+  const commissions = affiliateAccount
+    ? [...(db.affiliateCommissions ?? [])]
+        .filter((entry) => entry.affiliateId === affiliateAccount.id)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    : [];
 
   const copyAffiliateLink = async () => {
+    if (!affiliate?.link) return;
     try {
       await navigator.clipboard.writeText(affiliate.link);
       setCopiedAffiliate(true);
@@ -743,150 +752,259 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
 
         {tab === "affiliate" && (
           <div className="account-section">
-            <div className="affiliate-hero">
-              <div>
-                <div className="eyebrow">AFFILIATE PROGRAM</div>
-                <h2>
-                  {affiliateAccount.kind === "college"
-                    ? "Fund your community."
-                    : "Share the rail."}{" "}
-                  Earn {commissionRatePct}%
-                </h2>
-                <p>
-                  When someone buys through your link, you earn {commissionRatePct}% of the item
-                  subtotal. Earnings unlock after the {db.settings.returnWindowDays}-day return
-                  window, so you are never paid for a piece that comes back.
-                </p>
-              </div>
-              <span
-                className={`status-pill ${
-                  affiliateAccount.status === "active"
-                    ? "status-good"
-                    : affiliateAccount.status === "paused"
-                      ? "status-warm"
-                      : "status-bad"
-                }`}
-              >
-                {affiliateAccount.status === "active"
-                  ? "Active"
-                  : affiliateAccount.status === "paused"
-                    ? "Paused"
-                    : "Closed"}
-              </span>
-            </div>
+            {!affiliateAccount && (
+              <>
+                <div className="affiliate-hero">
+                  <div>
+                    <div className="eyebrow">AFFILIATE PROGRAM</div>
+                    <h2>Earn 1% on every referral.</h2>
+                    <p>
+                      Join our creator and community affiliate program. When someone purchases through
+                      your link, you earn 1% of the item subtotal. Applications are reviewed and approved
+                      by the admin team before links are issued.
+                    </p>
+                  </div>
+                  <span className="status-pill status-neutral">Not Enrolled</span>
+                </div>
 
-            <div className="affiliate-link-card">
-              <label htmlFor="affiliate-link">YOUR LINK</label>
-              <div className="affiliate-link-row">
-                <input
-                  id="affiliate-link"
-                  readOnly
-                  value={affiliate.link}
-                  onFocus={(event) => event.currentTarget.select()}
-                />
-                <button type="button" className="button button-olive" onClick={copyAffiliateLink}>
-                  {copiedAffiliate ? <Check size={16} /> : <Copy size={16} />}
-                  {copiedAffiliate ? "Copied" : "Copy link"}
-                </button>
-              </div>
-              <span className="fineprint">
-                Code {affiliate.code} · first click credits you for 30 days.
-              </span>
-            </div>
-
-            <div className="stat-grid">
-              <div className="stat-card">
-                <span>
-                  <MousePointerClick size={13} /> Clicks
-                </span>
-                <strong>{affiliate.clicks}</strong>
-                <em>All time</em>
-              </div>
-              <div className="stat-card">
-                <span>
-                  <UserPlus size={13} /> Signups
-                </span>
-                <strong>{affiliate.signups}</strong>
-                <em>People who joined</em>
-              </div>
-              <div className="stat-card">
-                <span>
-                  <Package size={13} /> Paid orders
-                </span>
-                <strong>{affiliate.orders}</strong>
-                <em>Completed purchases</em>
-              </div>
-              <div className="stat-card is-dark">
-                <span>
-                  <Wallet size={13} /> Available
-                </span>
-                <strong>{formatMoney(affiliate.available)}</strong>
-                <em>
-                  {formatMoney(affiliate.pending)} pending · {formatMoney(affiliate.paid)} paid
-                </em>
-              </div>
-            </div>
-
-            <div className="account-section-head">
-              <h2>Recent earnings</h2>
-              <span>{commissionRatePct}% of the item subtotal, excluding shipping.</span>
-            </div>
-            {commissions.length ? (
-              <div className="affiliate-commission-list">
-                {commissions.map((entry) => {
-                  const order = db.orders.find((item) => item.id === entry.orderId);
-                  const eligibleAt = entry.eligibleAt
-                    ? new Date(entry.eligibleAt).getTime()
-                    : null;
-                  const daysLeft =
-                    eligibleAt === null
-                      ? null
-                      : Math.max(0, Math.ceil((eligibleAt - Date.now()) / 86_400_000));
-                  const timing =
-                    entry.status === "paid"
-                      ? `Paid ${entry.paidAt ? formatDate(entry.paidAt) : ""}`
-                      : entry.status === "approved"
-                        ? "Return window closed · ready to pay out"
-                        : entry.status === "void"
-                          ? "Voided — order was returned or cancelled"
-                          : eligibleAt === null
-                            ? `Unlocks after delivery + ${entry.returnWindowDays}-day return window`
-                            : daysLeft && daysLeft > 0
-                              ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left in return window`
-                              : "Return window closed";
-                  return (
-                    <article key={entry.id} className="affiliate-commission">
-                      <div>
-                        <strong>{order?.number || "Order"}</strong>
-                        <span>
-                          {formatDate(entry.createdAt)} · {formatMoney(entry.subtotal)} subtotal
-                          {" · "}
-                          {timing}
-                        </span>
-                      </div>
-                      <StatusPill
-                        status={entry.status}
-                        tone={
-                          entry.status === "paid" || entry.status === "approved"
-                            ? "good"
-                            : entry.status === "void"
-                              ? "bad"
-                              : "warm"
-                        }
+                <div className="panel" style={{ padding: "26px", marginTop: "18px" }}>
+                  <h3 style={{ fontFamily: "var(--serif)", fontSize: "20px", marginBottom: "8px" }}>
+                    Apply for an affiliate link
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "var(--mkt-muted)", marginBottom: "16px", lineHeight: "1.6" }}>
+                    Submit an application to get your personal 1% affiliate link. You can optionally share where you plan to promote Lelam (Instagram, community groups, personal network, etc.).
+                  </p>
+                  <div style={{ display: "grid", gap: "14px", maxWidth: "480px" }}>
+                    <Field label="Where will you share your link? (Optional)">
+                      <textarea
+                        rows={3}
+                        value={affiliateNote}
+                        onChange={(e) => setAffiliateNote(e.target.value)}
+                        placeholder="e.g. Instagram fashion community, WhatsApp college group..."
+                        style={{
+                          width: "100%",
+                          padding: "10px 14px",
+                          borderRadius: "10px",
+                          border: "1px solid var(--mkt-line)",
+                          fontSize: "13px",
+                          fontFamily: "var(--sans)",
+                        }}
                       />
-                      <strong>{formatMoney(entry.amount)}</strong>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="account-callout">
-                <Link2 size={17} />
-                <span>
-                  Share your link to start earning. Earnings appear here after a referred order is
-                  paid, then unlock once the return window ends.
-                </span>
-              </div>
+                    </Field>
+                    <button
+                      type="button"
+                      className="button button-olive"
+                      disabled={applyingAffiliate}
+                      onClick={async () => {
+                        setApplyingAffiliate(true);
+                        const res = await applyForAffiliate(affiliateNote);
+                        setApplyingAffiliate(false);
+                        if (res.ok) {
+                          toast("Application submitted. Waiting for admin approval.", "success");
+                        } else {
+                          toast(res.error, "error");
+                        }
+                      }}
+                    >
+                      {applyingAffiliate ? "Submitting…" : "Apply for affiliate link"}
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {affiliateAccount?.status === "pending" && (
+              <>
+                <div className="affiliate-hero">
+                  <div>
+                    <div className="eyebrow">AFFILIATE PROGRAM</div>
+                    <h2>Application under review.</h2>
+                    <p>
+                      Your affiliate application has been submitted to the admin team. Once an admin
+                      reviews and approves your request, your unique link and live tracking dashboard
+                      will activate right here.
+                    </p>
+                  </div>
+                  <span className="status-pill status-warm">Pending Admin Approval</span>
+                </div>
+
+                <div className="panel" style={{ padding: "40px 24px", textAlign: "center", marginTop: "18px" }}>
+                  <Clock size={38} color="#8C745A" style={{ margin: "0 auto 12px" }} />
+                  <h3 style={{ fontFamily: "var(--serif)", fontSize: "22px", marginBottom: "8px" }}>
+                    Waiting for admin approval
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "var(--mkt-muted)", maxWidth: "440px", margin: "0 auto", lineHeight: "1.6" }}>
+                    Admin approvals ensure high quality and prevent abuse. Once approved at 1% commission, you will receive an in-app alert and your link will be displayed here.
+                  </p>
+                </div>
+              </>
+            )}
+
+            {affiliateAccount?.status === "rejected" && (
+              <>
+                <div className="affiliate-hero">
+                  <div>
+                    <div className="eyebrow">AFFILIATE PROGRAM</div>
+                    <h2>Application not approved.</h2>
+                    <p>
+                      Your affiliate request was not approved at this time. You may submit a new application below.
+                    </p>
+                  </div>
+                  <span className="status-pill status-bad">Not Approved</span>
+                </div>
+
+                <div className="panel" style={{ padding: "26px", marginTop: "18px" }}>
+                  <button
+                    type="button"
+                    className="button button-olive"
+                    disabled={applyingAffiliate}
+                    onClick={async () => {
+                      setApplyingAffiliate(true);
+                      const res = await applyForAffiliate();
+                      setApplyingAffiliate(false);
+                      if (res.ok) toast("Re-application submitted.", "success");
+                    }}
+                  >
+                    Re-apply for affiliate link
+                  </button>
+                </div>
+              </>
+            )}
+
+            {affiliateAccount?.status === "active" && affiliate && (
+              <>
+                <div className="affiliate-hero">
+                  <div>
+                    <div className="eyebrow">AFFILIATE PROGRAM</div>
+                    <h2>
+                      {affiliateAccount.kind === "college"
+                        ? "Fund your community."
+                        : "Share the rail."}{" "}
+                      Earn {commissionRatePct}%
+                    </h2>
+                    <p>
+                      When someone buys through your link, you earn {commissionRatePct}% of the item
+                      subtotal. Earnings unlock after the {db.settings.returnWindowDays}-day return
+                      window, so you are never paid for a piece that comes back.
+                    </p>
+                  </div>
+                  <span className="status-pill status-good">Active</span>
+                </div>
+
+                <div className="affiliate-link-card">
+                  <label htmlFor="affiliate-link">YOUR LINK</label>
+                  <div className="affiliate-link-row">
+                    <input
+                      id="affiliate-link"
+                      readOnly
+                      value={affiliate.link}
+                      onFocus={(event) => event.currentTarget.select()}
+                    />
+                    <button type="button" className="button button-olive" onClick={copyAffiliateLink}>
+                      {copiedAffiliate ? <Check size={16} /> : <Copy size={16} />}
+                      {copiedAffiliate ? "Copied" : "Copy link"}
+                    </button>
+                  </div>
+                  <span className="fineprint">
+                    Code {affiliate.code} · first click credits you for 30 days · earns {commissionRatePct}%
+                  </span>
+                </div>
+
+                <div className="stat-grid">
+                  <div className="stat-card">
+                    <span>
+                      <MousePointerClick size={13} /> Clicks
+                    </span>
+                    <strong>{affiliate.clicks}</strong>
+                    <em>All time</em>
+                  </div>
+                  <div className="stat-card">
+                    <span>
+                      <UserPlus size={13} /> Signups
+                    </span>
+                    <strong>{affiliate.signups}</strong>
+                    <em>People who joined</em>
+                  </div>
+                  <div className="stat-card">
+                    <span>
+                      <Package size={13} /> Paid orders
+                    </span>
+                    <strong>{affiliate.orders}</strong>
+                    <em>Completed purchases</em>
+                  </div>
+                  <div className="stat-card is-dark">
+                    <span>
+                      <Wallet size={13} /> Available
+                    </span>
+                    <strong>{formatMoney(affiliate.available)}</strong>
+                    <em>
+                      {formatMoney(affiliate.pending)} pending · {formatMoney(affiliate.paid)} paid
+                    </em>
+                  </div>
+                </div>
+
+                <div className="account-section-head">
+                  <h2>Recent earnings</h2>
+                  <span>{commissionRatePct}% of the item subtotal, excluding shipping.</span>
+                </div>
+                {commissions.length ? (
+                  <div className="affiliate-commission-list">
+                    {commissions.map((entry) => {
+                      const order = db.orders.find((item) => item.id === entry.orderId);
+                      const eligibleAt = entry.eligibleAt
+                        ? new Date(entry.eligibleAt).getTime()
+                        : null;
+                      const daysLeft =
+                        eligibleAt === null
+                          ? null
+                          : Math.max(0, Math.ceil((eligibleAt - Date.now()) / 86_400_000));
+                      const timing =
+                        entry.status === "paid"
+                          ? `Paid ${entry.paidAt ? formatDate(entry.paidAt) : ""}`
+                          : entry.status === "approved"
+                            ? "Return window closed · ready to pay out"
+                            : entry.status === "void"
+                              ? "Voided — order was returned or cancelled"
+                              : eligibleAt === null
+                                ? `Unlocks after delivery + ${entry.returnWindowDays}-day return window`
+                                : daysLeft && daysLeft > 0
+                                  ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left in return window`
+                                  : "Return window closed";
+                      return (
+                        <article key={entry.id} className="affiliate-commission">
+                          <div>
+                            <strong>{order?.number || "Order"}</strong>
+                            <span>
+                              {formatDate(entry.createdAt)} · {formatMoney(entry.subtotal)} subtotal
+                              {" · "}
+                              {timing}
+                            </span>
+                          </div>
+                          <StatusPill
+                            status={entry.status}
+                            tone={
+                              entry.status === "paid" || entry.status === "approved"
+                                ? "good"
+                                : entry.status === "void"
+                                  ? "bad"
+                                  : "warm"
+                            }
+                          />
+                          <strong>{formatMoney(entry.amount)}</strong>
+                        </article>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="account-callout">
+                    <Link2 size={17} />
+                    <span>
+                      Share your link to start earning. Earnings appear here after a referred order is
+                      paid, then unlock once the return window ends.
+                    </span>
+                  </div>
+                )}
+              </>
             )}
 
             <div className="affiliate-steps">
