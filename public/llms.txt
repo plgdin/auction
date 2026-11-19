@@ -1,41 +1,40 @@
-# lelam.co
+# Lelam
 
-> lelam.co is an online curated peer-to-peer pre-loved fashion and thrift clothing marketplace with live daily auctions across India.
+> Lelam is an Indian marketplace for curated pre-loved fashion, with private offers and daily live auctions.
 
-## About Lelam
-"Lelam" means Auction in Malayalam. Lelam connects people across India to buy and sell unique pre-owned fashion, vintage pieces, streetwear, and designer thrift with door-to-door courier tracking and safe escrow payments.
+"Lelam" means auction in Malayalam. Lelam connects buyers and sellers across India to trade pre-owned clothing, vintage pieces, streetwear, and designer thrift. Every listing is one of a kind, and every order includes tracked doorstep delivery and escrow-protected payment.
 
-## Core Features
+## Shop
 
-### 1. Buying
-- **Buy Now**: Purchase instantly at the listed asking price.
-- **Private Offers**: Buyers can make confidential price offers directly to sellers; sellers can accept, decline, or counter without public haggling.
-- **Daily Live Auctions**:
-  - Curated listings enter timed daily auctions.
-  - Bidding is live and anonymous (using pseudonyms).
-  - Anti-sniping protection: Any bid placed in the final 30 seconds automatically extends the auction clock by 30 seconds.
-  - Winning bids are binding commitments with a 10-minute payment window.
+- [Browse all listings](https://www.lelam.co/products): Filter curated pre-loved clothing, accessories, and vintage pieces by category, size, and condition.
+- [Live and upcoming auctions](https://www.lelam.co/auctions): Timed daily auctions with anonymous bidding and anti-sniping protection.
+- [Sell an item](https://www.lelam.co/sell): List a piece for a fixed price, private offers, or auction.
+- [Sign in](https://www.lelam.co/login): Access saved items, offers, orders, and seller tools.
+- [Create an account](https://www.lelam.co/register): Register as a buyer or seller.
 
-### 2. Transparent Pricing & Fees
-- **Buyer Fees**:
-  - Item price + delivery fee.
-  - Platform fee: Flat ₹10 + 18% GST (₹11.80 total platform fee).
-  - Payment methods: UPI (Google Pay, PhonePe, Paytm), Credit/Debit Cards, Netbanking, and Cash on Delivery (COD).
-- **Seller Fees**:
-  - Flat 10% commission on the final selling price (GST inclusive).
-  - Sellers keep 90% of their sale.
-  - Free doorstep courier pickup across India.
+## How buying works
 
-### 3. Trust, Safety & Escrow Protection
-- **Doorstep Delivery**: Tracked couriers across Indian postal PIN codes with automated address verification.
-- **3-Day Inspection Window**: Buyer payments are safely held in escrow until doorstep delivery and a 3-day inspection window closes.
-- **Buyer Protection**: Full refunds if items arrive damaged, counterfeit, or materially not as described.
+- **Buy now**: Purchase instantly at the listed asking price.
+- **Private offers**: Send a confidential price offer to the seller, who can accept, decline, or counter without public haggling.
+- **Daily live auctions**: Bidding is anonymous and uses pseudonyms. A bid in the final 30 seconds extends the clock by 30 seconds. Winning bids are binding and payment is due within 10 minutes.
+- **Escrow and inspection**: Payments are held until doorstep delivery and a 3-day inspection window closes. Buyers receive a refund if an item arrives damaged, counterfeit, or materially not as described.
 
-## Public Navigation & URLs
-- Home: https://lelam.co/
-- Shop / Products: https://lelam.co/products
-- Live & Upcoming Auctions: https://lelam.co/auctions
-- Sell an Item: https://lelam.co/sell
-- Sign In: https://lelam.co/login
-- Create Account: https://lelam.co/register
-- Sitemap: https://lelam.co/sitemap.xml
+## Pricing and fees
+
+- **Buyers** pay the item price, delivery, and a flat ₹10 platform fee plus 18% GST (₹11.80 total). UPI, cards, netbanking, and cash on delivery are supported.
+- **Sellers** pay a flat 10% commission on the final selling price, inclusive of GST, and keep 90%. Doorstep courier pickup is free across India.
+
+## Policies
+
+- [Terms of Service](https://www.lelam.co/terms)
+- [Privacy Policy](https://www.lelam.co/privacy)
+- [Returns and Refunds](https://www.lelam.co/returns)
+- [Auction Terms](https://www.lelam.co/auction-terms)
+
+## Optional
+
+- [Sitemap index](https://www.lelam.co/sitemap.xml): All public pages.
+- [Products sitemap](https://www.lelam.co/sitemap-products.xml): Active listings.
+- [Auctions sitemap](https://www.lelam.co/sitemap-auctions.xml): Live, upcoming, and completed auctions.
+- [Categories sitemap](https://www.lelam.co/sitemap-categories.xml): Shop category pages.
+- [Static pages sitemap](https://www.lelam.co/sitemap-static.xml): Home and policy pages.

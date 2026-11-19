@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "../shop.css";
 import {
   ArrowUpRight,
   Bell,

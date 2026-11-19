@@ -6,9 +6,15 @@ import type { Product } from "../lib/types";
 import { Link, navigate } from "./Link";
 import { StatusPill } from "./Ui";
 import { animateCartAdded } from "../lib/cartAnimation";
+import { prefetchImage, prefetchRoute } from "../lib/route-prefetch";
 
 export function ProductCard({ product, compact = false }: { product: Product; compact?: boolean }) {
   const { db, favorites, toggleFavorite, addToCart, cart } = useStore();
+  const detailHref = `/product/${product.id}`;
+  const warmDetail = () => {
+    prefetchRoute(detailHref);
+    prefetchImage(product.images[0]);
+  };
   const saved = favorites.includes(product.id);
   const inCart = cart.some((entry) => entry.product.id === product.id);
   const auction = db.auctions.find(
@@ -18,9 +24,14 @@ export function ProductCard({ product, compact = false }: { product: Product; co
   const available = product.status === "active" && !auction;
 
   return (
-    <article className={`product-card ${compact ? "is-compact" : ""} ${available ? "" : "is-unavailable"}`}>
+    <article
+      className={`product-card ${compact ? "is-compact" : ""} ${available ? "" : "is-unavailable"}`}
+      onPointerEnter={warmDetail}
+      onFocus={warmDetail}
+      onTouchStart={warmDetail}
+    >
       <div className="product-image" style={{ backgroundColor: product.color }}>
-        <Link href={`/product/${product.id}`} className="product-image-link" aria-label={`View ${product.title}`}>
+        <Link href={detailHref} className="product-image-link" aria-label={`View ${product.title}`}>
           <img src={product.images[0]} alt={product.title} loading="lazy" />
         </Link>
         {product.tag && <span className="product-tag">{product.tag}</span>}

@@ -926,18 +926,29 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    syncFromSupabase();
+    // Let the first screen paint from local data before touching the network.
+    // The hero is the LCP element, so the catalog sync and its websocket wait.
+    let started = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-    const channel = supabase
-      .channel("public-products-channel")
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
-        syncFromSupabase();
-      })
-      .subscribe();
+    const startSync = () => {
+      if (!active || started) return;
+      started = true;
+      void syncFromSupabase();
+      channel = supabase
+        .channel("public-products-channel")
+        .on("postgres_changes", { event: "*", schema: "public", table: "products" }, () => {
+          syncFromSupabase();
+        })
+        .subscribe();
+    };
+
+    const timer = window.setTimeout(startSync, 1800);
 
     return () => {
       active = false;
-      supabase.removeChannel(channel);
+      window.clearTimeout(timer);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [commit]);
 

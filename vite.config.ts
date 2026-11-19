@@ -93,12 +93,14 @@ export default defineConfig({
   plugins: [react(), tailwindcss(), seoDevPlugin(), generateShellPlugin()],
   build: {
     sourcemap: true,
-    // Stable entry/CSS names keep the committed SEO shell valid even if a
-    // platform bundles functions before running the build command.
+    // Content hashes let Vercel cache entries and CSS as immutable. The SEO
+    // shell is regenerated from dist/index.html after this build, so it always
+    // references the current names.
     rollupOptions: {
       output: {
-        entryFileNames: "assets/app.js",
-        assetFileNames: "assets/[name][extname]",
+        entryFileNames: "assets/[name]-[hash].js",
+        chunkFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash][extname]",
       },
     },
   },

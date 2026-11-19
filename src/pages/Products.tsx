@@ -12,6 +12,7 @@ import { formatMoney } from "../lib/format";
 import { useRoute } from "../lib/router";
 import { useSeo } from "../lib/seo";
 import { productsMeta } from "../lib/seo-meta";
+import "../shop.css";
 import { useStore } from "../lib/store";
 import { CATEGORIES, findTopForLegacy, groupsFor } from "../lib/categories";
 import type { Condition, Product } from "../lib/types";

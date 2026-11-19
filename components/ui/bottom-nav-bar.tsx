@@ -12,6 +12,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { prefetchRoute } from "@/src/lib/route-prefetch";
 
 export type BottomNavItem = {
   label: string;
@@ -90,6 +91,9 @@ export function BottomNavBar({
               "focus:outline-none focus-visible:ring-0",
             )}
             onClick={() => handleItemClick(idx, item)}
+            onPointerEnter={() => item.href && prefetchRoute(item.href)}
+            onFocus={() => item.href && prefetchRoute(item.href)}
+            onTouchStart={() => item.href && prefetchRoute(item.href)}
             aria-label={item.label}
             type="button"
           >

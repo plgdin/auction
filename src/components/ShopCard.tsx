@@ -5,12 +5,18 @@ import { formatMoney } from "../lib/format";
 import { toast } from "../lib/toast";
 import type { Product } from "../lib/types";
 import { animateCartAdded } from "../lib/cartAnimation";
+import { prefetchImage, prefetchRoute } from "../lib/route-prefetch";
 
 /**
  * The torn-paper product card used across the shop and saved lists.
  */
 export function ShopCard({ product, priority = false }: { product: Product; priority?: boolean }) {
   const { favorites, toggleFavorite, addToCart, cart } = useStore();
+  const detailHref = `/product/${product.id}`;
+  const warmDetail = () => {
+    prefetchRoute(detailHref);
+    prefetchImage(product.images[0]);
+  };
   const saved = favorites.includes(product.id);
   const inCart = cart.some((entry) => entry.product.id === product.id);
   const condition =
@@ -23,9 +29,9 @@ export function ShopCard({ product, priority = false }: { product: Product; prio
           : product.condition;
 
   return (
-    <article className="shop-card">
+    <article className="shop-card" onPointerEnter={warmDetail} onFocus={warmDetail} onTouchStart={warmDetail}>
       <div className="shop-card-media">
-        <Link href={`/product/${product.id}`} aria-label={`View ${product.title}`}>
+        <Link href={detailHref} aria-label={`View ${product.title}`}>
           <img
             src={product.images[0]}
             alt={product.title}
@@ -54,7 +60,7 @@ export function ShopCard({ product, priority = false }: { product: Product; prio
             <span className="shop-card-category">{product.category}</span>
             <span className="shop-card-condition-tag">{condition}</span>
           </div>
-          <Link href={`/product/${product.id}`} className="shop-card-title">
+          <Link href={detailHref} className="shop-card-title">
             {product.title}
           </Link>
           {product.description && (

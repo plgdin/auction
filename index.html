@@ -9,16 +9,16 @@
       content="Shop one-of-a-kind pre-loved fashion on Lelam. Discover curated finds, make private offers, or bid in surprise auctions for a chance at a better price."
     />
     <meta name="robots" content="index, follow" />
-    <link rel="canonical" href="https://lelam.co/" />
+    <link rel="canonical" href="https://www.lelam.co/" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://lelam.co/" />
+    <meta property="og:url" content="https://www.lelam.co/" />
     <meta property="og:site_name" content="lelam.co" />
     <meta property="og:title" content="Lelam — Pre-Loved Fashion & Surprise Auctions" />
     <meta
       property="og:description"
       content="Shop one-of-a-kind pre-loved fashion on Lelam. Discover curated finds, make private offers, or bid in surprise auctions for a chance at a better price."
     />
-    <meta property="og:image" content="https://lelam.co/images/gpt/hero-jacket.jpg" />
+    <meta property="og:image" content="https://www.lelam.co/images/gpt/hero-jacket.jpg" />
     <meta property="og:image:alt" content="Pre-loved jacket featured on lelam.co" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Lelam — Pre-Loved Fashion & Surprise Auctions" />
@@ -26,7 +26,7 @@
       name="twitter:description"
       content="Shop one-of-a-kind pre-loved fashion on Lelam. Discover curated finds, make private offers, or bid in surprise auctions for a chance at a better price."
     />
-    <meta name="twitter:image" content="https://lelam.co/images/gpt/hero-jacket.jpg" />
+    <meta name="twitter:image" content="https://www.lelam.co/images/gpt/hero-jacket.jpg" />
     <link rel="icon" type="image/svg+xml" href="/images/auction.svg" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="ard" href="/.well-known/ard.json" />
@@ -40,6 +40,16 @@
       imagesizes="(min-width: 640px) 314px, calc((100vw - 2.5rem) * 0.54)"
       fetchpriority="high"
     />
+    <link
+      rel="preload"
+      as="image"
+      type="image/avif"
+      href="/images/gpt/hero-knit-640.avif"
+      imagesrcset="/images/gpt/hero-knit-360.avif 360w, /images/gpt/hero-knit-640.avif 640w, /images/gpt/hero-knit-900.avif 900w"
+      imagesizes="(min-width: 640px) 238px, 40vw"
+      fetchpriority="high"
+    />
+    <link rel="preconnect" href="%VITE_SUPABASE_URL%" crossorigin />
     <link rel="preload" as="font" type="font/woff2" href="/fonts/google/DMSans-normal-400.woff2" crossorigin />
     <link rel="preload" as="font" type="font/woff2" href="/fonts/google/DMSerifDisplay-normal-400.woff2" crossorigin />
     <style>
@@ -80,6 +90,225 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="boot-shell" aria-hidden="true">
+        <style>
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            background: #f3e5d2;
+          }
+
+          #boot-shell {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+            pointer-events: none;
+            background-color: #f3e5d2;
+          }
+
+          #boot-title {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            width: max-content;
+            max-width: calc(100vw - 40px);
+            margin: 0;
+            transform: translateX(-50%);
+            color: #493022;
+            font-family: "DM Serif Display", Georgia, serif;
+            font-size: 36px;
+            font-weight: 400;
+            line-height: 1.05;
+            letter-spacing: -0.025em;
+            text-align: center;
+          }
+
+          #boot-title .boot-rays {
+            display: inline-block;
+            width: 26px;
+            height: 26px;
+            margin-left: 0.5rem;
+            margin-top: -1.5rem;
+            vertical-align: middle;
+            color: rgba(73, 48, 34, 0.75);
+          }
+
+          #boot-title .boot-accent {
+            position: relative;
+            display: inline-block;
+            isolation: isolate;
+            margin-top: 0.25rem;
+            font-style: italic;
+          }
+
+          #boot-title .boot-accent::before {
+            content: "";
+            position: absolute;
+            z-index: -1;
+            left: -0.07em;
+            right: -0.07em;
+            bottom: 0.04em;
+            height: 0.84em;
+            transform: rotate(-1.5deg);
+            background: linear-gradient(180deg, rgba(214, 139, 128, 0.82), rgba(214, 139, 128, 0.7));
+            clip-path: polygon(1% 24%, 5% 14%, 12% 17%, 19% 7%, 31% 13%, 42% 3%, 54% 11%, 67% 5%, 79% 13%, 91% 8%, 99% 18%, 98% 81%, 92% 88%, 81% 80%, 72% 94%, 58% 83%, 47% 96%, 35% 84%, 21% 93%, 12% 83%, 3% 88%);
+          }
+
+          #boot-photo {
+            position: absolute;
+            top: 434px;
+            left: 28px;
+            width: calc((100vw - 2.5rem) * 0.54);
+            transform: rotate(-2deg);
+            filter: drop-shadow(0 12px 14px rgba(48, 33, 22, 0.24));
+          }
+
+          #boot-photo img {
+            display: block;
+            width: 100%;
+            height: auto;
+          }
+
+          #boot-photo .boot-tape {
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            width: 96px;
+            height: 24px;
+            transform: translateX(-50%) rotate(-1deg);
+            background: rgba(238, 226, 198, 0.88);
+            box-shadow: 0 1.5px 4px rgba(73, 48, 34, 0.16);
+            border-left: 1px dashed rgba(160, 135, 95, 0.45);
+            border-right: 1px dashed rgba(160, 135, 95, 0.45);
+            clip-path: polygon(0% 3px, 2% 0%, 98% 2%, 100% 5%, 98% 100%, 96% 96%, 3% 98%, 0% 93%);
+          }
+
+          @media (min-width: 640px) {
+            #boot-title {
+              top: 112px;
+              font-size: 48px;
+            }
+            #boot-title .boot-rays {
+              margin-top: -2rem;
+            }
+            #boot-photo {
+              top: 512px;
+              left: calc(50vw - 264px);
+              width: 313.6px;
+            }
+            #boot-photo .boot-tape {
+              width: 112px;
+            }
+          }
+
+          @media (min-width: 768px) {
+            #boot-title {
+              left: calc(50vw - 336px);
+              transform: none;
+              max-width: none;
+              font-size: 60px;
+              text-align: left;
+            }
+            #boot-photo {
+              top: 551px;
+            }
+          }
+
+          @media (min-width: 1024px) {
+            #boot-title {
+              top: 129px;
+              left: calc(50vw - 448px);
+              font-size: 56px;
+            }
+            #boot-photo {
+              top: 184px;
+              left: calc(50vw - 38.7px);
+              width: 281.5px;
+            }
+          }
+
+          @media (min-width: 1280px) {
+            #boot-title {
+              top: 128px;
+              left: calc(50vw - 576px);
+              font-size: 68px;
+            }
+            #boot-photo {
+              top: 185px;
+              left: calc(50vw - 14px);
+              width: 313.6px;
+            }
+          }
+
+          @media (min-width: 1536px) {
+            #boot-title {
+              left: calc(50vw - 640px);
+              font-size: 76px;
+            }
+            #boot-photo {
+              left: calc(50vw + 12.7px);
+            }
+          }
+
+        </style>
+        <h1 id="boot-title">
+          <span>Give Your<svg class="boot-rays" viewBox="0 0 26 26" fill="none" aria-hidden="true"><path d="M4 22L12 6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /><path d="M15 24L22 11" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" /></svg></span><br />
+          <span>Closet a</span><br />
+          <span class="boot-accent">Second Life.</span>
+        </h1>
+        <div id="boot-photo">
+          <span class="boot-tape"></span>
+          <img
+            src="/images/gpt/hero-jacket-640.avif"
+            srcset="/images/gpt/hero-jacket-360.avif 360w, /images/gpt/hero-jacket-640.avif 640w, /images/gpt/hero-jacket-900.avif 900w"
+            sizes="(min-width: 640px) 314px, calc((100vw - 2.5rem) * 0.54)"
+            width="1122"
+            height="1402"
+            alt=""
+            fetchpriority="high"
+            loading="eager"
+          />
+        </div>
+      </div>
+    <script>
+      (function () {
+        var shell = document.getElementById("boot-shell");
+        if (window.location.pathname !== "/") {
+          shell.remove();
+          return;
+        }
+        var root = document.getElementById("root");
+        var photo = shell.querySelector("#boot-photo img");
+        var revealed = false;
+        var reveal = function () {
+          if (revealed) return;
+          revealed = true;
+          observer.disconnect();
+          root.style.visibility = "";
+          // Keep the boot node in the DOM so its early paint remains the LCP
+          // candidate, but make it transparent so the real hero shows through.
+          shell.style.transition = "opacity 120ms linear";
+          shell.style.opacity = "0";
+        };
+        // Hide the real app until its hero image is ready, then swap in one
+        // frame. This avoids the duplicated-title flash during hydration.
+        root.style.visibility = "hidden";
+        var observer = new MutationObserver(function () {
+          if (root.children.length === 0) return;
+          if (photo && !photo.complete) photo.addEventListener("load", reveal, { once: true });
+          else reveal();
+        });
+        observer.observe(root, { childList: true });
+        photo && photo.addEventListener("error", reveal, { once: true });
+        setTimeout(function () {
+          if (root.children.length > 0) reveal();
+        }, 8000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -1,10 +1,17 @@
-import { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+} from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { ArrowRight, Heart, LogIn, Search, ShoppingBag, UserPlus, X } from "lucide-react";
 import { Navigate, Route as RouterRoute, Routes as RouterRoutes, useLocation, useParams } from "react-router-dom";
 import { LelamNavbar } from "@/components/ui/lelam-navbar";
-import { GenieSearchModal } from "@/components/ui/genie-search-modal";
-import HalftoneWordmarkFooter from "@/components/ui/halftone-wordmark-footer";
 import { Link, RouterNavigationBridge, navigate, normalizeHref } from "./components/Link";
 import { Modal } from "./components/Modal";
 import { onAuthPrompt, withNext, type AuthPromptDetail } from "./lib/authGate";
@@ -15,25 +22,76 @@ import { StoreProvider, useStore } from "./lib/store";
 import { toast } from "./lib/toast";
 import { REDUCED_MOTION } from "./lib/motion";
 import { recordVisitorEvent } from "./lib/audit";
-import { CartDrawer } from "./components/CartDrawer";
+import { routeLoaders } from "./lib/route-prefetch";
 import { HomePage } from "./pages/Home";
 
-const ProductsPage = lazy(() => import("./pages/Products").then((module) => ({ default: module.ProductsPage })));
-const ProductDetailPage = lazy(() => import("./pages/ProductDetail").then((module) => ({ default: module.ProductDetailPage })));
-const CartPage = lazy(() => import("./pages/Cart").then((module) => ({ default: module.CartPage })));
-const CheckoutPage = lazy(() => import("./pages/Checkout").then((module) => ({ default: module.CheckoutPage })));
-const AuctionsPage = lazy(() => import("./pages/Auctions").then((module) => ({ default: module.AuctionsPage })));
-const AuctionDetailPage = lazy(() => import("./pages/AuctionDetail").then((module) => ({ default: module.AuctionDetailPage })));
-const AuthPage = lazy(() => import("./pages/Auth").then((module) => ({ default: module.AuthPage })));
-const SellPage = lazy(() => import("./pages/Sell").then((module) => ({ default: module.SellPage })));
-const SellFormPage = lazy(() => import("./pages/SellForm").then((module) => ({ default: module.SellFormPage })));
-const SellerDashboardPage = lazy(() => import("./pages/SellerDashboard").then((module) => ({ default: module.SellerDashboardPage })));
-const AccountPage = lazy(() => import("./pages/Account").then((module) => ({ default: module.AccountPage })));
-const AdminPage = lazy(() => import("./pages/Admin").then((module) => ({ default: module.AdminPage })));
-const OrderDetailPage = lazy(() => import("./pages/OrderDetail").then((module) => ({ default: module.OrderDetailPage })));
-const PoliciesPage = lazy(() => import("./pages/Policies").then((module) => ({ default: module.PoliciesPage })));
-const OrderConfirmationPage = lazy(() => import("./pages/OrderConfirmation").then((module) => ({ default: module.OrderConfirmationPage })));
-const PaymentFailedPage = lazy(() => import("./pages/PaymentFailed").then((module) => ({ default: module.PaymentFailedPage })));
+const ProductsPage = lazy(routeLoaders.products);
+const ProductDetailPage = lazy(routeLoaders.productDetail);
+const CartPage = lazy(routeLoaders.cart);
+const CheckoutPage = lazy(routeLoaders.checkout);
+const AuctionsPage = lazy(routeLoaders.auctions);
+const AuctionDetailPage = lazy(routeLoaders.auctionDetail);
+const AuthPage = lazy(routeLoaders.auth);
+const SellPage = lazy(routeLoaders.sell);
+const SellFormPage = lazy(routeLoaders.sellForm);
+const SellerDashboardPage = lazy(routeLoaders.sellerDashboard);
+const AccountPage = lazy(routeLoaders.account);
+const AdminPage = lazy(routeLoaders.admin);
+const OrderDetailPage = lazy(routeLoaders.orderDetail);
+const PoliciesPage = lazy(routeLoaders.policies);
+const OrderConfirmationPage = lazy(routeLoaders.orderConfirmation);
+const PaymentFailedPage = lazy(routeLoaders.paymentFailed);
+
+const GenieSearchModal = lazy(() =>
+  import("@/components/ui/genie-search-modal").then((module) => ({ default: module.GenieSearchModal })),
+);
+const CartDrawer = lazy(() =>
+  import("./components/CartDrawer").then((module) => ({ default: module.CartDrawer })),
+);
+const HalftoneWordmarkFooter = lazy(() => import("@/components/ui/halftone-wordmark-footer"));
+
+const FOOTER_PLACEHOLDER_HEIGHT = 540;
+
+/**
+ * The halftone footer paints a canvas full of dots with springs. It is below
+ * the fold on every page, so it mounts after idle or as it scrolls into view.
+ */
+function DeferredFooter(props: ComponentProps<typeof HalftoneWordmarkFooter>) {
+  const [ready, setReady] = useState(false);
+  const placeholderRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (ready) return;
+    const timer = window.setTimeout(() => setReady(true), 2200);
+    const node = placeholderRef.current;
+    const observer =
+      node && typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver(
+            (entries) => {
+              if (entries.some((entry) => entry.isIntersecting)) setReady(true);
+            },
+            { rootMargin: "400px" },
+          )
+        : null;
+    if (node && observer) observer.observe(node);
+    return () => {
+      window.clearTimeout(timer);
+      observer?.disconnect();
+    };
+  }, [ready]);
+
+  if (!ready) {
+    return <div ref={placeholderRef} aria-hidden="true" style={{ minHeight: FOOTER_PLACEHOLDER_HEIGHT }} />;
+  }
+
+  return (
+    <Suspense
+      fallback={<div aria-hidden="true" style={{ minHeight: FOOTER_PLACEHOLDER_HEIGHT }} />}
+    >
+      <HalftoneWordmarkFooter {...props} />
+    </Suspense>
+  );
+}
 
 type ToastItem = { id: number; message: string; tone: string };
 
@@ -264,15 +322,17 @@ function SearchOverlay({ onClose }: { onClose: () => void }) {
   }, [db.products, search]);
 
   return (
-    <GenieSearchModal isOpen={true} onClose={onClose} originSelector=".lelam-search-toggle">
-      <SearchModalCard
-        query={query}
-        setQuery={setQuery}
-        results={results}
-        search={search}
-        onClose={onClose}
-      />
-    </GenieSearchModal>
+    <Suspense fallback={null}>
+      <GenieSearchModal isOpen={true} onClose={onClose} originSelector=".lelam-search-toggle">
+        <SearchModalCard
+          query={query}
+          setQuery={setQuery}
+          results={results}
+          search={search}
+          onClose={onClose}
+        />
+      </GenieSearchModal>
+    </Suspense>
   );
 }
 
@@ -630,6 +690,11 @@ function Shell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [savedOpen, setSavedOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
+  const [cartMounted, setCartMounted] = useState(false);
+
+  useEffect(() => {
+    if (cartOpen) setCartMounted(true);
+  }, [cartOpen]);
   const [authPrompt, setAuthPrompt] = useState<AuthPromptDetail | null>(null);
   const [lastPath, setLastPath] = useState(location.pathname);
   const anchor = location.hash.replace(/^#/, "");
@@ -644,13 +709,17 @@ function Shell() {
     return () => window.removeEventListener("lelam-open-cart", openCart);
   }, []);
 
-  // Track page views and visitor activity (non-blocking)
+  // Track page views and visitor activity (non-blocking). The delay keeps the
+  // geo lookup and RPC off the critical path while the hero image loads.
   useEffect(() => {
     const fullPath = location.pathname + (location.search || "");
-    void recordVisitorEvent({
-      action: "page_view",
-      pagePath: fullPath,
-    });
+    const timer = window.setTimeout(() => {
+      void recordVisitorEvent({
+        action: "page_view",
+        pagePath: fullPath,
+      });
+    }, 2500);
+    return () => window.clearTimeout(timer);
   }, [location.pathname, location.search]);
 
   // Scroll reset runs before paint so the incoming page never appears at the old scroll offset.
@@ -715,36 +784,27 @@ function Shell() {
         }
       >
         <div className="site-content">
-          <motion.div
-            key={location.pathname.split("/")[1] || "home"}
-            initial={REDUCED_MOTION ? false : { opacity: 0.88 }}
-            animate={{ opacity: 1 }}
-            exit={REDUCED_MOTION ? undefined : { opacity: 0.88 }}
-            transition={{
-              duration: REDUCED_MOTION ? 0 : 0.16,
-              ease: "easeOut",
-            }}
-            className="w-full"
-            style={{ transform: "none" }}
-          >
+          <div className="w-full">
             <AppRoutes />
-          </motion.div>
+          </div>
         </div>
-
-        <HalftoneWordmarkFooter
-          wordmark="lelam"
-          label={<span className="brand-wordmark">lelam.co</span>}
-          meta="©2026"
-          preset="paper"
-          palette={{ background: "transparent", ink: "#493022", warm: "#C98F7D" }}
-          columns={footerColumns}
-          height="540px"
-        />
       </Suspense>
 
-      {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
-      <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />
-      {savedOpen && <SavedOverlay onClose={() => setSavedOpen(false)} />}
+      <DeferredFooter
+        wordmark="lelam"
+        label={<span className="brand-wordmark">lelam.co</span>}
+        meta="©2026"
+        preset="paper"
+        palette={{ background: "transparent", ink: "#493022", warm: "#C98F7D" }}
+        columns={footerColumns}
+        height="540px"
+      />
+
+      <Suspense fallback={null}>
+        {searchOpen && <SearchOverlay onClose={() => setSearchOpen(false)} />}
+        {cartMounted && <CartDrawer isOpen={cartOpen} onClose={() => setCartOpen(false)} />}
+        {savedOpen && <SavedOverlay onClose={() => setSavedOpen(false)} />}
+      </Suspense>
       {authPrompt && <AuthPrompt detail={authPrompt} onClose={() => setAuthPrompt(null)} />}
       <ToastHost />
     </div>

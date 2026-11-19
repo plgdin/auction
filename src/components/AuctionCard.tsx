@@ -3,8 +3,14 @@ import { formatDateTime, formatMoney } from "../lib/format";
 import type { Auction, Product } from "../lib/types";
 import { Countdown } from "./Countdown";
 import { Link } from "./Link";
+import { prefetchImage, prefetchRoute } from "../lib/route-prefetch";
 
 export function AuctionCard({ auction, product }: { auction: Auction; product: Product }) {
+  const detailHref = `/auction/${auction.id}`;
+  const warmDetail = () => {
+    prefetchRoute(detailHref);
+    prefetchImage(product.images[0]);
+  };
   const latest = [...auction.bids].sort((a, b) => b.amount - a.amount)[0];
   const isLive = auction.status === "live";
   const isScheduled = auction.status === "scheduled";
@@ -33,9 +39,12 @@ export function AuctionCard({ auction, product }: { auction: Auction; product: P
   return (
     <article
       className={`shop-card auction-tile ${isLive ? "is-live" : ""} ${isCompleted ? "is-completed" : ""}`}
+      onPointerEnter={warmDetail}
+      onFocus={warmDetail}
+      onTouchStart={warmDetail}
     >
       <div className="shop-card-media">
-        <Link href={`/auction/${auction.id}`} aria-label={`View auction for ${product.title}`}>
+        <Link href={detailHref} aria-label={`View auction for ${product.title}`}>
           <img src={product.images[0]} alt={product.title} loading="lazy" />
         </Link>
         <span className="shop-card-tape" aria-hidden="true" />

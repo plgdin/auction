@@ -2,9 +2,11 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
+import { prefetchCommonRoutes } from "./lib/route-prefetch";
 import "./styles.css";
 import "./marketplace.css";
-import "./shop.css";
+
+prefetchCommonRoutes();
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

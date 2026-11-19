@@ -1,5 +1,6 @@
 import { useEffect, type AnchorHTMLAttributes, type ReactNode } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { prefetchRoute } from "../lib/route-prefetch";
 
 export function smoothScrollTo(element: HTMLElement | null) {
   if (!element) return;
@@ -74,6 +75,9 @@ export function Link({
   children,
   className,
   onClick,
+  onPointerEnter,
+  onFocus,
+  onTouchStart,
   ...rest
 }: {
   href: string;
@@ -81,6 +85,9 @@ export function Link({
   className?: string;
   onClick?: () => void;
 } & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "href" | "onClick">) {
+  const target = normalizeHref(href);
+  const warm = () => prefetchRoute(target);
+
   if (isAnchorOnly(href)) {
     return (
       <a
@@ -99,7 +106,24 @@ export function Link({
   }
 
   return (
-    <RouterLink to={normalizeHref(href)} className={className} onClick={onClick} {...rest}>
+    <RouterLink
+      to={target}
+      className={className}
+      onClick={onClick}
+      onPointerEnter={(event) => {
+        warm();
+        onPointerEnter?.(event);
+      }}
+      onFocus={(event) => {
+        warm();
+        onFocus?.(event);
+      }}
+      onTouchStart={(event) => {
+        warm();
+        onTouchStart?.(event);
+      }}
+      {...rest}
+    >
       {children}
     </RouterLink>
   );

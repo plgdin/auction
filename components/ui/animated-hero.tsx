@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import { MoveRight, ShoppingBag } from "lucide-react";
 import { navigate } from "@/src/components/Link";
-import { COARSE, REDUCED_MOTION, revealDelay, revealDuration } from "@/src/lib/motion";
+import { REDUCED_MOTION, revealDelay, revealDuration } from "@/src/lib/motion";
 
 export interface HeroProps {
   headlineTop?: string;
@@ -72,7 +72,7 @@ function PolaroidPhoto({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.94, rotate: rotation - 2 }}
+      initial={false}
       animate={{ opacity: 1, scale: 1, rotate: rotation }}
       transition={{ duration: revealDuration(0.8), delay: revealDelay(delay), ease: [0.16, 1, 0.3, 1] }}
       whileHover={REDUCED_MOTION ? undefined : {
@@ -137,7 +137,7 @@ function Hero({
              LEFT SECTION — BRAND AND MESSAGE (approx 45%)
              ======================================================== */}
           <motion.div
-            initial={COARSE || REDUCED_MOTION ? false : { opacity: 0, x: -30 }}
+            initial={false}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: revealDuration(0.85), ease: [0.16, 1, 0.3, 1] }}
             className="home-hero-copy lg:col-span-5 xl:col-span-5 flex flex-col items-start gap-4 sm:gap-5 lg:gap-6 z-10"
@@ -224,6 +224,7 @@ function Hero({
                   rotation={7}
                   tapePlacement="top-right"
                   delay={0.2}
+                  priority
                 />
               </div>
 
@@ -253,6 +254,7 @@ function Hero({
                   rotation={-5.5}
                   tapePlacement="top-right"
                   delay={0.3}
+                  priority
                 />
               </div>
 

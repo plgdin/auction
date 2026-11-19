@@ -9,6 +9,7 @@ import React, {
 } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Gavel, Home, ShoppingBag } from "lucide-react";
+import { prefetchRoute } from "@/src/lib/route-prefetch";
 
 export interface BookmarkNavItem {
   label: string;
@@ -353,6 +354,9 @@ export function BookmarkNav({
                 onClick={() => {
                   handleSelect(index, item);
                 }}
+                onPointerEnter={() => item.href && prefetchRoute(item.href)}
+                onFocus={() => item.href && prefetchRoute(item.href)}
+                onTouchStart={() => item.href && prefetchRoute(item.href)}
                 onKeyDown={(event) => {
                   if (event.key === "ArrowRight") {
                     event.preventDefault();

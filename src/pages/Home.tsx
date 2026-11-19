@@ -70,7 +70,7 @@ function StepPolaroidCard({
   stepNumber,
   title,
   description,
-  imageSrc,
+  imageBase,
   imageAlt,
   rotate = "rotate-0",
   delay = 0,
@@ -78,7 +78,7 @@ function StepPolaroidCard({
   stepNumber: number;
   title: string;
   description: string;
-  imageSrc: string;
+  imageBase: string;
   imageAlt: string;
   rotate?: string;
   delay?: number;
@@ -97,12 +97,27 @@ function StepPolaroidCard({
       >
         <WashiTape className="-top-2.5 left-1/2 -translate-x-1/2" width="w-16 sm:w-20" rotate="-rotate-1" />
         <div className="relative aspect-[3/2] w-full overflow-hidden bg-[#E9DFC8] rounded-[1px] border border-black/5">
-          <img
-            src={imageSrc}
-            alt={imageAlt}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
+          <picture>
+            <source
+              type="image/avif"
+              srcSet={`${imageBase}-520.avif 520w, ${imageBase}-900.avif 900w`}
+              sizes="(min-width: 1280px) 224px, (min-width: 1024px) 176px, 62vw"
+            />
+            <source
+              type="image/webp"
+              srcSet={`${imageBase}-520.webp 520w, ${imageBase}-900.webp 900w`}
+              sizes="(min-width: 1280px) 224px, (min-width: 1024px) 176px, 62vw"
+            />
+            <img
+              src={`${imageBase}.jpg`}
+              alt={imageAlt}
+              width={900}
+              height={600}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+              decoding="async"
+            />
+          </picture>
         </div>
       </div>
 
@@ -267,7 +282,7 @@ export function HomePage() {
               stepNumber={1}
               title="List Your Item"
               description="Add photos, a short description, and your price in just a few clicks."
-              imageSrc="/images/gpt/step-list.jpg"
+              imageBase="/images/gpt/step-list"
               imageAlt="Folded knitwear ready to be photographed"
               rotate="-rotate-1"
               delay={0.1}
@@ -279,7 +294,7 @@ export function HomePage() {
               stepNumber={2}
               title="Get Discovered"
               description="Your item goes live on lelam.co for buyers to find and buy."
-              imageSrc="/images/gpt/step-discover.jpg"
+              imageBase="/images/gpt/step-discover"
               imageAlt="Laptop displaying closet listings"
               rotate="rotate-1"
               delay={0.2}
@@ -291,7 +306,7 @@ export function HomePage() {
               stepNumber={3}
               title="Sell & Ship"
               description="Accept an order, pack it neatly, and hand it over to our pickup partner."
-              imageSrc="/images/gpt/step-ship.jpg"
+              imageBase="/images/gpt/step-ship"
               imageAlt="Shipping cardboard box packed with tissue paper"
               rotate="-rotate-1.5"
               delay={0.3}
@@ -303,7 +318,7 @@ export function HomePage() {
               stepNumber={4}
               title="Get Paid"
               description="Receive your earnings safely and directly to your account."
-              imageSrc="/images/gpt/step-paid.jpg"
+              imageBase="/images/gpt/step-paid"
               imageAlt="Mobile screen showing payment received checkmark"
               rotate="rotate-2"
               delay={0.4}
@@ -326,13 +341,27 @@ export function HomePage() {
           >
             {/* Real cardboard hangtag on twine string */}
             <div className="shrink-0 -mt-6 sm:-mt-10 md:-mt-0 md:-ml-14 w-32 sm:w-40 md:w-48 select-none pointer-events-none">
-              <img
-                src="/images/texture-kraft-tag.png"
-                alt="Recycled cardboard hangtag"
-                width={1024}
-                height={1536}
-                className="w-full h-auto object-contain"
-              />
+              <picture>
+                <source
+                  type="image/avif"
+                  srcSet="/images/texture-kraft-tag-192.avif 192w, /images/texture-kraft-tag-384.avif 384w"
+                  sizes="(min-width: 768px) 192px, (min-width: 640px) 160px, 128px"
+                />
+                <source
+                  type="image/webp"
+                  srcSet="/images/texture-kraft-tag-192.webp 192w, /images/texture-kraft-tag-384.webp 384w"
+                  sizes="(min-width: 768px) 192px, (min-width: 640px) 160px, 128px"
+                />
+                <img
+                  src="/images/texture-kraft-tag.png"
+                  alt="Recycled cardboard hangtag"
+                  width={384}
+                  height={576}
+                  className="w-full h-auto object-contain"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </picture>
             </div>
 
             {/* Manifesto Quote */}
@@ -465,12 +494,27 @@ export function HomePage() {
               >
                 <WashiTape className="-top-3 left-1/2 -translate-x-1/2" width="w-24 sm:w-28" rotate="-rotate-1" />
                 <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#E9DFC8] rounded-[1px] border border-black/5">
-                  <img
-                    src="/images/gpt/wardrobe-rail.jpg"
-                    alt="Wooden clothing rack full of pre-loved coats"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
+                  <picture>
+                    <source
+                      type="image/avif"
+                      srcSet="/images/gpt/wardrobe-rail-360.avif 360w, /images/gpt/wardrobe-rail-720.avif 720w"
+                      sizes="(min-width: 640px) 416px, 360px"
+                    />
+                    <source
+                      type="image/webp"
+                      srcSet="/images/gpt/wardrobe-rail-360.webp 360w, /images/gpt/wardrobe-rail-720.webp 720w"
+                      sizes="(min-width: 640px) 416px, 360px"
+                    />
+                    <img
+                      src="/images/gpt/wardrobe-rail.jpg"
+                      alt="Wooden clothing rack full of pre-loved coats"
+                      width={900}
+                      height={675}
+                      className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
                 </div>
               </motion.div>
             </div>

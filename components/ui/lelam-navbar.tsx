@@ -18,6 +18,7 @@ import {
 import { BookmarkNav, type BookmarkNavItem } from "@/components/ui/bookmark-nav";
 import { BottomNavBar } from "@/components/ui/bottom-nav-bar";
 import { navigate } from "@/src/components/Link";
+import { prefetchCartDrawer, prefetchSearchModal } from "@/src/lib/route-prefetch";
 import { useRoute } from "@/src/lib/router";
 import { useStore } from "@/src/lib/store";
 
@@ -154,6 +155,9 @@ export function LelamNavbar({
           <button
             type="button"
             onClick={onOpenSearch}
+            onPointerEnter={prefetchSearchModal}
+            onFocus={prefetchSearchModal}
+            onTouchStart={prefetchSearchModal}
             className="lelam-action-btn lelam-search-toggle"
             aria-label="Search listings"
             title="Search"
@@ -175,6 +179,9 @@ export function LelamNavbar({
           <button
             type="button"
             onClick={onOpenCart}
+            onPointerEnter={prefetchCartDrawer}
+            onFocus={prefetchCartDrawer}
+            onTouchStart={prefetchCartDrawer}
             className="lelam-bid-btn"
             title="Cart"
           >
