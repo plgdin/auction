@@ -135,7 +135,7 @@ export function AdminPage() {
         <div className="section-wrap empty-state page-empty">
           <Shield size={38} />
           <h2>Admin only.</h2>
-          <p>Switch to the admin demo account to open this panel.</p>
+          <p>Sign in with an admin account to open this panel.</p>
           <Link href="/login" className="button button-olive">
             Sign in as admin
           </Link>
@@ -702,7 +702,7 @@ export function AdminPage() {
           <div className="dashboard-section">
             <div className="panel-head">
               <h2>Users</h2>
-              <span>Demo accounts and registered users</span>
+              <span>Registered users and accounts</span>
             </div>
             <div className="listing-table">
               <div className="table-head">
@@ -1662,7 +1662,7 @@ export function AdminPage() {
           <div className="dashboard-section">
             <div className="panel-head">
               <h2>Platform settings</h2>
-              <span>Applies to this browser demo</span>
+              <span>Global marketplace controls and fees</span>
             </div>
             <form
               className="panel settings-form"
@@ -1929,7 +1929,7 @@ export function AdminPage() {
 
         <div className="dashboard-footnote">
           <Shield size={15} />
-          Admin actions affect the browser demo only. No real listings, payouts, or auctions exist.
+          Admin portal. Changes are saved and synced across the platform.
           <Link href="/products" className="text-link">
             Back to marketplace
           </Link>

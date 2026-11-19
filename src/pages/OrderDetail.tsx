@@ -371,9 +371,6 @@ export function OrderDetailPage() {
                       {order.shipment.awb ? ` · AWB ${order.shipment.awb}` : ""}
                     </p>
                   )}
-                  <p className="fineprint">
-                    Delivery updates are set manually in this demo. No courier is connected.
-                  </p>
                 </>
               ) : (
                 <p className="panel-empty">Delivery starts after payment is confirmed.</p>

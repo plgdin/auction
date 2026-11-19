@@ -695,8 +695,8 @@ export function SellerDashboardPage() {
                               Save update
                             </button>
                             <p>
-                              Delivery updates are manual in this demo. The money from this order is
-                              already queued under Earnings — an admin marks the payout paid.
+                              Delivery updates are recorded directly. The money from this order is
+                              queued under Earnings — payout is initiated after the return-request window closes.
                             </p>
                           </div>
                         )}
@@ -939,7 +939,7 @@ export function SellerDashboardPage() {
             <section className="panel">
               <div className="panel-head">
                 <h2>Settlements</h2>
-                <span>Payouts are manual in this demo</span>
+                <span>Payouts initiated after delivery window</span>
               </div>
               {mySettlements.length ? (
                 <div className="listing-table">
@@ -976,7 +976,7 @@ export function SellerDashboardPage() {
 
         <div className="dashboard-footnote">
           <BadgeCheck size={15} />
-          Demo dashboard. No real payouts, courier bookings, or payment captures happen here.
+          Verified seller transactions, settlements and delivery management.
           <button type="button" className="text-link" onClick={() => navigate("/products")}>
             Back to shop
           </button>

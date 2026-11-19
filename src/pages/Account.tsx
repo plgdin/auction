@@ -1102,9 +1102,6 @@ export function AccountPage({ defaultTab }: { defaultTab?: string } = {}) {
                   <span>Auction consent</span>
                   <strong>{user.auctionConsent ? "Opted in" : "Not opted in"}</strong>
                 </div>
-                <p className="fineprint">
-                  This demo keeps accounts in localStorage. Nothing is sent to a server.
-                </p>
               </div>
             </div>
           </div>

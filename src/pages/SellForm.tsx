@@ -317,7 +317,7 @@ export function SellFormPage() {
                 <Upload size={18} />
                 <span>
                   <strong>{fileBusy ? "Reading photos…" : "Upload photos"}</strong>
-                  <em>From this device. Demo only, they stay in the browser.</em>
+                  <em>Upload clear photos from your device.</em>
                 </span>
               </label>
 
@@ -342,7 +342,7 @@ export function SellFormPage() {
               </div>
 
               <div className="sell-presets">
-                <span>Or use a demo photo</span>
+                <span>Or use a sample photo</span>
                 <div>
                   {presetImages.map((image) => (
                     <button

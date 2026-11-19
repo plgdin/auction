@@ -547,9 +547,9 @@ export function SellPage() {
         <section className="sell-block">
           <div className="sell-block-head"><span className="step-number">02</span><div><h2>Photos</h2><p>Add up to six. The first photo is the cover.</p></div></div>
           {images.length > 0 && <div className="sell-photo-grid">{images.map((image, index) => (<div key={`${image}-${index}`} className="sell-photo"><img src={image} alt={`Listing photo ${index + 1}`} />{index === 0 && <span>COVER</span>}<button type="button" aria-label="Remove photo" onClick={() => setImages((p) => p.filter((item) => item !== image))}><X size={13} /></button></div>))}</div>}
-          <label className="sell-upload"><input type="file" accept="image/*" multiple onChange={(e) => onFiles(e.target.files)} /><Upload size={18} /><span><strong>{fileBusy ? "Reading photos…" : "Upload photos"}</strong><em>From this device. Demo only, they stay in the browser.</em></span></label>
+          <label className="sell-upload"><input type="file" accept="image/*" multiple onChange={(e) => onFiles(e.target.files)} /><Upload size={18} /><span><strong>{fileBusy ? "Reading photos…" : "Upload photos"}</strong><em>Upload clear photos from your device.</em></span></label>
           <div className="sell-url-row"><input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="Or paste an image URL" aria-label="Image URL" /><button type="button" className="button button-ghost" onClick={() => { if (!imageUrl.trim()) return; addImage(imageUrl.trim()); setImageUrl(""); }}><Plus size={14} /> Add</button></div>
-          <div className="sell-presets"><span>Or use a demo photo</span><div>{presetImages.map((image) => (<button key={image} type="button" className={images.includes(image) ? "is-selected" : ""} onClick={() => addImage(image)}><img src={image} alt="" />{images.includes(image) && <Check size={12} />}</button>))}</div></div>
+          <div className="sell-presets"><span>Or use a sample photo</span><div>{presetImages.map((image) => (<button key={image} type="button" className={images.includes(image) ? "is-selected" : ""} onClick={() => addImage(image)}><img src={image} alt="" />{images.includes(image) && <Check size={12} />}</button>))}</div></div>
         </section>
 
         <section className="sell-block">
@@ -578,7 +578,7 @@ export function SellPage() {
         <div className="summary-card">
           <h2>Listing preview</h2>
           <div className="sell-preview"><div className="sell-preview-image">{images[0] ? <img src={images[0]} alt="" /> : <div><ImagePlus size={22} /><span>No photo yet</span></div>}</div><div className="sell-preview-copy"><span>{form.condition} · {form.top}{form.sub !== "All" ? ` · ${form.sub}` : ""}</span><strong>{form.title || "Untitled listing"}</strong><em>{form.price ? formatMoney(Math.round(Number(form.price) * 100)) : "₹—"}</em></div></div>
-          <p className="sell-aside-note">{db.settings.sellerAutoApprove ? "Listings go live immediately in this demo. Admins can still review reports." : "New listings wait for an admin review before going live."}</p>
+          <p className="sell-aside-note">{db.settings.sellerAutoApprove ? "Listings go live immediately on the shop. Admins can still review reports." : "New listings wait for an admin review before going live."}</p>
           <div className="publish-steps">
             <span className="publish-steps-title">After you publish</span>
             <ol>
