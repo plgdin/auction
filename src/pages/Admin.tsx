@@ -13,6 +13,7 @@ import {
   IndianRupee,
   Link2,
   MapPin,
+  Package,
   Plus,
   RotateCw,
   Search,
@@ -21,6 +22,7 @@ import {
   Sparkles,
   Tag,
   Trash2,
+  Truck,
   UserCheck,
   Users,
   Wallet,
@@ -91,6 +93,8 @@ export function AdminPage() {
   const [auditActionFilter, setAuditActionFilter] = useState("all");
   const [auditSearch, setAuditSearch] = useState("");
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
+  const [orderSearch, setOrderSearch] = useState("");
+  const [orderStatusFilter, setOrderStatusFilter] = useState("all");
 
   const loadAuditData = async () => {
     setAuditLoading(true);
@@ -208,6 +212,26 @@ export function AdminPage() {
   const affiliatePaidTotal = affiliateCommissions
     .filter((entry) => entry.status === "paid")
     .reduce((total, entry) => total + entry.amount, 0);
+
+  const filteredOrders = db.orders.filter((order) => {
+    if (orderStatusFilter !== "all") {
+      if (orderStatusFilter === "paid" && order.paymentStatus !== "paid") return false;
+      if (orderStatusFilter === "cod" && order.paymentMethod !== "cod") return false;
+      if (orderStatusFilter !== "paid" && orderStatusFilter !== "cod" && order.status !== orderStatusFilter) return false;
+    }
+    if (orderSearch.trim()) {
+      const q = orderSearch.trim().toLowerCase();
+      const buyer = db.users.find((u) => u.id === order.buyerId);
+      const seller = db.users.find((u) => u.id === order.sellerId);
+      const matchNumber = (order.number ?? "").toLowerCase().includes(q) || order.id.toLowerCase().includes(q);
+      const matchBuyer = (buyer?.name ?? "").toLowerCase().includes(q) || (buyer?.email ?? "").toLowerCase().includes(q);
+      const matchSeller = (seller?.name ?? "").toLowerCase().includes(q);
+      const matchAddress = `${order.address?.name ?? ""} ${order.address?.city ?? ""} ${order.address?.state ?? ""} ${order.address?.pincode ?? ""} ${order.address?.phone ?? ""}`.toLowerCase().includes(q);
+      const matchItems = (order.items ?? []).some((i) => (i.title ?? "").toLowerCase().includes(q));
+      if (!matchNumber && !matchBuyer && !matchSeller && !matchAddress && !matchItems) return false;
+    }
+    return true;
+  });
 
   const copyAffiliate = async (code: string) => {
     try {
@@ -347,6 +371,7 @@ export function AdminPage() {
         <Tabs
           tabs={[
             { id: "overview", label: "Overview" },
+            { id: "orders", label: "Orders", count: db.orders.length },
             { id: "listings", label: "Listings", count: pending.length },
             { id: "reports", label: "Reports", count: reports.length },
             { id: "users", label: "Users", count: db.users.length },
@@ -455,6 +480,202 @@ export function AdminPage() {
                 </div>
               ) : (
                 <p className="panel-empty">No live auctions.</p>
+              )}
+            </section>
+          </div>
+        )}
+
+        {tab === "orders" && (
+          <div className="dashboard-section">
+            <div className="earning-cards">
+              <div className="stat-card is-dark">
+                <span>
+                  <Package size={15} /> Total Orders
+                </span>
+                <strong>{db.orders.length}</strong>
+                <em>{paidOrders.length} paid · {db.orders.filter((o) => o.paymentMethod === "cod").length} COD</em>
+              </div>
+              <div className="stat-card">
+                <span>
+                  <IndianRupee size={15} /> Order Volume
+                </span>
+                <strong>{formatMoney(paidOrders.reduce((sum, o) => sum + o.total, 0))}</strong>
+                <em>Paid order GMV</em>
+              </div>
+              <div className="stat-card">
+                <span>
+                  <Truck size={15} /> Active Delivery
+                </span>
+                <strong>
+                  {
+                    db.orders.filter((o) =>
+                      ["processing", "shipped", "out_for_delivery"].includes(o.status),
+                    ).length
+                  }
+                </strong>
+                <em>In transit or processing</em>
+              </div>
+              <div className="stat-card">
+                <span>
+                  <Check size={15} /> Delivered
+                </span>
+                <strong>{db.orders.filter((o) => o.status === "delivered").length}</strong>
+                <em>Completed deliveries</em>
+              </div>
+            </div>
+
+            <section className="panel">
+              <div className="panel-head">
+                <h2>Customer Orders</h2>
+                <span>View who ordered what and delivery locations</span>
+              </div>
+
+              <div className="orders-filter-bar">
+                <div className="orders-search-input">
+                  <Search size={15} />
+                  <input
+                    type="text"
+                    placeholder="Search by order #, buyer, phone, city, or product title…"
+                    value={orderSearch}
+                    onChange={(e) => setOrderSearch(e.target.value)}
+                  />
+                </div>
+                <select
+                  className="orders-status-select"
+                  value={orderStatusFilter}
+                  onChange={(e) => setOrderStatusFilter(e.target.value)}
+                  aria-label="Filter orders by status"
+                >
+                  <option value="all">All Orders</option>
+                  <option value="paid">Paid Only</option>
+                  <option value="cod">Cash on Delivery</option>
+                  <option value="processing">Processing</option>
+                  <option value="shipped">In Transit / Shipped</option>
+                  <option value="delivered">Delivered</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="pending_payment">Pending Payment</option>
+                </select>
+              </div>
+
+              {filteredOrders.length ? (
+                <div className="listing-table orders-table">
+                  <div className="table-head">
+                    <span>Order & Date</span>
+                    <span>Customer (Buyer)</span>
+                    <span>Item(s) Ordered</span>
+                    <span>Delivery Location</span>
+                    <span>Total & Pay</span>
+                    <span>Status</span>
+                    <span>Action</span>
+                  </div>
+                  {filteredOrders.map((order) => {
+                    const buyer = db.users.find((u) => u.id === order.buyerId);
+                    const seller = db.users.find((u) => u.id === order.sellerId);
+                    const firstItem = order.items?.[0];
+                    const moreItemsCount = (order.items?.length ?? 1) - 1;
+                    const addr = order.address;
+
+                    return (
+                      <div key={order.id} className="table-row">
+                        <div className="orders-customer-cell">
+                          <strong>{order.number || `#${order.id.slice(0, 8)}`}</strong>
+                          <span>{formatDate(order.createdAt)} · {timeAgo(order.createdAt)}</span>
+                          <span className="orders-method-tag">
+                            {order.paymentMethod?.toUpperCase() ?? "ONLINE"} · {order.source}
+                          </span>
+                        </div>
+
+                        <div className="orders-customer-cell">
+                          <strong>{buyer?.name || addr?.name || "Customer"}</strong>
+                          <span>{buyer?.email || "No email"}</span>
+                          <span>{addr?.phone || buyer?.phone || "No phone"}</span>
+                        </div>
+
+                        <div className="orders-items-cell">
+                          {firstItem?.image ? (
+                            <img
+                              src={firstItem.image}
+                              alt={firstItem.title || "Item"}
+                              className="orders-item-thumb"
+                            />
+                          ) : (
+                            <div className="orders-item-thumb-placeholder">
+                              <Package size={16} />
+                            </div>
+                          )}
+                          <div className="orders-item-meta">
+                            <strong>{firstItem?.title || "Purchased item"}</strong>
+                            {moreItemsCount > 0 && (
+                              <span>+{moreItemsCount} more item{moreItemsCount > 1 ? "s" : ""}</span>
+                            )}
+                            <span>Seller: {seller?.name || "Lelam Seller"}</span>
+                          </div>
+                        </div>
+
+                        <div className="orders-location-cell">
+                          <div className="orders-location-main">
+                            <MapPin size={12} />
+                            <span>
+                              {addr?.city
+                                ? `${addr.city}, ${addr.state || ""} ${addr.pincode ? `- ${addr.pincode}` : ""}`
+                                : "No city specified"}
+                            </span>
+                          </div>
+                          <span className="orders-location-street">
+                            {addr?.line1 || "Street address not provided"}
+                            {addr?.line2 ? `, ${addr.line2}` : ""}
+                          </span>
+                          <span className="orders-location-contact">
+                            Recipient: {addr?.name || "—"} ({addr?.phone || "—"})
+                          </span>
+                        </div>
+
+                        <div className="orders-amount-cell">
+                          <strong>{formatMoney(order.total)}</strong>
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              color: order.paymentStatus === "paid" ? "#15803d" : "#b45309",
+                              fontWeight: 600,
+                            }}
+                          >
+                            {order.paymentStatus === "paid" ? "PAID" : "PAYMENT PENDING"}
+                          </span>
+                        </div>
+
+                        <div>
+                          <StatusPill status={order.status} />
+                        </div>
+
+                        <div>
+                          <Link
+                            href={`/orders/${order.id}`}
+                            className="button button-ghost"
+                            style={{
+                              padding: "6px 10px",
+                              fontSize: "11px",
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: "4px",
+                            }}
+                          >
+                            View <ArrowUpRight size={12} />
+                          </Link>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={<Package size={34} />}
+                  title="No orders found."
+                  body={
+                    orderSearch || orderStatusFilter !== "all"
+                      ? "Try clearing your search or filter."
+                      : "Orders placed by buyers will show up here."
+                  }
+                />
               )}
             </section>
           </div>
