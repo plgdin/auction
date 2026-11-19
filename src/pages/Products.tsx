@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   ChevronDown,
   ChevronLeft,
@@ -61,6 +62,8 @@ function pageItems(current: number, total: number): Array<number | "…"> {
 export function ProductsPage() {
   const { db } = useStore();
   const route = useRoute();
+  const [searchParams, setSearchParams] = useSearchParams();
+
   const [category, setCategory] = useState<FilterKey>(keyForQuery(route.query.get("category")));
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [query, setQuery] = useState(route.query.get("q") || "");
@@ -68,7 +71,23 @@ export function ProductsPage() {
   const [sort, setSort] = useState<Sort>("newest");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState(100000);
-  const [page, setPage] = useState(1);
+
+  const initialPage = useMemo(() => {
+    const raw = searchParams.get("page") ?? route.query.get("page");
+    const num = raw ? parseInt(raw, 10) : NaN;
+    if (Number.isInteger(num) && num > 0) return num;
+    try {
+      const saved = sessionStorage.getItem("lelam_last_shop_page");
+      const savedNum = saved ? parseInt(saved, 10) : NaN;
+      if (Number.isInteger(savedNum) && savedNum > 0) return savedNum;
+    } catch {
+      // sessionStorage unavailable
+    }
+    return 1;
+  }, [searchParams, route.query]);
+
+  const [page, setPage] = useState(initialPage);
+  const isFirstRender = useRef(true);
 
   useSeo(productsMeta(category !== "all" ? category : null));
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -103,6 +122,23 @@ export function ProductsPage() {
 
   const handlePageChange = (nextPage: number) => {
     setPage(nextPage);
+    try {
+      sessionStorage.setItem("lelam_last_shop_page", String(nextPage));
+    } catch {
+      // ignore
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        if (nextPage > 1) {
+          next.set("page", String(nextPage));
+        } else {
+          next.delete("page");
+        }
+        return next;
+      },
+      { replace: true },
+    );
     requestAnimationFrame(() => {
       scrollToProducts();
     });
@@ -116,6 +152,19 @@ export function ProductsPage() {
     setCategory(keyForQuery(route.query.get("category")));
     setQuery(route.query.get("q") || "");
   }, [route.query]);
+
+  // Synchronize state if URL searchParams change (e.g. browser back/forward buttons)
+  useEffect(() => {
+    const raw = searchParams.get("page");
+    const p = raw ? parseInt(raw, 10) : NaN;
+    const targetPage = Number.isInteger(p) && p > 0 ? p : 1;
+    setPage(targetPage);
+    try {
+      sessionStorage.setItem("lelam_last_shop_page", String(targetPage));
+    } catch {
+      // ignore
+    }
+  }, [searchParams]);
 
   const active = useMemo(
     () => db.products.filter((product) => product.status === "active" || product.status === "reserved"),
@@ -183,9 +232,29 @@ export function ProductsPage() {
 
   const pageSize = 9;
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
-  const pageProducts = visible.slice((page - 1) * pageSize, page * pageSize);
+  const safePage = Math.min(Math.max(1, page), pageCount);
+  const pageProducts = visible.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  useEffect(() => setPage(1), [category, condition, maxPrice, query, selectedSizes, selectedGroups, sort]);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    setPage(1);
+    try {
+      sessionStorage.setItem("lelam_last_shop_page", "1");
+    } catch {
+      // ignore
+    }
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("page");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [category, condition, maxPrice, query, selectedSizes, selectedGroups, sort, setSearchParams]);
 
   useEffect(() => {
     if (!filtersOpen) {
@@ -243,6 +312,13 @@ export function ProductsPage() {
     setSelectedGroups([]);
     setMaxPrice(highestPrice);
     setQuery("");
+    setPage(1);
+    try {
+      sessionStorage.removeItem("lelam_last_shop_page");
+    } catch {
+      // ignore
+    }
+    setSearchParams(new URLSearchParams(), { replace: true });
   };
 
   const toggleSize = (size: string) =>
@@ -562,20 +638,20 @@ export function ProductsPage() {
                 <button
                   type="button"
                   aria-label="Previous page"
-                  disabled={page === 1}
-                  onClick={() => handlePageChange(Math.max(1, page - 1))}
+                  disabled={safePage === 1}
+                  onClick={() => handlePageChange(Math.max(1, safePage - 1))}
                 >
                   <ChevronLeft size={15} strokeWidth={1.7} />
                 </button>
-                {pageItems(page, pageCount).map((item, index) =>
+                {pageItems(safePage, pageCount).map((item, index) =>
                   item === "…" ? (
                     <span key={`gap-${index}`}>…</span>
                   ) : (
                     <button
                       type="button"
                       key={item}
-                      aria-current={page === item ? "page" : undefined}
-                      className={page === item ? "is-active" : ""}
+                      aria-current={safePage === item ? "page" : undefined}
+                      className={safePage === item ? "is-active" : ""}
                       onClick={() => handlePageChange(item)}
                     >
                       {item}
@@ -585,8 +661,8 @@ export function ProductsPage() {
                 <button
                   type="button"
                   aria-label="Next page"
-                  disabled={page === pageCount}
-                  onClick={() => handlePageChange(Math.min(pageCount, page + 1))}
+                  disabled={safePage === pageCount}
+                  onClick={() => handlePageChange(Math.min(pageCount, safePage + 1))}
                 >
                   <ChevronRight size={15} strokeWidth={1.7} />
                 </button>

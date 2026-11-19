@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -39,6 +39,18 @@ export function ProductDetailPage() {
   const [reportReason, setReportReason] = useState("");
   const [reportDetails, setReportDetails] = useState("");
 
+  const backHref = useMemo(() => {
+    try {
+      const lastPage = sessionStorage.getItem("lelam_last_shop_page");
+      if (lastPage && parseInt(lastPage, 10) > 1) {
+        return `/products?page=${lastPage}`;
+      }
+    } catch {
+      // ignore
+    }
+    return "/products";
+  }, []);
+
   useEffect(() => {
     setOfferOpen(route.query.get("offer") === "1");
     setImageIndex(0);
@@ -68,7 +80,7 @@ export function ProductDetailPage() {
           <ShoppingBag size={36} />
           <h2>This listing is not here.</h2>
           <p>It may have been removed or sold.</p>
-          <Link href="/products" className="button button-olive">
+          <Link href={backHref} className="button button-olive">
             Back to the rail
           </Link>
         </div>
@@ -118,7 +130,7 @@ export function ProductDetailPage() {
     <main className="page-shell product-detail-page">
       <div className="section-wrap">
         <div className="breadcrumbs">
-          <Link href="/products">
+          <Link href={backHref}>
             <ArrowLeft size={14} /> All pieces
           </Link>
           <span>/</span>
