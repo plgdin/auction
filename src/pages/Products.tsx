@@ -10,7 +10,6 @@ import {
 import { ShopCard } from "../components/ShopCard";
 import { SelectMenu } from "../components/Ui";
 import { formatMoney } from "../lib/format";
-import { useRoute } from "../lib/router";
 import { useSeo } from "../lib/seo";
 import { productsMeta } from "../lib/seo-meta";
 import { useStore } from "../lib/store";
@@ -61,19 +60,20 @@ function pageItems(current: number, total: number): Array<number | "…"> {
 
 export function ProductsPage() {
   const { db } = useStore();
-  const route = useRoute();
   const [searchParams, setSearchParams] = useSearchParams();
+  const setSearchParamsRef = useRef(setSearchParams);
+  setSearchParamsRef.current = setSearchParams;
 
-  const [category, setCategory] = useState<FilterKey>(keyForQuery(route.query.get("category")));
+  const [category, setCategory] = useState<FilterKey>(keyForQuery(searchParams.get("category")));
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const [query, setQuery] = useState(route.query.get("q") || "");
+  const [query, setQuery] = useState(searchParams.get("q") || "");
   const [condition, setCondition] = useState<Condition | "All">("All");
   const [sort, setSort] = useState<Sort>("newest");
   const [selectedSizes, setSelectedSizes] = useState<string[]>([]);
   const [maxPrice, setMaxPrice] = useState(100000);
 
   const initialPage = useMemo(() => {
-    const raw = searchParams.get("page") ?? route.query.get("page");
+    const raw = searchParams.get("page");
     const num = raw ? parseInt(raw, 10) : NaN;
     if (Number.isInteger(num) && num > 0) return num;
     try {
@@ -84,10 +84,20 @@ export function ProductsPage() {
       // sessionStorage unavailable
     }
     return 1;
-  }, [searchParams, route.query]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [page, setPage] = useState(initialPage);
   const isFirstRender = useRef(true);
+  const prevFiltersRef = useRef({
+    category,
+    condition,
+    maxPrice,
+    query,
+    sizes: selectedSizes.join(","),
+    groups: selectedGroups.join(","),
+    sort,
+  });
 
   useSeo(productsMeta(category !== "all" ? category : null));
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
@@ -148,23 +158,34 @@ export function ProductsPage() {
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const urlCategory = searchParams.get("category");
+  const urlQuery = searchParams.get("q");
+
   useEffect(() => {
-    setCategory(keyForQuery(route.query.get("category")));
-    setQuery(route.query.get("q") || "");
-  }, [route.query]);
+    if (urlCategory !== null) {
+      const parsedCat = keyForQuery(urlCategory);
+      setCategory((curr) => (curr === parsedCat ? curr : parsedCat));
+    }
+  }, [urlCategory]);
+
+  useEffect(() => {
+    if (urlQuery !== null) {
+      setQuery((curr) => (curr === urlQuery ? curr : urlQuery));
+    }
+  }, [urlQuery]);
 
   // Synchronize state if URL searchParams change (e.g. browser back/forward buttons)
+  const searchPage = searchParams.get("page");
   useEffect(() => {
-    const raw = searchParams.get("page");
-    const p = raw ? parseInt(raw, 10) : NaN;
+    const p = searchPage ? parseInt(searchPage, 10) : NaN;
     const targetPage = Number.isInteger(p) && p > 0 ? p : 1;
-    setPage(targetPage);
+    setPage((curr) => (curr === targetPage ? curr : targetPage));
     try {
       sessionStorage.setItem("lelam_last_shop_page", String(targetPage));
     } catch {
       // ignore
     }
-  }, [searchParams]);
+  }, [searchPage]);
 
   const active = useMemo(
     () => db.products.filter((product) => product.status === "active" || product.status === "reserved"),
@@ -240,21 +261,45 @@ export function ProductsPage() {
       isFirstRender.current = false;
       return;
     }
+    const prev = prevFiltersRef.current;
+    const sizes = selectedSizes.join(",");
+    const groups = selectedGroups.join(",");
+    const filtersChanged =
+      prev.category !== category ||
+      prev.condition !== condition ||
+      prev.maxPrice !== maxPrice ||
+      prev.query !== query ||
+      prev.sizes !== sizes ||
+      prev.groups !== groups ||
+      prev.sort !== sort;
+
+    if (!filtersChanged) return;
+
+    prevFiltersRef.current = {
+      category,
+      condition,
+      maxPrice,
+      query,
+      sizes,
+      groups,
+      sort,
+    };
+
     setPage(1);
     try {
       sessionStorage.setItem("lelam_last_shop_page", "1");
     } catch {
       // ignore
     }
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
+    setSearchParamsRef.current(
+      (prevParams) => {
+        const next = new URLSearchParams(prevParams);
         next.delete("page");
         return next;
       },
       { replace: true },
     );
-  }, [category, condition, maxPrice, query, selectedSizes, selectedGroups, sort, setSearchParams]);
+  }, [category, condition, maxPrice, query, selectedSizes, selectedGroups, sort]);
 
   useEffect(() => {
     if (!filtersOpen) {

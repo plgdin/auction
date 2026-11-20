@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import {
+  ArrowRight,
   ArrowUpRight,
   BadgeCheck,
   Banknote,
+  Camera,
   Check,
+  CheckCircle2,
+  ChevronRight,
   Clock3,
   Gavel,
   Package,
@@ -12,7 +16,9 @@ import {
   Tag,
   Truck,
   Wallet,
+  X,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
 import { Link, navigate } from "../components/Link";
 import { Countdown } from "../components/Countdown";
 import { EmptyState, ScheduleDateTime, SelectMenu, StatusPill, Tabs } from "../components/Ui";
@@ -115,7 +121,24 @@ export function SellerDashboardPage() {
     {
       key: "listed",
       title: "List it",
+      icon: Camera,
       done: myProducts.length > 0,
+      badge: "Milestone 1",
+      headline: "Create and publish your vintage listing",
+      description: "Take 3–6 clear photos in natural daylight, set your price, and describe the piece accurately. You can allow private buyer offers or schedule an auction.",
+      checklist: [
+        "Upload crisp photos taken in soft natural lighting",
+        "Describe materials, patina, and honest vintage condition",
+        "Enable private buyer offers or schedule a live auction",
+      ],
+      primaryAction: {
+        label: "List an item now",
+        action: "/sell?start=1",
+      },
+      secondaryAction: {
+        label: "View all listings",
+        tab: "listings",
+      },
       line:
         myProducts.length > 0
           ? `${myProducts.length} listing${myProducts.length === 1 ? "" : "s"} saved`
@@ -124,7 +147,24 @@ export function SellerDashboardPage() {
     {
       key: "live",
       title: "Live in the shop",
+      icon: Store,
       done: activeListings.length > 0,
+      badge: "Milestone 2",
+      headline: "Curated verification & live shop showcase",
+      description: "Our curation team reviews every piece within 2–4 hours for authentic description, clear photos, and fair market pricing.",
+      checklist: [
+        "Verified listings appear on the main shop rail & search",
+        "Buyers across India can bookmark and send offers",
+        "Pause, edit, or adjust pricing at any time",
+      ],
+      primaryAction: {
+        label: "Manage shop listings",
+        tab: "listings",
+      },
+      secondaryAction: {
+        label: "Browse live marketplace",
+        action: "/products",
+      },
       line:
         activeListings.length > 0
           ? `${activeListings.length} visible to buyers${pendingListings.length ? ` · ${pendingListings.length} waiting on review` : ""}`
@@ -135,7 +175,24 @@ export function SellerDashboardPage() {
     {
       key: "sold",
       title: "Sold",
+      icon: Tag,
       done: paidOrders.length > 0,
+      badge: "Milestone 3",
+      headline: "Secured buyer payment & order confirmation",
+      description: "Payment is captured upfront and held securely in escrow before you pack. You will never ship without 100% confirmed payment.",
+      checklist: [
+        "Zero payment risk: funds are collected before pickup",
+        "Instant notification via WhatsApp, email, and dashboard",
+        "Accept, decline, or counter private buyer offers",
+      ],
+      primaryAction: {
+        label: "Review orders",
+        tab: "orders",
+      },
+      secondaryAction: {
+        label: "Check buyer offers",
+        tab: "offers",
+      },
       line:
         paidOrders.length > 0
           ? `${paidOrders.length} paid order${paidOrders.length === 1 ? "" : "s"} to hand over`
@@ -144,7 +201,24 @@ export function SellerDashboardPage() {
     {
       key: "delivered",
       title: "Delivered",
+      icon: Truck,
       done: deliveredCount > 0,
+      badge: "Milestone 4",
+      headline: "Doorstep courier pickup & insured transit",
+      description: "No traveling to courier hubs. A designated rider arrives at your doorstep to collect the parcel with pre-printed labels.",
+      checklist: [
+        "Schedule rider pickup at your preferred date & time slot",
+        "End-to-end tracked transit from your door to the buyer",
+        "Transit insurance protection for vintage & delicate pieces",
+      ],
+      primaryAction: {
+        label: "Track shipments",
+        tab: "orders",
+      },
+      secondaryAction: {
+        label: "Packaging guidelines",
+        action: "/policies",
+      },
       line:
         deliveredCount > 0
           ? `${deliveredCount} piece${deliveredCount === 1 ? "" : "s"} in their hands`
@@ -153,7 +227,24 @@ export function SellerDashboardPage() {
     {
       key: "paid",
       title: "Paid out",
+      icon: Wallet,
       done: revenue > 0,
+      badge: "Milestone 5",
+      headline: "Direct settlement & bank payout",
+      description: "Once delivery is fulfilled and the return window passes, sales proceeds are transferred automatically to your registered bank account.",
+      checklist: [
+        "Transparent fee breakdown with zero hidden deductions",
+        "Fast NEFT/IMPS bank transfer within 24 business hours",
+        "Comprehensive settlement invoices for tax and bookkeeping",
+      ],
+      primaryAction: {
+        label: "View settlement ledger",
+        tab: "earnings",
+      },
+      secondaryAction: {
+        label: "Payout schedule details",
+        action: "/policies",
+      },
       line:
         revenue > 0
           ? `${formatMoney(revenue)} marked paid`
@@ -162,7 +253,13 @@ export function SellerDashboardPage() {
             : "Money lands here once a sale is settled",
     },
   ];
+
   const firstTodo = journeySteps.findIndex((step) => !step.done);
+  const activeStepIndex = firstTodo === -1 ? journeySteps.length - 1 : firstTodo;
+  const [selectedStepKey, setSelectedStepKey] = useState<string | null>(journeySteps[activeStepIndex]?.key || null);
+  const activeDetailStep = journeySteps.find((s) => s.key === selectedStepKey);
+  const completedCount = journeySteps.filter((s) => s.done).length;
+  const currentStep = journeySteps[activeStepIndex];
 
   const setTabAndHash = (next: string) => {
     setTab(next);
@@ -189,23 +286,178 @@ export function SellerDashboardPage() {
 
         <section className="journey-panel">
           <div className="panel-head">
-            <h2>Selling, end to end</h2>
-            <span>Every listing follows this path</span>
+            <div>
+              <h2>Selling, end to end</h2>
+              <span>
+                {completedCount === journeySteps.length
+                  ? "All selling milestones completed! Your shop is fully operational."
+                  : currentStep?.headline || "Every listing follows this path"}
+              </span>
+            </div>
+            <div className="journey-progress-wrap">
+              <span className="journey-progress-label">
+                <strong>{completedCount} OF {journeySteps.length}</strong> COMPLETE
+              </span>
+              <div className="journey-progress-bar">
+                <div
+                  className="journey-progress-fill"
+                  style={{ width: `${(completedCount / journeySteps.length) * 100}%` }}
+                />
+              </div>
+            </div>
           </div>
-          <ol className="seller-journey">
-            {journeySteps.map((step, index) => (
-              <li
-                key={step.key}
-                className={`journey-step ${step.done ? "is-done" : index === firstTodo ? "is-current" : "is-todo"}`}
+
+          <div className="seller-journey-grid" role="tablist" aria-label="Selling milestone steps">
+            {journeySteps.map((step, index) => {
+              const isCurrent = index === activeStepIndex;
+              const isDone = step.done;
+              const isSelected = selectedStepKey === step.key;
+
+              return (
+                <button
+                  type="button"
+                  key={step.key}
+                  role="tab"
+                  aria-selected={isSelected}
+                  aria-controls={`journey-detail-${step.key}`}
+                  id={`journey-tab-${step.key}`}
+                  className={`journey-card ${isDone ? "is-done" : isCurrent ? "is-current" : "is-upcoming"} ${
+                    isSelected ? "is-selected" : ""
+                  }`}
+                  onClick={() => setSelectedStepKey((prev) => (prev === step.key ? null : step.key))}
+                >
+                  <div className="journey-card-top">
+                    <span className={`journey-card-num ${isDone ? "is-done" : isCurrent ? "is-current" : "is-upcoming"}`}>
+                      {isDone ? <Check size={11} strokeWidth={2.6} /> : index + 1}
+                    </span>
+                    <span className={`journey-card-status ${isDone ? "is-done" : isCurrent ? "is-current" : "is-upcoming"}`}>
+                      {isDone ? "Complete" : isCurrent ? "In Progress" : "Upcoming"}
+                    </span>
+                    <ChevronRight size={13} className="journey-card-chevron" />
+                  </div>
+                  <div className="journey-card-content">
+                    <strong className="journey-card-title">{step.title}</strong>
+                    <p className="journey-card-desc">{step.line}</p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Expandable milestone details and actions tray */}
+          <AnimatePresence>
+            {activeDetailStep && (
+              <motion.div
+                id={`journey-detail-${activeDetailStep.key}`}
+                role="tabpanel"
+                aria-labelledby={`journey-tab-${activeDetailStep.key}`}
+                className="journey-detail-tray"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
               >
-                <span className="journey-dot">{step.done ? <Check size={13} /> : index + 1}</span>
-                <div className="journey-copy">
-                  <strong>{step.title}</strong>
-                  <span>{step.line}</span>
+                <div className="journey-detail-inner">
+                  <div className="journey-detail-head">
+                    <div className="journey-detail-meta">
+                      <span className="journey-detail-icon">
+                        <activeDetailStep.icon size={20} strokeWidth={1.8} />
+                      </span>
+                      <div>
+                        <div className="journey-detail-eyebrow">
+                          <span>{activeDetailStep.badge}</span>
+                          <span className={`journey-card-status ${activeDetailStep.done ? "is-done" : activeStepIndex === journeySteps.findIndex((s) => s.key === activeDetailStep.key) ? "is-current" : "is-upcoming"}`}>
+                            {activeDetailStep.done ? "Complete" : activeStepIndex === journeySteps.findIndex((s) => s.key === activeDetailStep.key) ? "In Progress" : "Upcoming"}
+                          </span>
+                        </div>
+                        <h3>{activeDetailStep.headline}</h3>
+                        <p>{activeDetailStep.description}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="journey-detail-close"
+                      onClick={() => setSelectedStepKey(null)}
+                      aria-label="Close milestone details"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="journey-detail-body">
+                    <div className="journey-checklist">
+                      <strong>Milestone Checklist:</strong>
+                      <ul>
+                        {activeDetailStep.checklist.map((item, i) => (
+                          <li key={i}>
+                            <CheckCircle2 size={15} />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div className="journey-actions">
+                      {activeDetailStep.primaryAction && (
+                        activeDetailStep.primaryAction.tab ? (
+                          <button
+                            type="button"
+                            className="button button-olive"
+                            onClick={() => {
+                              setTabAndHash(activeDetailStep.primaryAction.tab!);
+                            }}
+                          >
+                            <span>{activeDetailStep.primaryAction.label}</span>
+                            <ArrowRight size={14} />
+                          </button>
+                        ) : (
+                          <Link href={activeDetailStep.primaryAction.action!} className="button button-olive">
+                            <span>{activeDetailStep.primaryAction.label}</span>
+                            <ArrowRight size={14} />
+                          </Link>
+                        )
+                      )}
+
+                      {activeDetailStep.secondaryAction && (
+                        activeDetailStep.secondaryAction.tab ? (
+                          <button
+                            type="button"
+                            className="button button-ghost"
+                            onClick={() => {
+                              setTabAndHash(activeDetailStep.secondaryAction.tab!);
+                            }}
+                          >
+                            <span>{activeDetailStep.secondaryAction.label}</span>
+                          </button>
+                        ) : (
+                          <Link href={activeDetailStep.secondaryAction.action!} className="button button-ghost">
+                            <span>{activeDetailStep.secondaryAction.label}</span>
+                          </Link>
+                        )
+                      )}
+
+                      {/* Next step shortcut */}
+                      {(() => {
+                        const currentIdx = journeySteps.findIndex((s) => s.key === activeDetailStep.key);
+                        const nextStep = journeySteps[currentIdx + 1];
+                        if (!nextStep) return null;
+                        return (
+                          <button
+                            type="button"
+                            className="journey-next-btn"
+                            onClick={() => setSelectedStepKey(nextStep.key)}
+                          >
+                            <span>Explore Next: {nextStep.title}</span>
+                            <ChevronRight size={13} />
+                          </button>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 </div>
-              </li>
-            ))}
-          </ol>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </section>
 
         <div className="stat-grid">
